@@ -93,13 +93,15 @@ index 42dd5afcb..43eb2b704 100644
  // If the ro.product.[brand|device|manufacturer|model|name] properties have not been explicitly
  // set, derive them from ro.product.${partition}.* properties
  static void property_initialize_ro_product_props() {
-@@ -922,6 +981,9 @@ void PropertyLoadBootDefaults() {
+@@ -922,6 +981,11 @@ void PropertyLoadBootDefaults() {
      if (android::base::GetBoolProperty("ro.persistent_properties.ready", false)) {
          update_sys_usb_config();
      }
 +
 +    // Workaround SafetyNet
-+    workaround_snet_properties();
++    if (!IsRecoveryMode()) {
++        workaround_snet_properties();
++    }
  }
  
  bool LoadPropertyInfoFromFile(const std::string& filename,
