@@ -45,6 +45,9 @@ do_patch "workaround_egl_lib_symbols.patch"
 cd "$ANDROID_BUILD_TOP/libnativehelper"
 do_patch "fix-class-templates.patch"
 
+cd "$ANDROID_BUILD_TOP/packages/apps/Settings"
+do_patch "show-adb-root-option.patch"
+
 cd "$ANDROID_BUILD_TOP/prebuilts/abi-dumps/vndk"
 do_patch "update-abi-dumps.patch"
 
