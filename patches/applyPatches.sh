@@ -37,6 +37,10 @@ do_patch "fix-mediaplayer2-flags.patch"
 cd "$ANDROID_BUILD_TOP/frameworks/base"
 do_patch "fix-null-ptr-in-customtile.patch"
 do_patch "fix-reversed-logic.patch"
+do_patch "use-real-sec-date_1.patch"
+
+cd "$ANDROID_BUILD_TOP/lineage-sdk"
+do_patch "use-real-sec-date_2.patch
 
 cd "$ANDROID_BUILD_TOP/frameworks/native"
 do_patch "fix-native-vulkan.patch"

@@ -1,0 +1,13 @@
+diff --git a/lineage/lib/main/java/org/lineageos/platform/internal/TrustInterfaceService.java b/lineage/lib/main/java/org/lineageos/platform/internal/TrustInterfaceService.java
+index 96f9e452..4c6ddc23 100644
+--- a/lineage/lib/main/java/org/lineageos/platform/internal/TrustInterfaceService.java
++++ b/lineage/lib/main/java/org/lineageos/platform/internal/TrustInterfaceService.java
+@@ -50,7 +50,7 @@ import java.util.NoSuchElementException;
+ public class TrustInterfaceService extends LineageSystemService {
+     private static final String TAG = "LineageTrustInterfaceService";
+ 
+-    private static final String PLATFORM_SECURITY_PATCHES = "ro.build.version.security_patch";
++    private static final String PLATFORM_SECURITY_PATCHES = "ro.build.version.real_security_patch";
+     private static final String VENDOR_SECURITY_PATCHES = "ro.vendor.build.security_patch";
+     private static final String LINEAGE_VENDOR_SECURITY_PATCHES =
+             "ro.lineage.build.vendor_security_patch";

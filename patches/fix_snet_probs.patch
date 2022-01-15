@@ -1,7 +1,7 @@
 Based on the work from Havoc-OS
 
 diff --git a/init/property_service.cpp b/init/property_service.cpp
-index 65e9cda1c..0ed0dc053 100644
+index 65e9cda1c..e3d383762 100644
 --- a/init/property_service.cpp
 +++ b/init/property_service.cpp
 @@ -45,6 +45,7 @@
@@ -30,7 +30,7 @@ index 65e9cda1c..0ed0dc053 100644
              *error = "Read-only property was already set";
              return PROP_ERROR_READ_ONLY_PROPERTY;
          }
-@@ -788,6 +791,62 @@ static void load_override_properties() {
+@@ -774,7 +777,69 @@ static void update_sys_usb_config() {
      }
  }
  
@@ -38,27 +38,28 @@ index 65e9cda1c..0ed0dc053 100644
 +    {"ro.boot.flash.locked", "1"},
 +    {"ro.boot.vbmeta.device_state", "locked"},
 +    {"ro.boot.verifiedbootstate", "green"},
++    {"ro.build.tags", "release-keys"},
++    {"ro.build.type", "user"},
++    {"ro.build.version.security_patch", "2019-09-01"},
 +    {"ro.debuggable", "0"},
++    {"ro.odm.build.tags", "release-keys"},
++    {"ro.odm.build.type", "user"},
++    {"ro.product.build.type", "user"},
++    {"ro.system.build.tags", "release-keys"},
++    {"ro.system.build.type", "user"},
++    {"ro.vendor.build.tags", "release-keys"},
++    {"ro.vendor.build.type", "user"},
++    {"vendor.boot.vbmeta.device_state", "locked"},
++    {"vendor.boot.verifiedbootstate", "green"},
 +    //{"ro.boot.selinux", "enforcing"}, - n/a
 +    //{"ro.boot.veritymode", "enforcing"}, - set
 +    //{"ro.boot.warranty_bit", "0"}, - n/a
++    //{"ro.build.keys", "release-keys"}, - n/a
++    //{"ro.secure", "1"}, - set
++    //{"ro.system_ext.build.type", "user"}, - n/a
 +    //{"ro.vendor.boot.warranty_bit", "0"}, - n/a
 +    //{"ro.vendor.warranty_bit", "0"}, - n/a
 +    //{"ro.warranty_bit", "0"}, - na
-+    //{"ro.secure", "1"}, - set
-+    {"ro.build.type", "user"},
-+    {"ro.system.build.type", "user"},
-+    //{"ro.system_ext.build.type", "user"}, - n/a
-+    {"ro.odm.build.type", "user"},
-+    {"ro.product.build.type", "user"},
-+    {"ro.vendor.build.type", "user"},
-+    //{"ro.build.keys", "release-keys"}, - n/a
-+    {"ro.build.tags", "release-keys"},
-+    {"ro.odm.build.tags", "release-keys"},
-+    {"ro.system.build.tags", "release-keys"},
-+    {"ro.vendor.build.tags", "release-keys"},
-+    {"vendor.boot.vbmeta.device_state", "locked"},
-+    {"vendor.boot.verifiedbootstate", "green"},
 +};
 +
 +static void workaround_snet_properties() {
@@ -72,8 +73,10 @@ index 65e9cda1c..0ed0dc053 100644
 +    // Hide all sensitive props if not eng build
 +    if (build_type != "eng") {
 +        LOG(INFO) << "snet: Hiding sensitive props";
-+        for (const auto& prop: snet_props) {
-+            PropertySet(prop.first, prop.second, &error);
++        for (const auto& [name, value]: snet_props) {
++            if (PropertySet(name, value, &error) != PROP_SUCCESS) {
++                LOG(ERROR) << "snet: Could not set '" << name << "' to '" << value << "': " << error;
++            }
 +        }
 +    }
 +
@@ -90,18 +93,10 @@ index 65e9cda1c..0ed0dc053 100644
 +    weaken_prop_override_security = false;
 +}
 +
- // If the ro.product.[brand|device|manufacturer|model|name] properties have not been explicitly
- // set, derive them from ro.product.${partition}.* properties
- static void property_initialize_ro_product_props() {
-@@ -940,6 +999,11 @@ void property_load_boot_defaults(bool load_debug_prop) {
-     if (android::base::GetBoolProperty("ro.persistent_properties.ready", false)) {
-         update_sys_usb_config();
-     }
-+
-+    // Workaround SafetyNet
+ static void load_override_properties() {
 +    if (!IsRecoveryMode()) {
 +        workaround_snet_properties();
 +    }
- }
- 
- bool LoadPropertyInfoFromFile(const std::string& filename,
+     if (ALLOW_LOCAL_PROP_OVERRIDE) {
+         std::map<std::string, std::string> properties;
+         load_properties_from_file("/data/local.prop", nullptr, &properties);
