@@ -15,3 +15,5 @@
 # NFC
 PRODUCT_PACKAGES += \
     android.hardware.nfc@1.1-service
+
+TARGET_USE_YOSHINO_LIGHT_SERVICE := true
