@@ -14,16 +14,16 @@ index 48f7a53..72d38fc 100755
  {
      audio_output_flags_t flag = AUDIO_OUTPUT_FLAG_FAST;
 -    const char *fallback_path = mApmConfigs->getVoiceConcFallbackPath().c_str();
-+    std::string fallback_path = mApmConfigs->getVoiceConcFallbackPath();
++    const std::string fallback_path = mApmConfigs->getVoiceConcFallbackPath();
  
 -    if (strlen(fallback_path) > 0) {
 -        if (!strncmp(fallback_path, "deep-buffer", 11)) {
-+    if (strlen(fallback_path.c_str()) > 0) {
-+        if (!strncmp(fallback_path.c_str(), "deep-buffer", 11)) {
++    if (!fallback_path.empty()) {
++        if (fallback_path == "deep-buffer") {
              flag = AUDIO_OUTPUT_FLAG_DEEP_BUFFER;
          }
 -        else if (!strncmp(fallback_path, "fast", 4)) {
-+        else if (!strncmp(fallback_path.c_str(), "fast", 4)) {
++        else if (fallback_path == "fast") {
              flag = AUDIO_OUTPUT_FLAG_FAST;
          }
          else {
