@@ -21,6 +21,9 @@ do_patch "fix-null-ptr-in-customtile.patch"
 cd "$ANDROID_BUILD_TOP/frameworks/native"
 do_patch "workaround_egl_lib_symbols.patch"
 
+cd "$ANDROID_BUILD_TOP/packages/apps/Settings"
+do_patch "show-adb-root-option.patch"
+
 cd "$ANDROID_BUILD_TOP/system/core"
 do_patch "fix_snet_probs.patch"
 

@@ -1,0 +1,16 @@
+diff --git a/src/com/android/settings/development/AdbRootPreferenceController.java b/src/com/android/settings/development/AdbRootPreferenceController.java
+index 5f7d65da35..2e2ac992bd 100644
+--- a/src/com/android/settings/development/AdbRootPreferenceController.java
++++ b/src/com/android/settings/development/AdbRootPreferenceController.java
+@@ -51,11 +51,6 @@ public class AdbRootPreferenceController extends DeveloperOptionsPreferenceContr
+         return PREF_KEY;
+     }
+ 
+-    @Override
+-    public boolean isAvailable() {
+-        return Build.IS_DEBUGGABLE;
+-    }
+-
+     @Override
+     public void displayPreference(PreferenceScreen screen) {
+         super.displayPreference(screen);
