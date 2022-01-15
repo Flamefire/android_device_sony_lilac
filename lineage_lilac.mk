@@ -27,11 +27,11 @@ PRODUCT_MANUFACTURER := Sony
 
 PRODUCT_BUILD_PROP_OVERRIDES += \
     PRODUCT_NAME=lilac \
-    PRIVATE_BUILD_DESC="redfin-user 12 SP1A.211105.003 7757856 release-keys" \
-    BUILD_NUMBER=7757856
+    PRIVATE_BUILD_DESC="G8441-user 9 47.2.A.11.228 3311891731 release-keys" \
+    BUILD_NUMBER=3311891731
 
-# Pixel 5 November fingerprint
-BUILD_FINGERPRINT := google/redfin/redfin:12/SP1A.211105.003/7757856:user/release-keys
+# From MagiskHideProps, Stock FP doesn't seem to work
+BUILD_FINGERPRINT := Sony/G8441/G8441:9/47.2.A.11.228/3311891731:user/release-keys
 
 PRODUCT_GMS_CLIENTID_BASE := android-sony-mobile
 
