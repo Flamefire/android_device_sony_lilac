@@ -1,3 +1,5 @@
+# PWD: external/selinux
+
 diff --git a/prebuilts/bin/audit2allow b/prebuilts/bin/audit2allow
 index 0d96ca60..8be60117 100755
 --- a/prebuilts/bin/audit2allow

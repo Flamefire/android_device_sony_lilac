@@ -1,3 +1,5 @@
+# PWD: frameworks/base
+
 diff --git a/packages/SystemUI/src/com/android/systemui/qs/external/CustomTile.java b/packages/SystemUI/src/com/android/systemui/qs/external/CustomTile.java
 index 466c8082f0b..d8f12dbee4a 100644
 --- a/packages/SystemUI/src/com/android/systemui/qs/external/CustomTile.java

@@ -1,3 +1,5 @@
+# PWD: frameworks/av
+
 diff --git a/media/libmediaplayer2/JAudioTrack.cpp b/media/libmediaplayer2/JAudioTrack.cpp
 index fab6c649fc..be91e9a920 100644
 --- a/media/libmediaplayer2/JAudioTrack.cpp

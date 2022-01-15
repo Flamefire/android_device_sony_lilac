@@ -1,3 +1,5 @@
+# PWD: bionic
+
 diff --git a/libc/Android.bp b/libc/Android.bp
 index 6031b1661..b59a39a0a 100644
 --- a/libc/Android.bp

@@ -1,3 +1,5 @@
+# PWD: system/tools/hidl
+
 diff --git a/Android.bp b/Android.bp
 index 8cf4f5dd..8ce6ba02 100644
 --- a/Android.bp

@@ -1,3 +1,5 @@
+# PWD: libnativehelper
+
 diff --git a/platform_include/nativehelper/detail/signature_checker.h b/platform_include/nativehelper/detail/signature_checker.h
 index 7c2a7fc..06ebfa4 100644
 --- a/platform_include/nativehelper/detail/signature_checker.h

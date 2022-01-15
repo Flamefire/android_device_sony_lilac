@@ -1,3 +1,5 @@
+# PWD: vendor/qcom/opensource/audio
+
 diff --git a/policy_hal/AudioPolicyManager.cpp b/policy_hal/AudioPolicyManager.cpp
 index 48f7a53..72d38fc 100755
 --- a/policy_hal/AudioPolicyManager.cpp

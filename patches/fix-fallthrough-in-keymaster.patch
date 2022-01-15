@@ -1,3 +1,5 @@
+# PWD: system/keymaster
+
 diff --git a/key_blob_utils/ocb.c b/key_blob_utils/ocb.c
 index 9a68182..299a0dd 100644
 --- a/key_blob_utils/ocb.c

@@ -1,3 +1,5 @@
+# PWD: bionic
+
 diff --git a/libc/bionic/jemalloc.h b/libc/bionic/jemalloc.h
 index b9a4e993c..ef77c9c99 100644
 --- a/libc/bionic/jemalloc.h

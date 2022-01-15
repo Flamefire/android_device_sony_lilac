@@ -1,3 +1,5 @@
+# PWD: frameworks/base
+
 diff --git a/libs/androidfw/ResourceTypes.cpp b/libs/androidfw/ResourceTypes.cpp
 index 66fdb8c09a9c..d794227ba00e 100644
 --- a/libs/androidfw/ResourceTypes.cpp

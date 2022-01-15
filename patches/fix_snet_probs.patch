@@ -1,3 +1,5 @@
+# PWD: system/core
+
 Based on the work from Havoc-OS
 
 diff --git a/init/property_service.cpp b/init/property_service.cpp

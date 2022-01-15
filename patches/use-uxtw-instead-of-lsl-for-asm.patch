@@ -1,3 +1,5 @@
+# PWD: art
+
 diff --git a/runtime/interpreter/mterp/arm64/array.S b/runtime/interpreter/mterp/arm64/array.S
 index a023d22ff5..628f832e3a 100644
 --- a/runtime/interpreter/mterp/arm64/array.S

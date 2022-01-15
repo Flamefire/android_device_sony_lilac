@@ -1,3 +1,5 @@
+# PWD: art
+
 diff --git a/tools/cpp-define-generator/make_header.py b/tools/cpp-define-generator/make_header.py
 index 1b13923b50..f3657b1db1 100755
 --- a/tools/cpp-define-generator/make_header.py

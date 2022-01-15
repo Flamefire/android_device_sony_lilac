@@ -1,3 +1,5 @@
+# PWD: build/soong
+
 diff --git a/cc/ndk_library.go b/cc/ndk_library.go
 index 7fb04ddd..adb6fc42 100644
 --- a/cc/ndk_library.go

@@ -1,3 +1,5 @@
+# PWD: system/tools/hidl
+
 diff --git a/EnumType.cpp b/EnumType.cpp
 index 32682645..9f808eaa 100644
 --- a/EnumType.cpp

@@ -1,3 +1,5 @@
+# PWD: frameworks/native
+
 diff --git a/opengl/libs/EGL/Loader.cpp b/opengl/libs/EGL/Loader.cpp
 index 038a43233..d73948096 100644
 --- a/opengl/libs/EGL/Loader.cpp

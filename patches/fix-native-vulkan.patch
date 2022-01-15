@@ -1,3 +1,5 @@
+# PWD: frameworks/native
+
 diff --git a/vulkan/libvulkan/driver.cpp b/vulkan/libvulkan/driver.cpp
 index 681a289c1..3fc76cf23 100644
 --- a/vulkan/libvulkan/driver.cpp

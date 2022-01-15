@@ -1,3 +1,4 @@
+# PWD: lineage-sdk
 diff --git a/lineage/lib/main/java/org/lineageos/platform/internal/TrustInterfaceService.java b/lineage/lib/main/java/org/lineageos/platform/internal/TrustInterfaceService.java
 index 96f9e452..4c6ddc23 100644
 --- a/lineage/lib/main/java/org/lineageos/platform/internal/TrustInterfaceService.java
