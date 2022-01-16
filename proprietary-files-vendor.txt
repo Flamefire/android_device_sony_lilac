@@ -824,13 +824,13 @@ vendor/lib64/libprotobuf-c.so
 vendor/lib64/libprotobuf-c-idd.so
 vendor/lib64/vendor.semc.system.idd@1.0.so
 
-# ILLUMINATION
-vendor/bin/hw/illumination_service
-vendor/etc/init/init.illumination_service.rc
-vendor/lib/hw/lights.default.so
+# Util lib used by e.g. libthermal_engine.so & libcameralight.so
 vendor/lib/libsys-utils.so
-vendor/lib64/hw/lights.default.so
 vendor/lib64/libsys-utils.so
+
+# Util lib used by e.g. thermal-engine, libcameralight.so, fpc_fingerprint@2.1_HIDL-service
+vendor/lib/liblights-core.so
+vendor/lib64/liblights-core.so
 
 # IPA
 vendor/firmware/ipa_fws.b00
@@ -859,9 +859,6 @@ vendor/lib/kobjeventd/touch_cover.so
 vendor/lib64/kobjeventd/touch_cover.so
 
 # LIGHT
-vendor/etc/permissions/android.hardware.light.xml
-vendor/bin/hw/vendor.semc.hardware.light@1.0-service
-vendor/etc/init/vendor.semc.hardware.light@1.0-service.rc
 vendor/lib/vendor.semc.hardware.light@1.0.so
 vendor/lib64/vendor.semc.hardware.light@1.0.so
 
@@ -1354,12 +1351,6 @@ vendor/lib64/hw/thermal.somc.so
 vendor/bin/time_daemon
 -vendor/lib/libtime_genoff.so
 -vendor/lib64/libtime_genoff.so
-
-# TOUCHBACKLIGHT
-vendor/bin/hw/touchbacklightd
-vendor/etc/init/init.touchbacklightd.rc
-vendor/lib/liblights-core.so
-vendor/lib64/liblights-core.so
 
 # TOUCHSCREEN
 vendor/bin/hbtp_daemon
