@@ -3,3 +3,7 @@ vendor.display.hwc_disable_hdr=1
 
 # Radio
 persist.vendor.radio.block_allow_data=1
+
+# Ultra-Dim
+vendor.ultra_dim.default=17500
+vendor.ultra_dim.low=5000
