@@ -3,7 +3,7 @@
 Based on the work from Havoc-OS
 
 diff --git a/init/property_service.cpp b/init/property_service.cpp
-index 42dd5afcb..43eb2b704 100644
+index 65e9cda1c..3bdeb8bdf 100644
 --- a/init/property_service.cpp
 +++ b/init/property_service.cpp
 @@ -45,6 +45,7 @@
@@ -32,7 +32,7 @@ index 42dd5afcb..43eb2b704 100644
              *error = "Read-only property was already set";
              return PROP_ERROR_READ_ONLY_PROPERTY;
          }
-@@ -757,7 +760,69 @@ static void update_sys_usb_config() {
+@@ -774,7 +777,74 @@ static void update_sys_usb_config() {
      }
  }
  
@@ -42,7 +42,6 @@ index 42dd5afcb..43eb2b704 100644
 +    {"ro.boot.verifiedbootstate", "green"},
 +    {"ro.build.tags", "release-keys"},
 +    {"ro.build.type", "user"},
-+    {"ro.build.version.security_patch", "2019-09-01"},
 +    {"ro.debuggable", "0"},
 +    {"ro.odm.build.tags", "release-keys"},
 +    {"ro.odm.build.type", "user"},
@@ -62,6 +61,9 @@ index 42dd5afcb..43eb2b704 100644
 +    //{"ro.vendor.boot.warranty_bit", "0"}, - n/a
 +    //{"ro.vendor.warranty_bit", "0"}, - n/a
 +    //{"ro.warranty_bit", "0"}, - na
++    // Those 2 must come last!
++    {"ro.build.version.security_patch", "2019-09-01"},
++    {"ro.build.version.real_security_patch", nullptr},
 +};
 +
 +static void workaround_snet_properties() {
@@ -75,6 +77,9 @@ index 42dd5afcb..43eb2b704 100644
 +    // Hide all sensitive props if not eng build
 +    if (build_type != "eng") {
 +        LOG(INFO) << "snet: Hiding sensitive props";
++        // Store real security patch level before overwriting it
++        const std::string security_patch = android::base::GetProperty((std::end(snet_props) - 2)->first, "");
++        (std::end(snet_props) - 1)->second = security_patch.c_str();
 +        for (const auto& [name, value]: snet_props) {
 +            if (PropertySet(name, value, &error) != PROP_SUCCESS) {
 +                LOG(ERROR) << "snet: Could not set '" << name << "' to '" << value << "': " << error;
