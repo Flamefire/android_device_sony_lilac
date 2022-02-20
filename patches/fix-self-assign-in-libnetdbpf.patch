@@ -1,0 +1,26 @@
+# PWD: system/netd
+
+commit 28e84722e6d9f66495fb555538d162109e5f25f2
+Author: Luca Stefani <luca.stefani.ge1@gmail.com>
+Date:   Sun Sep 1 21:11:02 2019 +0200
+
+    libnetdbpf: Fix clang-tidy warning
+    
+    warning: operator=() does not handle self-assignment properly [cert-oop54-cpp]
+    
+    Test: m libnetdbpf, no warnings
+    Change-Id: I6f480c2bb2fd457ada3597a6a9506c0a03e863d3
+
+diff --git a/libnetdbpf/BpfNetworkStats.cpp b/libnetdbpf/BpfNetworkStats.cpp
+index fe86cc10..e93a1e66 100644
+--- a/libnetdbpf/BpfNetworkStats.cpp
++++ b/libnetdbpf/BpfNetworkStats.cpp
+@@ -321,6 +321,8 @@ bool operator<(const stats_line& lhs, const stats_line& rhs) {
+ }
+ 
+ stats_line& stats_line::operator=(const stats_line& rhs) {
++    if (this == &rhs) return *this;
++
+     strlcpy(iface, rhs.iface, sizeof(iface));
+     uid = rhs.uid;
+     set = rhs.set;
