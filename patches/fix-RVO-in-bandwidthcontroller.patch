@@ -1,0 +1,43 @@
+# PWD: system/netd
+
+commit f580db2ae0d34b426be39bb15f7cef059fda9a64
+Author: Treehugger Robot <treehugger-gerrit@google.com>
+Date:   Thu Apr 30 00:42:33 2020 +0000
+
+    BandwidthController: fix performance-no-automatic-move warning.
+    
+    In the next compiler update, it reports the below warning as error:
+    
+    system/netd/server/BandwidthController.cpp:263:12: error:
+    constness of 'ipt_basic_accounting_commands' prevents automatic move
+    [performance-no-automatic-move,-warnings-as-errors]
+        return ipt_basic_accounting_commands;
+    
+    Bug: 149839606
+    Test: build.
+    Change-Id: I32ee491b0de6a986dc66de06a4f56d980f794136
+    Merged-In: I32ee491b0de6a986dc66de06a4f56d980f794136
+
+diff --git a/server/BandwidthController.cpp b/server/BandwidthController.cpp
+index cddaa961..a179872c 100644
+--- a/server/BandwidthController.cpp
++++ b/server/BandwidthController.cpp
+@@ -212,8 +212,8 @@ static const uint32_t uidBillingMask = Fwmark::getUidBillingMask();
+  * See go/ipsec-data-accounting for more information.
+  */
+ 
+-const std::vector<std::string> getBasicAccountingCommands(const bool useBpf) {
+-    const std::vector<std::string> ipt_basic_accounting_commands = {
++std::vector<std::string> getBasicAccountingCommands(const bool useBpf) {
++    std::vector<std::string> ipt_basic_accounting_commands = {
+             "*filter",
+ 
+             "-A bw_INPUT -j bw_global_alert",
+@@ -263,7 +263,6 @@ const std::vector<std::string> getBasicAccountingCommands(const bool useBpf) {
+     return ipt_basic_accounting_commands;
+ }
+ 
+-
+ std::vector<std::string> toStrVec(int num, const char* const strs[]) {
+     return std::vector<std::string>(strs, strs + num);
+ }
