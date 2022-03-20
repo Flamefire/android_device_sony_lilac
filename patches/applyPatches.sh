@@ -13,7 +13,10 @@ for p in "$PATCH_ROOT/"*.patch; do
         echo "Faulty patch: $p"
         exit 1
     fi
-    patch --forward -r /dev/null --no-backup-if-mismatch -p1 -d "$patch_dir" < "$p" || true
+    if ! patch --dry-run --reverse --force -p1 -d "$patch_dir" --input "$p" > /dev/null; then
+        echo "Applying $(basename "$p") in $patch_dir"
+        patch --forward -r /dev/null --no-backup-if-mismatch -p1 -d "$patch_dir" --input "$p"
+    fi
 done
 
 echo "Done."
