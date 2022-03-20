@@ -1,0 +1,44 @@
+# PWD: packages/apps/Settings
+diff --git a/src/com/android/settings/applications/manageapplications/ManageApplications.java b/src/com/android/settings/applications/manageapplications/ManageApplications.java
+index 545115d897..7f9ea6f9c2 100644
+--- a/src/com/android/settings/applications/manageapplications/ManageApplications.java
++++ b/src/com/android/settings/applications/manageapplications/ManageApplications.java
+@@ -1392,8 +1392,7 @@ public class ManageApplications extends InstrumentedFragment
+             }
+             ApplicationsState.AppEntry entry = mEntries.get(position);
+ 
+-            return !mBackend.isSysWhitelisted(entry.info.packageName)
+-                    && !mBackend.isDefaultActiveApp(entry.info.packageName);
++            return !mBackend.isSysWhitelisted(entry.info.packageName);
+         }
+ 
+         @Override
+diff --git a/src/com/android/settings/fuelgauge/HighPowerDetail.java b/src/com/android/settings/fuelgauge/HighPowerDetail.java
+index 6448d9a226..7f7edb6882 100644
+--- a/src/com/android/settings/fuelgauge/HighPowerDetail.java
++++ b/src/com/android/settings/fuelgauge/HighPowerDetail.java
+@@ -180,7 +180,7 @@ public class HighPowerDetail extends InstrumentedDialogFragment implements OnCli
+     static CharSequence getSummary(Context context, PowerWhitelistBackend powerWhitelist,
+             String pkg) {
+         return context.getString(
+-                powerWhitelist.isSysWhitelisted(pkg) || powerWhitelist.isDefaultActiveApp(pkg)
++                powerWhitelist.isSysWhitelisted(pkg)
+                         ? R.string.high_power_system
+                         : powerWhitelist.isWhitelisted(pkg)
+                                 ? R.string.high_power_on
+diff --git a/tests/robotests/src/com/android/settings/fuelgauge/HighPowerDetailTest.java b/tests/robotests/src/com/android/settings/fuelgauge/HighPowerDetailTest.java
+index e613684ef0..02d55da360 100644
+--- a/tests/robotests/src/com/android/settings/fuelgauge/HighPowerDetailTest.java
++++ b/tests/robotests/src/com/android/settings/fuelgauge/HighPowerDetailTest.java
+@@ -91,11 +91,4 @@ public class HighPowerDetailTest {
+                 AppOpsManager.MODE_ALLOWED);
+     }
+ 
+-    @Test
+-    public void getSummary_defaultActivePackage_returnUnavailable() {
+-        doReturn(true).when(mPowerWhitelistBackend).isDefaultActiveApp(TEST_PACKAGE);
+-
+-        assertThat(HighPowerDetail.getSummary(mContext, mPowerWhitelistBackend, TEST_PACKAGE))
+-                .isEqualTo(mContext.getString(R.string.high_power_system));
+-    }
+ }

@@ -1,0 +1,22 @@
+# PWD: frameworks/base
+diff --git a/packages/SettingsLib/src/com/android/settingslib/fuelgauge/PowerWhitelistBackend.java b/packages/SettingsLib/src/com/android/settingslib/fuelgauge/PowerWhitelistBackend.java
+index ea8a62f84164..213ab2c6ff2f 100644
+--- a/packages/SettingsLib/src/com/android/settingslib/fuelgauge/PowerWhitelistBackend.java
++++ b/packages/SettingsLib/src/com/android/settingslib/fuelgauge/PowerWhitelistBackend.java
+@@ -72,15 +72,7 @@ public class PowerWhitelistBackend {
+     }
+ 
+     public boolean isWhitelisted(String pkg) {
+-        if (mWhitelistedApps.contains(pkg)) {
+-            return true;
+-        }
+-
+-        if (isDefaultActiveApp(pkg)) {
+-            return true;
+-        }
+-
+-        return false;
++        return mWhitelistedApps.contains(pkg);
+     }
+ 
+     /**
