@@ -559,6 +559,10 @@ lib64/vendor.somc.hardware.security.secd@1.0.so
 lib/vendor.somc.hardware.miscta@1.0.so|4a968e39a9ad5a6bedb36a61f12f3e4a649745c8
 lib64/vendor.somc.hardware.miscta@1.0.so|3349b02e83ec7fe7d7b1cbc698fbc52e156c3642
 
+# SONY identification
+framework/com.sony.device.jar
+etc/permissions/com.sony.device.xml
+
 # SENSORS
 lib/libqmi_cci_system.so
 lib/libsensor1.so
