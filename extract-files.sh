@@ -65,7 +65,7 @@ extract "$MY_DIR"/proprietary-files-vendor.txt "$SRC" "$SECTION"
 # Fix product path
 #
 
-DEVICE_ROOT="$LINEAGE_ROOT"/vendor/"$VENDOR"/"$DEVICE"/proprietary/
+DEVICE_ROOT="$LINEAGE_ROOT"/vendor/"$VENDOR"/"$DEVICE"/proprietary
 
 function fix_product_path () {
     sed -i \
