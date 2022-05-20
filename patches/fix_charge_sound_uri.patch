@@ -1,0 +1,33 @@
+# PWD: frameworks/base
+
+From: Han Wang <416810799@qq.com>
+Subject: [PATCH] Keep file scheme when not using content URI
+
+* Settings.Global.CHARGING_STARTED_SOUND and
+Settings.Global.WIRELESS_CHARGING_STARTED_SOUND are
+in old format and do not use content URI.
+
+Therefore, we should preserve AOSP logic and prefix sound URI path
+with "file://" or there will be warnings like this:
+
+    W MediaPlayer: java.io.FileNotFoundException: No content provider: /system/product/media/audio/ui/WirelessChargingStarted.ogg
+
+If users have changed charging sound at some point, then it is fine,
+because we have switched to content URI.
+
+Change-Id: I63bdbe1003390310facbb50175e961129ecb3118
+--- a/services/core/java/com/android/server/power/Notifier.java
++++ b/services/core/java/com/android/server/power/Notifier.java
+@@ -819,8 +819,11 @@ public class Notifier {
+         final String soundPath = LineageSettings.Global.getString(mContext.getContentResolver(),
+                 LineageSettings.Global.POWER_NOTIFICATIONS_RINGTONE);
+         if (isChargingFeedbackEnabled(userId) && soundPath != null && !soundPath.equals("silent")) {
+-            final Uri soundUri = Uri.parse(soundPath);
++            Uri soundUri = Uri.parse(soundPath);
+             if (soundUri != null) {
++                if (!soundUri.isAbsolute()) {
++                    soundUri = Uri.parse("file://" + soundPath);
++                }
+                 final Ringtone sfx = RingtoneManager.getRingtone(mContext, soundUri);
+                 if (sfx != null) {
+                     sfx.setStreamType(AudioManager.STREAM_SYSTEM);
