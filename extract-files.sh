@@ -122,21 +122,6 @@ sed -i '4 a\    restorecon /persist/wlan' "${DEVICE_ROOT}"/vendor/etc/init/taimp
 sed -i 's/version\=\"2\.0\"/version\=\"1\.0\"/g' "${DEVICE_ROOT}"/product/etc/permissions/vendor.qti.hardware.data.connection-V1.0-java.xml
 sed -i 's/version\=\"2\.0\"/version\=\"1\.0\"/g' "${DEVICE_ROOT}"/product/etc/permissions/vendor.qti.hardware.data.connection-V1.1-java.xml
 
-# Fix product path
-function fix_product_path () {
-    sed -i \
-        's/\/system\/framework\//\/system\/product\/framework\//g' \
-        "${DEVICE_ROOT}"/"$1"
-}
-
-fix_product_path product/etc/permissions/com.qualcomm.qti.imscmservice-V2.0-java.xml
-fix_product_path product/etc/permissions/com.qualcomm.qti.imscmservice-V2.1-java.xml
-fix_product_path product/etc/permissions/com.qualcomm.qti.imscmservice.xml
-fix_product_path product/etc/permissions/embms.xml
-fix_product_path product/etc/permissions/lpa.xml
-fix_product_path product/etc/permissions/qcrilhook.xml
-fix_product_path product/etc/permissions/telephonyservice.xml
-
 #
 # Blobs fixup end
 #
