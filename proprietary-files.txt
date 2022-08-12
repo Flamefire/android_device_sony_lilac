@@ -6,8 +6,8 @@ lib/com.qualcomm.qti.bluetooth_audio@1.0.so
 lib64/com.qualcomm.qti.bluetooth_audio@1.0.so
 
 # Bluetooth (aptX) - from crosshatch - QP1A.190711.020
-lib64/libaptX_encoder.so|df1c89d7af1bb35808d5fe3496b04ba066c10cbc
 lib64/libaptXHD_encoder.so|e13fa70c97caaa24d061678bdee608eb8850a69e
+lib64/libaptX_encoder.so|df1c89d7af1bb35808d5fe3496b04ba066c10cbc
 
 # CAMERA_APP
 -app/CameraAddonPermission-release/CameraAddonPermission-release.apk
@@ -78,8 +78,8 @@ product/lib/vendor.qti.data.slm@1.0.so|be58e6e7ae2fab1f22be1d84bfe255ddd6433754
 product/lib/vendor.qti.hardware.data.connection@1.0.so|cb56b4c2447ccd6d984043f985641e4a73d7ed26
 product/lib/vendor.qti.hardware.data.connection@1.1.so|972757cb87aab2a346405e47743e22ffd461686a
 product/lib/vendor.qti.hardware.data.dynamicdds@1.0.so|d3f518a419c3f326e8ee9828433548fe3873fc0c
-product/lib/vendor.qti.hardware.data.latency@1.0.so|1fd6aae2cfe950b8e46390d4d65bb3bc0c7c19a9
 product/lib/vendor.qti.hardware.data.iwlan@1.0.so|264662318643378572385cb03b6d7dbe39e2152f
+product/lib/vendor.qti.hardware.data.latency@1.0.so|1fd6aae2cfe950b8e46390d4d65bb3bc0c7c19a9
 product/lib/vendor.qti.hardware.factory@1.0.so|cfc30f77da05650064d3d835fae135dbfb181604
 product/lib/vendor.qti.hardware.factory@1.1.so|e12c2451954a9cdb3acf9768d04fd5ba4881a70d
 product/lib/vendor.qti.ims.rcsconfig@1.0.so|3a6f266c9ca1a66eab40ce696f728e7e77a1a04f
@@ -91,8 +91,8 @@ product/lib64/vendor.qti.data.factory@2.1.so|a311260fce9e7627548decfff5198da6730
 product/lib64/vendor.qti.data.slm@1.0.so|ce2b2b9cd189f068289deafede8602f2f54bdbc5
 product/lib64/vendor.qti.hardware.data.connection@1.0.so|bafc129093077e470540c906c205d4bb66efff63
 product/lib64/vendor.qti.hardware.data.connection@1.1.so|1b00d51277ea083ac6088838a3315b50cbf56284
-product/lib64/vendor.qti.hardware.data.iwlan@1.0.so|e895462956bca23a950ac92e19d4b227df12ad00
 product/lib64/vendor.qti.hardware.data.dynamicdds@1.0.so|8cd7aeb0f86d23def5c0269c7c9199970058e0eb
+product/lib64/vendor.qti.hardware.data.iwlan@1.0.so|e895462956bca23a950ac92e19d4b227df12ad00
 product/lib64/vendor.qti.hardware.data.latency@1.0.so|02d67f05706fafe49e9cff78f9eb8f4a5a5ff4a0
 product/lib64/vendor.qti.hardware.factory@1.0.so|753b0457eb4b8f83bd1704262b19757854be6559
 product/lib64/vendor.qti.hardware.factory@1.1.so|be7a7c501d5132464d7d75fc00aca97e017900c3
@@ -105,26 +105,26 @@ etc/permissions/com.sonymobile.miscta.xml
 etc/public.libraries-sony.txt
 framework/com.sonymobile.miscta_impl.jar
 lib/libMiscTAApi.sony.so
-lib64/libMiscTAApi.sony.so
 lib/libMiscTaWrapper.so
+lib64/libMiscTAApi.sony.so
 lib64/libMiscTaWrapper.so
 
 # DISPLAY
 etc/permissions/com.qti.snapdragon.sdk.display.xml
 framework/com.qti.snapdragon.sdk.display.jar
 lib/libsdm-disp-apis.so:vendor/lib/libsdm-disp-apis.so
+lib/libsys-utils-system.so
 lib/vendor.display.color@1.0.so
 lib/vendor.display.color@1.1.so
 lib/vendor.display.color@1.2.so
 lib/vendor.display.postproc@1.0.so
-lib/libsys-utils-system.so
 lib/vendor.qti.hardware.qdutils_disp@1.0.so
 lib64/libsdm-disp-apis.so:vendor/lib64/libsdm-disp-apis.so
+lib64/libsys-utils-system.so
 lib64/vendor.display.color@1.0.so
 lib64/vendor.display.color@1.1.so
 lib64/vendor.display.color@1.2.so
 lib64/vendor.display.postproc@1.0.so
-lib64/libsys-utils-system.so
 lib64/vendor.qti.hardware.qdutils_disp@1.0.so
 
 # DPM - from cheeseburger - QKQ1.191014.012
@@ -168,14 +168,6 @@ etc/permissions/com.fingerprints.extension.xml
 -framework/com.fingerprints.extension.jar
 
 # FIRMWARE
-etc/firmware/cmnlib64.b00
-etc/firmware/cmnlib64.b01
-etc/firmware/cmnlib64.b02
-etc/firmware/cmnlib64.b03
-etc/firmware/cmnlib64.b04
-etc/firmware/cmnlib64.b05
-etc/firmware/cmnlib64.b06
-etc/firmware/cmnlib64.mdt
 etc/firmware/cmnlib.b00
 etc/firmware/cmnlib.b01
 etc/firmware/cmnlib.b02
@@ -184,6 +176,14 @@ etc/firmware/cmnlib.b04
 etc/firmware/cmnlib.b05
 etc/firmware/cmnlib.b06
 etc/firmware/cmnlib.mdt
+etc/firmware/cmnlib64.b00
+etc/firmware/cmnlib64.b01
+etc/firmware/cmnlib64.b02
+etc/firmware/cmnlib64.b03
+etc/firmware/cmnlib64.b04
+etc/firmware/cmnlib64.b05
+etc/firmware/cmnlib64.b06
+etc/firmware/cmnlib64.mdt
 etc/firmware/fidocfg.b00
 etc/firmware/fidocfg.b01
 etc/firmware/fidocfg.b02
@@ -281,8 +281,8 @@ etc/customization/modem/amss_fsg_lilac_entel_cl_ims_tar.mbn
 etc/customization/modem/amss_fsg_lilac_entel_pe_ims_tar.mbn
 etc/customization/modem/amss_fsg_lilac_etisalat_ae_ims_tar.mbn
 etc/customization/modem/amss_fsg_lilac_fareastone_tw_ims_tar.mbn
-etc/customization/modem/amss_fsg_lilac_freedom_ca_ims_tar.mbn
 etc/customization/modem/amss_fsg_lilac_free_france_tar.mbn
+etc/customization/modem/amss_fsg_lilac_freedom_ca_ims_tar.mbn
 etc/customization/modem/amss_fsg_lilac_gteb_ims_tar.mbn
 etc/customization/modem/amss_fsg_lilac_hutch_austria_tar.mbn
 etc/customization/modem/amss_fsg_lilac_hutch_austria_volte_vowifi_tar.mbn
@@ -424,17 +424,17 @@ etc/init/mssconfig.rc
 
 # QCRIL_RADIO
 -app/QtiTelephonyService/QtiTelephonyService.apk:product/app/QtiTelephonyService/QtiTelephonyService.apk
--app/embms/embms.apk:product/app/embms/embms.apk:product/app/embms/embms.apk
 -app/datastatusnotification/datastatusnotification.apk:product/app/datastatusnotification/datastatusnotification.apk
+-app/embms/embms.apk:product/app/embms/embms.apk:product/app/embms/embms.apk
 etc/permissions/embms.xml:product/etc/permissions/embms.xml
 etc/permissions/lpa.xml:product/etc/permissions/lpa.xml
 etc/permissions/qcrilhook.xml:product/etc/permissions/qcrilhook.xml
 etc/permissions/telephonyservice.xml:product/etc/permissions/telephonyservice.xml
 framework/QtiTelephonyServicelibrary.jar:product/framework/QtiTelephonyServicelibrary.jar
--framework/qcrilhook.jar:product/framework/qcrilhook.jar
 framework/embmslibrary.jar:product/framework/embmslibrary.jar
-framework/uimlpalibrary.jar:product/framework/uimlpalibrary.jar
+-framework/qcrilhook.jar:product/framework/qcrilhook.jar
 framework/qti-telephony-common.jar:product/framework/qti-telephony-common.jar
+framework/uimlpalibrary.jar:product/framework/uimlpalibrary.jar
 -priv-app/qcrilmsgtunnel/qcrilmsgtunnel.apk:product/priv-app/qcrilmsgtunnel/qcrilmsgtunnel.apk
 
 # QSEECOMD
@@ -454,17 +454,17 @@ etc/permissions/qti_libpermissions.xml|ef3c88495f2f61a2d16e1445113a9d80f8db0e0a
 etc/permissions/qti_permissions.xml
 
 # QTI_DRM
+lib/libFidoCryptoJNI.so
+lib/libFidoCrypto_system.so
+lib/libGPQTEEC_system.so
 lib/libQTEEConnector_system.so
 lib/libseccam.so
-lib/libFidoCrypto_system.so
-lib/libFidoCryptoJNI.so
-lib/libGPQTEEC_system.so
 lib/vendor.qti.hardware.qteeconnector@1.0.so
+lib64/libFidoCryptoJNI.so
+lib64/libFidoCrypto_system.so
+lib64/libGPQTEEC_system.so
 lib64/libQTEEConnector_system.so
 lib64/libseccam.so
-lib64/libFidoCrypto_system.so
-lib64/libFidoCryptoJNI.so
-lib64/libGPQTEEC_system.so
 lib64/vendor.qti.hardware.qteeconnector@1.0.so
 
 # QTI_ESEPOWERMANAGER
@@ -472,7 +472,6 @@ lib/vendor.qti.esepowermanager@1.0.so
 lib64/vendor.qti.esepowermanager@1.0.so
 
 # QTI_IMS
--product/app/uceShimService/uceShimService.apk|b7258471c7e0f590a0c53890fe0f7dbb89b72f66
 etc/permissions/com.qualcomm.qti.imscmservice-V2.0-java.xml:product/etc/permissions/com.qualcomm.qti.imscmservice-V2.0-java.xml
 etc/permissions/com.qualcomm.qti.imscmservice-V2.1-java.xml:product/etc/permissions/com.qualcomm.qti.imscmservice-V2.1-java.xml
 etc/permissions/com.qualcomm.qti.imscmservice.xml:product/etc/permissions/com.qualcomm.qti.imscmservice.xml
@@ -519,6 +518,7 @@ lib64/vendor.qti.hardware.radio.ims@1.3.so:product/lib64/vendor.qti.hardware.rad
 lib64/vendor.qti.ims.callinfo@1.0.so:product/lib64/vendor.qti.ims.callinfo@1.0.so
 lib64/vendor.qti.imsrtpservice@1.0.so:product/lib64/vendor.qti.imsrtpservice@1.0.so
 -priv-app/ims/ims.apk:product/priv-app/ims/ims.apk
+-product/app/uceShimService/uceShimService.apk|b7258471c7e0f590a0c53890fe0f7dbb89b72f66
 
 # QTI_RADIO
 lib/vendor.qti.hardware.fm@1.0.so
@@ -556,8 +556,8 @@ lib/vendor.somc.hardware.miscta@1.0.so|4a968e39a9ad5a6bedb36a61f12f3e4a649745c8
 lib64/vendor.somc.hardware.miscta@1.0.so|3349b02e83ec7fe7d7b1cbc698fbc52e156c3642
 
 # SONY identification
-framework/com.sony.device.jar
 etc/permissions/com.sony.device.xml
+framework/com.sony.device.jar
 
 # SENSORS
 lib/libqmi_cci_system.so
