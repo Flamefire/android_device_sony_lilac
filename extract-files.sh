@@ -70,6 +70,8 @@ source "${HELPER}"
 # Default to sanitizing the vendor folder before extraction
 CLEAN_VENDOR=true
 
+SECTION=
+
 while [ "$1" != "" ]; do
     case $1 in
         -n | --no-cleanup )     CLEAN_VENDOR=false
@@ -95,11 +97,16 @@ extract "$MY_DIR"/proprietary-files.txt "$SRC" "$SECTION"
 extract "$MY_DIR"/proprietary-files-vendor.txt "$SRC" "$SECTION"
 
 #
-# Fix product path
+# Blobs fixup start
 #
 
 DEVICE_ROOT="$LINEAGE_ROOT"/vendor/"$VENDOR"/"$DEVICE"/proprietary
 
+# Change xml version from 2.0 to 1.0
+sed -i 's/version\=\"2\.0\"/version\=\"1\.0\"/g' "${DEVICE_ROOT}"/product/etc/permissions/vendor.qti.hardware.data.connection-V1.0-java.xml
+sed -i 's/version\=\"2\.0\"/version\=\"1\.0\"/g' "${DEVICE_ROOT}"/product/etc/permissions/vendor.qti.hardware.data.connection-V1.1-java.xml
+
+# Fix product path
 function fix_product_path () {
     sed -i \
         's/\/system\/framework\//\/system\/product\/framework\//g' \
@@ -113,5 +120,9 @@ fix_product_path product/etc/permissions/embms.xml
 fix_product_path product/etc/permissions/lpa.xml
 fix_product_path product/etc/permissions/qcrilhook.xml
 fix_product_path product/etc/permissions/telephonyservice.xml
+
+#
+# Blobs fixup end
+#
 
 "$MY_DIR"/setup-makefiles.sh
