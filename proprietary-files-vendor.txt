@@ -1161,10 +1161,6 @@ vendor/etc/init/vendor.somc.hardware.miscta@1.0-service.rc|666428a82ff6c43b3a765
 vendor/lib64/vendor.somc.hardware.miscta@1.0.so|4ebf19d447872c7af28bed0aff965187d634f8cb
 
 # WIFI
-vendor/bin/hw/vendor.somc.hardware.wifi@2.0-service
-vendor/etc/init/vendor.somc.hardware.wifi@2.0-service.rc
 vendor/etc/wifi/bdwlan.bin
 vendor/etc/wifi/fstman.ini
 vendor/etc/wifi/p2p_supplicant_overlay.conf
-vendor/lib64/vendor.somc.hardware.wifi.supplicant@2.0.so
-vendor/lib64/vendor.somc.hardware.wifi@2.0.so
