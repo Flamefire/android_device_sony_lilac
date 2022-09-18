@@ -135,14 +135,10 @@ system_ext/priv-app/dpmserviceapp/dpmserviceapp.apk|b404ff23a51f505ecf2a61a1b0f4
 # DSP
 lib/libadsprpc_system.so
 lib/libcdsprpc_system.so
-lib/libmdsprpc_system.so
 lib/libsdsprpc_system.so
-lib/libseemore.so
 lib64/libadsprpc_system.so
 lib64/libcdsprpc_system.so
-lib64/libmdsprpc_system.so
 lib64/libsdsprpc_system.so
-lib64/libseemore.so
 
 # FFU
 lib/firmware/ufs/01AD-483238553632333031414D5220202020-D003.bin:etc/firmware/ufs/01AD-483238553632333031414D5220202020-D003.bin

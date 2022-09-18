@@ -30,16 +30,12 @@ vendor/lib/libfastcrc.so
 vendor/lib/libfastcvadsp_stub.so
 vendor/lib/libfastcvopt.so
 vendor/lib/libfastrpc_utf_stub.so
-vendor/lib/libmdsprpc.so
-vendor/lib/libseemore.so
 vendor/lib64/libadsp_default_listener.so
 vendor/lib64/libadsprpc.so
 vendor/lib64/libcdsprpc.so
 vendor/lib64/libfastcrc.so
 vendor/lib64/libfastcvadsp_stub.so
 vendor/lib64/libfastrpc_utf_stub.so
-vendor/lib64/libmdsprpc.so
-vendor/lib64/libseemore.so
 
 # AUDIO
 vendor/etc/acdbdata/Fluid/msm8998-tavil-snd-card/Fluid_WCD9340_Bluetooth_cal.acdb
@@ -381,7 +377,6 @@ vendor/lib/hw/camera.qcom.so:vendor/lib/hw/camera.lilac.so
 vendor/lib/libcameralight.so
 vendor/lib/libcammw.so
 vendor/lib/libcammw_util.so
-vendor/lib/libdualcameraddm.so
 vendor/lib/libexcal_core.so
 vendor/lib/libexcal_pal.so
 vendor/lib/libexcal_system.so
@@ -404,7 +399,6 @@ vendor/lib/libqomx_core.so
 vendor/lib/libqomx_jpegdec.so
 vendor/lib/libqomx_jpegenc.so
 vendor/lib/libqomx_jpegenc_pipe.so
-vendor/lib/libscveFaceLandmarks.so
 vendor/lib/libsomc_alfort.so
 vendor/lib/libsomc_alfortlp.so
 vendor/lib/libsomc_alfortlpserv.so
@@ -459,21 +453,6 @@ vendor/lib/vendor.somc.hardware.camera.cacao@2.0.so
 vendor/lib/vendor.somc.hardware.camera.cacao@3.0-impl.so
 vendor/lib/vendor.somc.hardware.camera.cacao@3.0.so
 vendor/lib/vendor.somc.hardware.camera.cacao@3.1.so
-
-# CAMERA_POSTPROCESSING
-vendor/lib/libchromaflash.so
-vendor/lib/liboptizoom.so
-vendor/lib/libscveBlobDescriptor.so
-vendor/lib/libscveBlobDescriptor_stub.so
-vendor/lib/libscveCommon.so
-vendor/lib/libscveCommon_stub.so
-vendor/lib/libscveFaceRecognition.so
-vendor/lib/libscveObjectSegmentation.so
-vendor/lib/libscveObjectTracker.so
-vendor/lib/libscveObjectTracker_stub.so
-vendor/lib/libscvePanorama.so
-vendor/lib/libscvePanorama_lite.so
-vendor/lib/libubifocus.so
 
 # CHARGER
 vendor/bin/charge_service
