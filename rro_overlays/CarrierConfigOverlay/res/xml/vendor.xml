@@ -61,6 +61,9 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.-->
         <!-- Show LTE+ icon if available -->
         <boolean name="hide_lte_plus_data_icon_bool" value="false" />
 
+        <!-- Show 4G instead of LTE icon -->
+        <boolean name="show_4g_for_lte_data_icon_bool" value="true" />
+
         <!--
         Removed most custom CarrierConfigs to provide a single, universally functional one. We cannot
         be expected to make CarrierConfigs for all providers in the world, but we do want our phone
