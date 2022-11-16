@@ -1,0 +1,28 @@
+# PWD: packages/modules/adb
+diff --git a/daemon/restart_service.cpp b/daemon/restart_service.cpp
+index c942c1f2..87b9a20d 100644
+--- a/daemon/restart_service.cpp
++++ b/daemon/restart_service.cpp
+@@ -53,10 +53,6 @@ void restart_root_service(unique_fd fd) {
+     bool enabled = false;
+     if (auto status = service->getEnabled(&enabled); !status.isOk()) {
+ #endif
+-    if (!__android_log_is_debuggable()) {
+-        WriteFdExactly(fd.get(), "adbd cannot run as root in production builds\n");
+-        return;
+-    }
+ #if defined(__ANDROID__) && !defined(__ANDROID_RECOVERY__)
+     }
+     if (!enabled) {
+diff --git a/root/adbroot_service.cpp b/root/adbroot_service.cpp
+index d622fdd3..153076df 100644
+--- a/root/adbroot_service.cpp
++++ b/root/adbroot_service.cpp
+@@ -67,7 +67,7 @@ ndk::ScopedAStatus ADBRootService::isSupported(bool* _aidl_return) {
+     }
+ 
+     AutoMutex _l(lock_);
+-    *_aidl_return = __android_log_is_debuggable();
++    *_aidl_return = true;
+     return ndk::ScopedAStatus::ok();
+ }

@@ -7,9 +7,9 @@ index 545115d897..7f9ea6f9c2 100644
              }
              ApplicationsState.AppEntry entry = mEntries.get(position);
  
--            return !mBackend.isSysWhitelisted(entry.info.packageName)
+-            return !mBackend.isSysAllowlisted(entry.info.packageName)
 -                    && !mBackend.isDefaultActiveApp(entry.info.packageName);
-+            return !mBackend.isSysWhitelisted(entry.info.packageName);
++            return !mBackend.isSysAllowlisted(entry.info.packageName);
          }
  
          @Override
@@ -18,13 +18,13 @@ index 6448d9a226..7f7edb6882 100644
 --- a/src/com/android/settings/fuelgauge/HighPowerDetail.java
 +++ b/src/com/android/settings/fuelgauge/HighPowerDetail.java
 @@ -180,7 +180,7 @@ public class HighPowerDetail extends InstrumentedDialogFragment implements OnCli
-     static CharSequence getSummary(Context context, PowerWhitelistBackend powerWhitelist,
+     static CharSequence getSummary(Context context, PowerAllowlistBackend powerAllowlist,
              String pkg) {
          return context.getString(
--                powerWhitelist.isSysWhitelisted(pkg) || powerWhitelist.isDefaultActiveApp(pkg)
-+                powerWhitelist.isSysWhitelisted(pkg)
+-                powerAllowlist.isSysAllowlisted(pkg) || powerAllowlist.isDefaultActiveApp(pkg)
++                powerAllowlist.isSysAllowlisted(pkg)
                          ? R.string.high_power_system
-                         : powerWhitelist.isWhitelisted(pkg)
+                         : powerAllowlist.isAllowlisted(pkg)
                                  ? R.string.high_power_on
 diff --git a/tests/robotests/src/com/android/settings/fuelgauge/HighPowerDetailTest.java b/tests/robotests/src/com/android/settings/fuelgauge/HighPowerDetailTest.java
 index e613684ef0..02d55da360 100644
@@ -36,9 +36,9 @@ index e613684ef0..02d55da360 100644
  
 -    @Test
 -    public void getSummary_defaultActivePackage_returnUnavailable() {
--        doReturn(true).when(mPowerWhitelistBackend).isDefaultActiveApp(TEST_PACKAGE);
+-        doReturn(true).when(mPowerAllowlistBackend).isDefaultActiveApp(TEST_PACKAGE);
 -
--        assertThat(HighPowerDetail.getSummary(mContext, mPowerWhitelistBackend, TEST_PACKAGE))
+-        assertThat(HighPowerDetail.getSummary(mContext, mPowerAllowlistBackend, TEST_PACKAGE))
 -                .isEqualTo(mContext.getString(R.string.high_power_system));
 -    }
  }
