@@ -843,7 +843,6 @@ vendor/lib64/libperipheral_client.so|9bfd41e276e16b8f7c6808f3d87531fc5be4cdd5
 
 # QMI
 vendor/bin/mlog_qmi_service
-vendor/bin/ssgqmigd
 vendor/etc/init/mlog_qmi_service.rc
 
 # QNS
