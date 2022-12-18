@@ -520,10 +520,6 @@ lib64/vendor.qti.ims.callinfo@1.0.so:product/lib64/vendor.qti.ims.callinfo@1.0.s
 lib64/vendor.qti.imsrtpservice@1.0.so:product/lib64/vendor.qti.imsrtpservice@1.0.so
 -priv-app/ims/ims.apk:product/priv-app/ims/ims.apk
 
-# QTI_QTEECONNECTOR
-lib/vendor.qti.hardware.qteeconnector@1.0.so
-lib64/vendor.qti.hardware.qteeconnector@1.0.so
-
 # QTI_RADIO
 lib/vendor.qti.hardware.fm@1.0.so
 lib/vendor.qti.hardware.radio.am@1.0.so
