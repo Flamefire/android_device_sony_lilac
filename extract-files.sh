@@ -1,19 +1,9 @@
 #!/bin/bash
 #
 # Copyright (C) 2016 The CyanogenMod Project
-# Copyright (C) 2017 The LineageOS Project
+# Copyright (C) 2017-2020 The LineageOS Project
 #
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#      http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 #
 
 set -e
@@ -32,7 +22,50 @@ if [ ! -f "$HELPER" ]; then
     echo "Unable to find helper script at $HELPER"
     exit 1
 fi
-. "$HELPER"
+
+# Patch utils if not done
+if ! grep -qF "# if line contains apk, jar or vintf fragment, it needs to be packaged" "$HELPER"; then
+    patch --directory "$(dirname "$HELPER")" --quiet --no-backup-if-mismatch << 'EOF'
+		Author: Michael Bestas <mkbestas@lineageos.org>
+		Date:   Mon Nov 15 22:18:04 2021 +0200
+		
+		    extract_utils: Automatically add apk/jar/vintf fragments to PRODUCT_PACKAGES
+		    
+		    Change-Id: I9d12e00c294d02b40fde2b66d7797f69f6504c35
+		diff --git a/extract_utils.sh b/extract_utils.sh
+		index 455830f..b3dce4a 100644
+		--- a/extract_utils.sh
+		+++ b/extract_utils.sh
+		@@ -1127,6 +1127,13 @@ function parse_file_list() {
+		             PRODUCT_PACKAGES_LIST+=("${SPEC#-}")
+		             PRODUCT_PACKAGES_HASHES+=("$HASH")
+		             PRODUCT_PACKAGES_FIXUP_HASHES+=("$FIXUP_HASH")
+		+        # if line contains apk, jar or vintf fragment, it needs to be packaged
+		+        elif suffix_match_file ".apk" "$(src_file "$SPEC")" || \
+		+             suffix_match_file ".jar" "$(src_file "$SPEC")" || \
+		+             [[ "$SPEC" == *"etc/vintf/manifest/"* ]]; then
+		+            PRODUCT_PACKAGES_LIST+=("$SPEC")
+		+            PRODUCT_PACKAGES_HASHES+=("$HASH")
+		+            PRODUCT_PACKAGES_FIXUP_HASHES+=("$FIXUP_HASH")
+		         else
+		             PRODUCT_COPY_FILES_LIST+=("$SPEC")
+		             PRODUCT_COPY_FILES_HASHES+=("$HASH")
+		@@ -1794,11 +1801,7 @@ function generate_prop_list_from_image() {
+		         if array_contains "$FILE" "${skipped_vendor_files[@]}"; then
+		             continue
+		         fi
+		-        if suffix_match_file ".apk" "$FILE" ; then
+		-            echo "-vendor/$FILE" >> "$output_list_tmp"
+		-        else
+		-            echo "vendor/$FILE" >> "$output_list_tmp"
+		-        fi
+		+        echo "vendor/$FILE" >> "$output_list_tmp"
+		     done
+		 
+		     # Sort merged file with all lists
+EOF
+fi
+source "${HELPER}"
 
 # Default to sanitizing the vendor folder before extraction
 CLEAN_VENDOR=true
