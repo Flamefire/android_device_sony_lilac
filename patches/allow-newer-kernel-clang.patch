@@ -1,0 +1,33 @@
+# PWD: vendor/lineage
+
+From: LuK1337 <priv.luk@gmail.com>
+Date: Sun, 17 Oct 2021 15:21:24 +0200
+Subject: [PATCH] kernel: Add 32-bit GCC to PATH for vdso32
+
+Change-Id: Ifff495069ab33d9b1346971a21f380f0c23ebf48
+---
+ config/BoardConfigKernel.mk | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/config/BoardConfigKernel.mk b/config/BoardConfigKernel.mk
+index 8d77a6c0f0..43c2ad14d6 100644
+--- a/config/BoardConfigKernel.mk
++++ b/config/BoardConfigKernel.mk
+@@ -127,10 +127,16 @@ ifneq ($(TARGET_KERNEL_ADDITIONAL_FLAGS),)
+ endif
+ 
+ TOOLS_PATH_OVERRIDE := \
+-    PATH=$(BUILD_TOP)/prebuilts/tools-lineage/$(HOST_OS)-x86/bin:$$PATH \
+     LD_LIBRARY_PATH=$(BUILD_TOP)/prebuilts/tools-lineage/$(HOST_OS)-x86/lib:$$LD_LIBRARY_PATH \
+     PERL5LIB=$(BUILD_TOP)/prebuilts/tools-lineage/common/perl-base
+ 
++ifeq ($(KERNEL_ARCH),arm64)
++  # Add 32-bit GCC to PATH so that arm-linux-androidkernel-as is available for CONFIG_COMPAT_VDSO
++  TOOLS_PATH_OVERRIDE += PATH=$(BUILD_TOP)/prebuilts/tools-lineage/$(HOST_PREBUILT_TAG)/bin:$(KERNEL_TOOLCHAIN_arm):$$PATH
++else
++  TOOLS_PATH_OVERRIDE += PATH=$(BUILD_TOP)/prebuilts/tools-lineage/$(HOST_PREBUILT_TAG)/bin:$$PATH
++endif
++
+ # Set DTBO image locations so the build system knows to build them
+ ifeq (true,$(filter true, $(TARGET_NEEDS_DTBOIMAGE) $(BOARD_KERNEL_SEPARATED_DTBO)))
+ BOARD_PREBUILT_DTBOIMAGE ?= $(TARGET_OUT_INTERMEDIATES)/DTBO_OBJ/arch/$(KERNEL_ARCH)/boot/dtbo.img
