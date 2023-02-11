@@ -60,6 +60,22 @@ How to build LineageOS
     lunch lineage_lilac-userdebug
     ```
 
+* (Semi-)optionally apply patches
+
+    Some of the patches in this repo fix a few bugs or issues in LineageOS while others make the build deviate a lot from the "vanilla build".
+    So this is only for advanced users!
+
+    ```bash
+    device/sony/lilac/patches/applyPatches.sh
+    ```
+
+* Get newer Clang compiler(s)
+
+    For better performance/battery life a newer compiler is used.
+    So e.g. for the kernel you need to get the folder `r416183b1` (at the time of writing) into `prebuilts/clang/host/linux-x86`.
+    You can check other branches (e.g. for `r416183b1` the branch is `android-12.1.0_r22`) and checkout only that folder or otherwise copy or symlink it from anywhere into `prebuilts/clang/host/linux-x86`.
+    The `make` below will abort with a more or less descriptive error if you miss this, so just try.
+
 * Build LineageOS
 
     ```bash
