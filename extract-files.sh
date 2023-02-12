@@ -67,6 +67,10 @@ EOF
 fi
 source "${HELPER}"
 
+if [ -z "${PATCHELF}" ]; then
+    PATCHELF="$MY_DIR"/tools/patchelf-0_9
+fi
+
 # Default to sanitizing the vendor folder before extraction
 CLEAN_VENDOR=true
 
