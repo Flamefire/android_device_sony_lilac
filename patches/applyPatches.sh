@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 
-# Apply patches to other repos
-# Needs to be run from within repo and with envsetup sourced
+# Apply all patches in this directory.
+# Each patch must start with `# PWD: <rel path>`
+# where `<rel path>` is the relative path from the android root dir,
+# i.e. what would be `$ANDROID_BUILD_TOP`, to the path where the patch should be applied
 
 set -euo pipefail
 
@@ -10,7 +12,13 @@ LGREEN='\033[1;32m'
 RED='\033[0;31m'
 YELLOW='\033[0;33m'
 NC='\033[0m'
-PATCH_ROOT="$ANDROID_BUILD_TOP/device/sony/lilac/patches"
+PATCH_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+repo_root=$(readlink -f "$PATCH_ROOT/../../../..")
+if [ ! -d "$repo_root/device/sony/lilac/patches" ]; then
+  echo -e "${RED}Failed to find repository root at $repo_root"
+  exit 1
+fi
 
 numApplied=0
 numSkipped=0
@@ -24,6 +32,7 @@ for p in "$PATCH_ROOT/"*.patch; do
     fi
 
     echo -n "Applying $(basename "$p") in ${patch_dir}: "
+    patch_dir="$repo_root/$patch_dir"
     # If the reverse patch could be applied, then the patch was likely already applied
     patch --reverse --force  -p1 -d "$patch_dir" --input "$p" --dry-run > /dev/null && applied=1 || applied=0
     if out=$(patch --forward -p1 -d "$patch_dir" --input "$p" -r /dev/null --no-backup-if-mismatch 2>&1); then
