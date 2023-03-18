@@ -43,6 +43,8 @@ lib/vendor.somc.hardware.camera.cacao@3.0.so
 lib/vendor.somc.hardware.camera.cacao@3.1.so
 lib/vendor.somc.hardware.camera.device@1.0.so
 lib/vendor.somc.hardware.camera.provider@1.0.so
+lib64/libcacao_client.so
+lib64/libcacao_pal.so
 
 # CAMERA_POSTPROCESSING
 lib/libjni_imageutil.so
