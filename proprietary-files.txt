@@ -23,6 +23,8 @@ lib/vendor.somc.hardware.camera.cacao@3.0.so
 lib/vendor.somc.hardware.camera.cacao@3.1.so
 lib/vendor.somc.hardware.camera.device@1.0.so
 lib/vendor.somc.hardware.camera.provider@1.0.so
+lib64/libcacao_client.so
+lib64/libcacao_pal.so
 
 # CAMERA backport - from https://gitlab.com/xperiance/camera/ 0.3.0
 etc/permissions/com.sonymobile.securedatamanager.xml|d914e18ba055641fc5368a0f25969b59e89bf829
