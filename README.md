@@ -37,6 +37,16 @@ How to build LineageOS
 
         <!-- Pinned blobs for lilac -->
         <project name="Flamefire/android_vendor_sony_lilac" path="vendor/sony/lilac" remote="github" revision="lineage-17.1" />
+
+        <!-- Newer Clang version -->
+        <project path="prebuilts-extra/clang/host/linux-x86" name="platform/prebuilts/clang/host/linux-x86" groups="pdk" clone-depth="1" remote="aosp" revision="refs/tags/android-12.1.0_r22" >
+            <linkfile src="clang-r416183b1" dest="prebuilts/clang/host/linux-x86/clang-r416183b1" />
+            <!-- Replace the unneeded, conflicting build scripts with empty ones -->
+            <!-- (repo manifest syntax has no way to delete or rename them) -->
+            <copyfile src="clang-r416183b1/MODULE_LICENSE_MIT" dest="prebuilts-extra/clang/host/linux-x86/Android.mk" />
+            <copyfile src="clang-r416183b1/MODULE_LICENSE_MIT" dest="prebuilts-extra/clang/host/linux-x86/Android.bp" />
+            <copyfile src="clang-r416183b1/MODULE_LICENSE_MIT" dest="prebuilts-extra/clang/host/linux-x86/soong/Android.bp" />
+        </project>
     </manifest>
     ```
 
@@ -68,13 +78,6 @@ How to build LineageOS
     ```bash
     device/sony/lilac/patches/applyPatches.sh
     ```
-
-* Get newer Clang compiler(s)
-
-    For better performance/battery life a newer compiler is used.
-    So e.g. for the kernel you need to get the folder `r416183b1` (at the time of writing) into `prebuilts/clang/host/linux-x86`.
-    You can check other branches (e.g. for `r416183b1` the branch is `android-12.1.0_r22`) and checkout only that folder or otherwise copy or symlink it from anywhere into `prebuilts/clang/host/linux-x86`.
-    The `make` below will abort with a more or less descriptive error if you miss this, so just try.
 
 * Build LineageOS
 
