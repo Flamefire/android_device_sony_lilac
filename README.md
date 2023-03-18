@@ -79,6 +79,10 @@ How to build LineageOS
     device/sony/lilac/patches/applyPatches.sh
     ```
 
+    Required since v17.1-20221115:  `fix-custom-apn-script.patch`
+
+    Required since v17.1-20230225:  `allow-newer-kernel-clang.patch`
+
 * Build LineageOS
 
     ```bash
