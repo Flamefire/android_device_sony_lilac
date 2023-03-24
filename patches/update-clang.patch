@@ -1,7 +1,6 @@
 # PWD: build/soong
-
 diff --git a/Android.bp b/Android.bp
-index b07fbe57..5b363b3d 100644
+index b07fbe57a..5b363b3d4 100644
 --- a/Android.bp
 +++ b/Android.bp
 @@ -543,7 +543,6 @@ toolchain_library {
@@ -21,7 +20,7 @@ index b07fbe57..5b363b3d 100644
  }
  
 diff --git a/cc/binary.go b/cc/binary.go
-index 2a6ceb82..bff61b6b 100644
+index 2a6ceb821..bff61b6bf 100644
 --- a/cc/binary.go
 +++ b/cc/binary.go
 @@ -326,7 +326,7 @@ func (binary *binaryDecorator) link(ctx ModuleContext,
@@ -43,7 +42,7 @@ index 2a6ceb82..bff61b6b 100644
  
  			binary.injectVersionSymbol(ctx, outputFile, versionedOutputFile)
 diff --git a/cc/builder.go b/cc/builder.go
-index a9ee4e92..d7b51051 100644
+index a9ee4e92c..d7b510516 100644
 --- a/cc/builder.go
 +++ b/cc/builder.go
 @@ -277,11 +277,12 @@ type builderFlags struct {
@@ -75,10 +74,17 @@ index a9ee4e92..d7b51051 100644
  		args += " --use-gnu-strip"
  	}
 diff --git a/cc/config/clang.go b/cc/config/clang.go
-index a87d5695..6f9ee4ab 100644
+index a87d56956..f8093997e 100644
 --- a/cc/config/clang.go
 +++ b/cc/config/clang.go
-@@ -48,6 +48,8 @@ var ClangUnknownCflags = sorted([]string{
+@@ -41,13 +41,14 @@ var ClangUnknownCflags = sorted([]string{
+ 	"-Wno-literal-suffix",
+ 	"-Wno-maybe-uninitialized",
+ 	"-Wno-old-style-declaration",
+-	"-Wno-psabi",
+ 	"-Wno-unused-but-set-parameter",
+ 	"-Wno-unused-but-set-variable",
+ 	"-Wno-unused-local-typedefs",
  	"-Wunused-but-set-parameter",
  	"-Wunused-but-set-variable",
  	"-fdiagnostics-color",
@@ -87,17 +93,19 @@ index a87d5695..6f9ee4ab 100644
  
  	// arm + arm64 + mips + mips64
  	"-fgcse-after-reload",
-@@ -101,9 +103,6 @@ func init() {
+@@ -101,8 +102,9 @@ func init() {
  		// not emit the table by default on Android since NDK still uses GNU binutils.
  		"-faddrsig",
  
 -		// -Wimplicit-fallthrough is not enabled by -Wall.
 -		"-Wimplicit-fallthrough",
--
++		// Turn on -fcommon explicitly, since Clang now defaults to -fno-common. The cleanup bug
++		// tracking this is http://b/151457797.
++		"-fcommon",
+ 
  		// Help catch common 32/64-bit errors.
  		"-Werror=int-conversion",
- 
-@@ -124,9 +123,6 @@ func init() {
+@@ -124,9 +126,6 @@ func init() {
  		// color codes if it is not running in a terminal.
  		"-fcolor-diagnostics",
  
@@ -107,7 +115,7 @@ index a87d5695..6f9ee4ab 100644
  		// Warnings from clang-7.0
  		"-Wno-sign-compare",
  
-@@ -136,9 +132,17 @@ func init() {
+@@ -136,9 +135,21 @@ func init() {
  		// Disable -Winconsistent-missing-override until we can clean up the existing
  		// codebase for it.
  		"-Wno-inconsistent-missing-override",
@@ -116,7 +124,11 @@ index a87d5695..6f9ee4ab 100644
 +		// Warnings from clang-10
 +		// Nested and array designated initialization is nice to have.
 +		"-Wno-c99-designator",
-+}, " "))
++		// Warnings from clang-12
++		"-Wno-gnu-folding-constant",
++		"-Wno-suggest-override",
++		"-Wno-suggest-destructor-override",
++       }, " "))
  
  	pctx.StaticVariable("ClangExtraCppflags", strings.Join([]string{
 +		// -Wimplicit-fallthrough is not enabled by -Wall.
@@ -126,7 +138,7 @@ index a87d5695..6f9ee4ab 100644
  		// Enable clang's thread-safety annotations in libcxx.
  		// Turn off -Wthread-safety-negative, to avoid breaking projects that use -Weverything.
  		"-D_LIBCPP_ENABLE_THREAD_SAFETY_ANNOTATIONS",
-@@ -171,8 +175,29 @@ func init() {
+@@ -171,8 +182,33 @@ func init() {
  		// compatibility.
  		"-Wno-c++98-compat-extra-semi",
  
@@ -153,10 +165,14 @@ index a87d5695..6f9ee4ab 100644
 +		"-Wno-enum-enum-conversion",                 // http://b/154138986
 +		"-Wno-enum-float-conversion",                // http://b/154255917
 +		"-Wno-pessimizing-move",                     // http://b/154270751
++		// New warnings to be fixed after clang-r399163
++               "-Wno-non-c-typedef-for-linkage", // http://b/161304145
++               // New warnings to be fixed after clang-r407598
++               "-Wno-string-concatenation", // http://b/175068488
  	}, " "))
  
  	// Extra cflags for projects under external/ directory to disable warnings that are infeasible
-@@ -188,6 +213,13 @@ func init() {
+@@ -188,6 +224,13 @@ func init() {
  		// Bug: http://b/29823425 Disable -Wnull-dereference until the
  		// new instances detected by this warning are fixed.
  		"-Wno-null-dereference",
@@ -171,22 +187,35 @@ index a87d5695..6f9ee4ab 100644
  }
  
 diff --git a/cc/config/global.go b/cc/config/global.go
-index 7c7b47a5..203ce1a2 100644
+index 7c7b47a51..4ab0871a6 100644
 --- a/cc/config/global.go
 +++ b/cc/config/global.go
-@@ -122,8 +122,8 @@ var (
+@@ -107,6 +107,12 @@ var (
+ 	noOverrideGlobalCflags = []string{
+ 		"-Werror=int-to-pointer-cast",
+ 		"-Werror=pointer-to-int-cast",
++		// http://b/161386391 for -Wno-void-pointer-to-enum-cast
++               "-Wno-void-pointer-to-enum-cast",
++               // http://b/161386391 for -Wno-void-pointer-to-int-cast
++               "-Wno-void-pointer-to-int-cast",
++               // http://b/161386391 for -Wno-pointer-to-int-cast
++               "-Wno-pointer-to-int-cast",
+ 	}
+ 
+ 	IllegalFlags = []string{
+@@ -122,8 +128,8 @@ var (
  
  	// prebuilts/clang default settings.
  	ClangDefaultBase         = "prebuilts/clang/host"
 -	ClangDefaultVersion      = "clang-r353983c1"
 -	ClangDefaultShortVersion = "9.0.3"
-+	ClangDefaultVersion      = "clang-r383902b1"
-+	ClangDefaultShortVersion = "11.0.2"
++	ClangDefaultVersion      = "clang-r416183b1"
++	ClangDefaultShortVersion = "12.0.7"
  
  	// Directories with warnings from Android.bp files.
  	WarningAllowedProjects = []string{
 diff --git a/cc/library.go b/cc/library.go
-index 39f7a724..e28a97c3 100644
+index 39f7a724b..e28a97c37 100644
 --- a/cc/library.go
 +++ b/cc/library.go
 @@ -698,7 +698,7 @@ func (library *libraryDecorator) linkShared(ctx ModuleContext,
@@ -208,7 +237,7 @@ index 39f7a724..e28a97c3 100644
  
  			library.injectVersionSymbol(ctx, outputFile, versionedOutputFile)
 diff --git a/cc/ndk_library.go b/cc/ndk_library.go
-index 7199467b..7fb04ddd 100644
+index 7199467b6..7fb04ddd4 100644
 --- a/cc/ndk_library.go
 +++ b/cc/ndk_library.go
 @@ -256,6 +256,7 @@ func addStubLibraryCompilerFlags(flags Flags) Flags {
@@ -220,7 +249,7 @@ index 7199467b..7fb04ddd 100644
  		"-Wno-invalid-noreturn",
  		"-Wall",
 diff --git a/cc/prebuilt.go b/cc/prebuilt.go
-index 48e46671..f92c50d1 100644
+index 48e466715..f92c50d1e 100644
 --- a/cc/prebuilt.go
 +++ b/cc/prebuilt.go
 @@ -98,7 +98,7 @@ func (p *prebuiltLibraryLinker) link(ctx ModuleContext,
@@ -242,7 +271,7 @@ index 48e46671..f92c50d1 100644
  		}
  
 diff --git a/cc/strip.go b/cc/strip.go
-index 7122585e..7e560ec9 100644
+index 7122585e3..7e560ec9c 100644
 --- a/cc/strip.go
 +++ b/cc/strip.go
 @@ -22,11 +22,11 @@ import (
@@ -301,7 +330,7 @@ index 7122585e..7e560ec9 100644
 +	stripper.strip(ctx, in, out, flags, true)
 +}
 diff --git a/cc/tidy.go b/cc/tidy.go
-index 54553923..ece0acfa 100644
+index 545539232..ece0acfa3 100644
 --- a/cc/tidy.go
 +++ b/cc/tidy.go
 @@ -117,7 +117,18 @@ func (tidy *tidyFeature) flags(ctx ModuleContext, flags Flags) Flags {
@@ -325,7 +354,7 @@ index 54553923..ece0acfa 100644
  	if len(tidy.Properties.Tidy_checks_as_errors) > 0 {
  		tidyChecksAsErrors := "-warnings-as-errors=" + strings.Join(esc(tidy.Properties.Tidy_checks_as_errors), ",")
 diff --git a/cc/toolchain_library.go b/cc/toolchain_library.go
-index 8ab8bc94..f80ac61c 100644
+index 8ab8bc946..f80ac61c2 100644
 --- a/cc/toolchain_library.go
 +++ b/cc/toolchain_library.go
 @@ -83,7 +83,7 @@ func (library *toolchainLibraryDecorator) link(ctx ModuleContext,
@@ -338,7 +367,7 @@ index 8ab8bc94..f80ac61c 100644
  	}
  
 diff --git a/scripts/strip.sh b/scripts/strip.sh
-index 0f77da8a..40f01842 100755
+index 0f77da8a9..40f018425 100755
 --- a/scripts/strip.sh
 +++ b/scripts/strip.sh
 @@ -28,7 +28,7 @@

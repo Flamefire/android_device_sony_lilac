@@ -1,0 +1,28 @@
+# PWD: system/core/libion
+commit 4f98785e4debdc8090fc0d5bfda2574b60f6ce46
+Author: Stephen Hines <srhines@google.com>
+Date:   Tue Jul 14 12:21:26 2020 -0700
+
+    Switch to using 0 instead of NULL for a void* -> int cast
+    
+    system/memory/libion/ion.c:51:32: error: cast to smaller integer type 'ion_user_handle_t' (aka 'int') from 'void *' [-Werror,-Wvoid-pointer-to-int-cast]
+            int err = ion_free(fd, (ion_user_handle_t)NULL);
+                                   ^~~~~~~~~~~~~~~~~~~~~~~
+    
+    Bug: http://b/155835175
+    Test: m with aosp_blueline
+    Change-Id: I0d663ddbc245764b469c4f589831586ea7e55148
+
+diff --git a/ion.c b/ion.c
+index 07b4caf..8fdbb60 100644
+--- a/ion.c
++++ b/ion.c
+@@ -48,7 +48,7 @@ int ion_is_legacy(int fd) {
+           * Check for FREE IOCTL here; it is available only in the old
+           * kernels, not the new ones.
+           */
+-        int err = ion_free(fd, (ion_user_handle_t)NULL);
++        int err = ion_free(fd, (ion_user_handle_t)0);
+         version = (err == -ENOTTY) ? ION_VERSION_MODERN : ION_VERSION_LEGACY;
+         atomic_store_explicit(&g_ion_version, version, memory_order_release);
+     }

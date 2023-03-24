@@ -1,0 +1,14 @@
+# PWD: frameworks/base
+diff --git a/cmds/idmap2/Android.bp b/cmds/idmap2/Android.bp
+index 18d56fa87cca..913d2a73f17f 100644
+--- a/cmds/idmap2/Android.bp
++++ b/cmds/idmap2/Android.bp
+@@ -21,6 +21,8 @@ cc_defaults {
+         "android-*",
+         "misc-*",
+         "readability-*",
++        "-misc-no-recursion",
++        "-readability-function-cognitive-complexity",
+     ],
+     tidy_flags: [
+         "-system-headers",

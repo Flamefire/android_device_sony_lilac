@@ -1,0 +1,26 @@
+# PWD: bionic
+commit 5cb4d9cef97a30ada3edc10b6aee00ab044f790c
+Author: Chih-Hung Hsieh <chh@google.com>
+Date:   Wed Feb 3 15:15:52 2021 -0800
+
+    Fix "deprecated instruction in IT block" warning
+    
+    Bug: 179266557
+    Test: make with new clang compiler
+    Change-Id: I963609861659cbb2be8ed467654109938185c747
+
+diff --git a/libc/arch-arm/generic/bionic/strlen.c b/libc/arch-arm/generic/bionic/strlen.c
+index 43d9e514c..a6fde8b5f 100644
+--- a/libc/arch-arm/generic/bionic/strlen.c
++++ b/libc/arch-arm/generic/bionic/strlen.c
+@@ -116,8 +116,8 @@ size_t strlen_generic(const char *s)
+         "beq     2f                         \n"
+         "add     %[l], %[l], #1             \n"
+         "tst     %[v], #0xFF0000            \n"
+-        "it      ne                         \n"
+-        "addne   %[l], %[l], #1             \n"
++        "beq     2f                         \n"
++        "add     %[l], %[l], #1             \n"
+         "2:                                 \n"
+         : [l]"=&r"(l), [v]"=&r"(v), [t]"=&r"(t), [s]"=&r"(u.b)
+         : "%[l]"(l), "%[s]"(u.b), [mask]"r"(0x80808080UL)

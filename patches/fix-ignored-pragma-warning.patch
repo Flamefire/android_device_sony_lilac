@@ -1,0 +1,28 @@
+# PWD: bionic
+commit 444e2f69e95e25a206efb120dff3d4dde637746b
+Author: Chih-Hung Hsieh <chh@google.com>
+Date:   Tue Jan 26 14:02:23 2021 -0800
+
+    Add -Wno-ignored-pragmas.
+    
+    * https://reviews.llvm.org/D90316 changed warning on
+      FENV_ACCESS pragma from unknown to ignored.
+      Existing -Wno-unknown-pragmas cannot suppress the new
+      -Wignored-pragmas.
+    
+    Bug: 178516148
+    Test: make with WITH_TIDY=1
+    Change-Id: I783feef35324ef43946efca844cd944410875bfa
+
+diff --git a/libm/Android.bp b/libm/Android.bp
+index 735b1cf71..723d126dc 100644
+--- a/libm/Android.bp
++++ b/libm/Android.bp
+@@ -475,6 +475,7 @@ cc_library {
+         "-fno-math-errno",
+         "-Wall",
+         "-Werror",
++        "-Wno-ignored-pragmas",
+         "-Wno-missing-braces",
+         "-Wno-parentheses",
+         "-Wno-sign-compare",

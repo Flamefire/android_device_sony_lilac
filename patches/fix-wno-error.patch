@@ -1,0 +1,36 @@
+# PWD: external/wpa_supplicant_8
+diff --git a/hostapd/Android.mk b/hostapd/Android.mk
+index df3542ae..7c5f7138 100644
+--- a/hostapd/Android.mk
++++ b/hostapd/Android.mk
+@@ -27,7 +27,7 @@ L_CFLAGS += -DANDROID_LOG_NAME=\"hostapd\"
+ L_CFLAGS += -Wall -Werror
+ 
+ # TODO: move off readdir_r upstream, pull fix back (http://b/72326431).
+-L_CFLAGS += -Wno-error-deprecated-declarations
++L_CFLAGS += -Wno-deprecated-declarations
+ 
+ # Disable unused parameter warnings
+ L_CFLAGS += -Wno-unused-parameter
+diff --git a/wpa_supplicant/Android.mk b/wpa_supplicant/Android.mk
+index 8bcd7efe..a446c970 100644
+--- a/wpa_supplicant/Android.mk
++++ b/wpa_supplicant/Android.mk
+@@ -29,7 +29,7 @@ L_CFLAGS += -DANDROID_LOG_NAME=\"wpa_supplicant\"
+ L_CFLAGS += -Wall -Werror
+ 
+ # Keep sometimes uninitialized warnings
+-L_CFLAGS += -Wno-error-sometimes-uninitialized
++L_CFLAGS += -Wno-sometimes-uninitialized
+ 
+ # Disable incompatible pointer type warnings
+ L_CFLAGS += -Wno-incompatible-pointer-types
+@@ -42,7 +42,7 @@ L_CFLAGS += -Wno-parentheses-equality
+ L_CFLAGS += -Wno-sign-compare
+ 
+ # TODO: move off readdir_r upstream, pull fix back (http://b/72326431).
+-L_CFLAGS += -Wno-error-deprecated-declarations
++L_CFLAGS += -Wno-deprecated-declarations
+ 
+ # Disable unused function warnings
+ L_CFLAGS += -Wno-unused-function

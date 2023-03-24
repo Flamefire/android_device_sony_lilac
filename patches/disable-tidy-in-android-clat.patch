@@ -1,0 +1,14 @@
+# PWD: external/android-clat
+diff --git a/Android.bp b/Android.bp
+index b495dac..6eb234f 100644
+--- a/Android.bp
++++ b/Android.bp
+@@ -57,7 +57,7 @@ cc_binary {
+     // Only enable clang-tidy for the daemon, not the tests, because enabling it for the
+     // tests substantially increases build/compile cycle times and doesn't really provide a
+     // security benefit.
+-    tidy: true,
++    tidy: false,
+     tidy_checks: [
+         "-*",
+         "cert-*",

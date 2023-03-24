@@ -1,0 +1,31 @@
+# PWD: system/security
+commit 8b68026faa37704d7622df6f38cfca52b1eead70
+Author: Stephen Hines <srhines@google.com>
+Date:   Wed Jul 15 18:12:36 2020 -0700
+
+    Switch from `count` to `N` for template due to ambiguity with `std::count`
+    
+    Recent versions of Clang will flag this use of `count` in namespace
+    `std` as ambiguous due to the existence of `std::count`. To remove this
+    problem, we can switch to the commonly used `N` for array sizes.
+    
+    Bug: http://b/155835175
+    Test: m with aosp_blueline
+    Change-Id: I983180b6e2e94dadb095f531e13ea415468ee104
+
+diff --git a/keystore/KeyStore.h b/keystore/KeyStore.h
+index 0027ec8..7841a80 100644
+--- a/keystore/KeyStore.h
++++ b/keystore/KeyStore.h
+@@ -62,9 +62,9 @@ template <typename T, size_t count> class Devices : public std::array<T, count>
+ }  // namespace keystore
+ 
+ namespace std {
+-template <typename T, size_t count> struct tuple_size<keystore::Devices<T, count>> {
++template <typename T, size_t N> struct tuple_size<keystore::Devices<T, N>> {
+   public:
+-    static constexpr size_t value = std::tuple_size<std::array<T, count>>::value;
++    static constexpr size_t value = std::tuple_size<std::array<T, N>>::value;
+ };
+ }  // namespace std
+ 

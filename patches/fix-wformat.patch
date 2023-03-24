@@ -1,0 +1,29 @@
+# PWD: hardware/ril
+commit b2fbf5c3b443ed3eb5daaf8f8585f8d06dc111a0
+Author: Stephen Hines <srhines@google.com>
+Date:   Mon Aug 17 23:47:06 2020 -0700
+
+    Fix -Wformat error with explicit void* -> char* cast.
+    
+    hardware/ril/reference-ril/reference-ril.c:1841:46: error: format specifies type 'char *' but the argument has type 'void *' [-Werror,-Wformat]
+        snprintf(cmd, sizeof(cmd), "AT+CCHO=%s", data);
+                                            ~~   ^~~~
+    
+    Bug: http://b/155835175
+    Test: m
+    Change-Id: I7fd819c6c452b56aae15429344320c4cdaed702c
+    (cherry picked from commit 363b39bbc81a3269fe75bd5f505289f85d05792e)
+
+diff --git a/reference-ril/reference-ril.c b/reference-ril/reference-ril.c
+index 084c4ad..430bc9b 100644
+--- a/reference-ril/reference-ril.c
++++ b/reference-ril/reference-ril.c
+@@ -1838,7 +1838,7 @@ static void requestSimOpenChannel(void *data, size_t datalen, RIL_Token t)
+         return;
+     }
+ 
+-    snprintf(cmd, sizeof(cmd), "AT+CCHO=%s", data);
++    snprintf(cmd, sizeof(cmd), "AT+CCHO=%s", (char*) data);
+ 
+     err = at_send_command_numeric(cmd, &p_response);
+     if (err < 0 || p_response == NULL || p_response->success == 0) {

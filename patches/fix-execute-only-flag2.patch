@@ -1,0 +1,14 @@
+# PWD: build/soong
+diff --git a/cc/xom.go b/cc/xom.go
+index 9337990f8..30e3f52b8 100644
+--- a/cc/xom.go
++++ b/cc/xom.go
+@@ -68,7 +68,7 @@ func (xom *xom) flags(ctx ModuleContext, flags Flags) Flags {
+ 	if !disableXom || (xom.Properties.Xom != nil && *xom.Properties.Xom) {
+ 		// XOM is only supported on AArch64 when using lld.
+ 		if ctx.Arch().ArchType == android.Arm64 && ctx.useClangLld(ctx) {
+-			flags.LdFlags = append(flags.LdFlags, "-Wl,-execute-only")
++			flags.LdFlags = append(flags.LdFlags, "-Wl,--execute-only")
+ 		}
+ 	}
+ 

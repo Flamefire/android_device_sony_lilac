@@ -1,0 +1,14 @@
+# PWD: build/make
+diff --git a/core/binary.mk b/core/binary.mk
+index d4f0476c8c..7986845789 100644
+--- a/core/binary.mk
++++ b/core/binary.mk
+@@ -119,7 +119,7 @@ ifneq ($(strip $(ENABLE_XOM)),false)
+     ifeq ($(strip $(my_xom)),true)
+       ifeq (arm64,$(TARGET_$(LOCAL_2ND_ARCH_VAR_PREFIX)ARCH))
+         ifeq ($(my_use_clang_lld),true)
+-          my_ldflags += -Wl,-execute-only
++          my_ldflags += -Wl,--execute-only
+         endif
+       endif
+     endif

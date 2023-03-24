@@ -1,0 +1,73 @@
+# PWD: art
+
+Fix warning on __builtin_return_address
+See 01ecfa1c31282e12b18df5b2f555898a0c3a2e35 & 8f0eb966a2ba14717687b7282e96c8a5c64f5300
+diff --git a/runtime/jni/jni_internal.cc b/runtime/jni/jni_internal.cc
+index 1055057fc7..bb5b84034f 100644
+--- a/runtime/jni/jni_internal.cc
++++ b/runtime/jni/jni_internal.cc
+@@ -162,20 +162,6 @@ size_t VisitModifiedUtf8Chars(const char* utf8, size_t byte_count, GoodFunc good
+   return len;
+ }
+ 
+-static constexpr size_t kMaxReturnAddressDepth = 4;
+-
+-inline void* GetReturnAddress(size_t depth) {
+-  DCHECK_LT(depth, kMaxReturnAddressDepth);
+-  switch (depth) {
+-    case 0u: return __builtin_return_address(0);
+-    case 1u: return __builtin_return_address(1);
+-    case 2u: return __builtin_return_address(2);
+-    case 3u: return __builtin_return_address(3);
+-    default:
+-      return nullptr;
+-  }
+-}
+-
+ enum class SharedObjectKind {
+   kRuntime = 0,
+   kApexModule = 1,
+@@ -315,42 +301,15 @@ class CodeRangeCache final {
+   DISALLOW_COPY_AND_ASSIGN(CodeRangeCache);
+ };
+ 
+-// Whitelisted native callers can resolve method and field id's via JNI. Check the first caller
+-// outside of the JNI library who will have called Get(Static)?(Field|Member)ID(). The presence of
+-// checked JNI means we need to walk frames as the internal methods can be called directly from an
+-// external shared-object or indirectly (via checked JNI) from an external shared-object.
+-static inline bool IsWhitelistedNativeCaller() {
+-  if (!art::kIsTargetBuild) {
+-    return false;
+-  }
+-  for (size_t i = 0; i < kMaxReturnAddressDepth; ++i) {
+-    void* return_address = GetReturnAddress(i);
+-    if (return_address == nullptr) {
+-      return false;
+-    }
+-    SharedObjectKind kind = CodeRangeCache::GetSingleton().GetSharedObjectKind(return_address);
+-    if (kind != SharedObjectKind::kRuntime) {
+-      return kind == SharedObjectKind::kApexModule;
+-    }
+-  }
+-  return false;
+-}
+-
+ }  // namespace
+ 
+ // Consider turning this on when there is errors which could be related to JNI array copies such as
+ // things not rendering correctly. E.g. b/16858794
+ static constexpr bool kWarnJniAbort = false;
+ 
+-// Disable native JNI checking pending stack walk re-evaluation (b/136276414).
+-static constexpr bool kNativeJniCheckEnabled = false;
+-
+ template<typename T>
+ ALWAYS_INLINE static bool ShouldDenyAccessToMember(T* member, Thread* self)
+     REQUIRES_SHARED(Locks::mutator_lock_) {
+-  if (kNativeJniCheckEnabled && IsWhitelistedNativeCaller()) {
+-    return false;
+-  }
+   return hiddenapi::ShouldDenyAccessToMember(
+       member,
+       [&]() REQUIRES_SHARED(Locks::mutator_lock_) {
+
