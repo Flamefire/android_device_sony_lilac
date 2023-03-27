@@ -1,0 +1,89 @@
+# PWD: system/bt
+diff --git a/stack/a2dp/a2dp_sbc.cc b/stack/a2dp/a2dp_sbc.cc
+index 4c48993c4..5036eec2e 100644
+--- a/stack/a2dp/a2dp_sbc.cc
++++ b/stack/a2dp/a2dp_sbc.cc
+@@ -704,6 +704,11 @@ bool A2DP_BuildCodecHeaderSbc(UNUSED_ATTR const uint8_t* p_codec_info,
+                               BT_HDR* p_buf, uint16_t frames_per_packet) {
+   uint8_t* p;
+ 
++  // there is a timestamp right following p_buf
++  if (p_buf->offset < 4 + A2DP_SBC_MPL_HDR_LEN) {
++    return false;
++  }
++
+   p_buf->offset -= A2DP_SBC_MPL_HDR_LEN;
+   p = (uint8_t*)(p_buf + 1) + p_buf->offset;
+   p_buf->len += A2DP_SBC_MPL_HDR_LEN;
+diff --git a/stack/gatt/gatt_cl.cc b/stack/gatt/gatt_cl.cc
+index 3115317da..db41c5f9f 100644
+--- a/stack/gatt/gatt_cl.cc
++++ b/stack/gatt/gatt_cl.cc
+@@ -572,7 +572,8 @@ void gatt_process_prep_write_rsp(tGATT_TCB& tcb, tGATT_CLCB* p_clcb,
+   LOG(ERROR) << StringPrintf("value resp op_code = %s len = %d",
+                              gatt_dbg_op_name(op_code), len);
+ 
+-  if (len < GATT_PREP_WRITE_RSP_MIN_LEN) {
++  if (len < GATT_PREP_WRITE_RSP_MIN_LEN ||
++      len > GATT_PREP_WRITE_RSP_MIN_LEN + sizeof(value.value)) {
+     LOG(ERROR) << "illegal prepare write response length, discard";
+     gatt_end_operation(p_clcb, GATT_INVALID_PDU, &value);
+     return;
+@@ -581,7 +582,7 @@ void gatt_process_prep_write_rsp(tGATT_TCB& tcb, tGATT_CLCB* p_clcb,
+   STREAM_TO_UINT16(value.handle, p);
+   STREAM_TO_UINT16(value.offset, p);
+ 
+-  value.len = len - 4;
++  value.len = len - GATT_PREP_WRITE_RSP_MIN_LEN;
+ 
+   memcpy(value.value, p, value.len);
+ 
+diff --git a/stack/sdp/sdp_db.cc b/stack/sdp/sdp_db.cc
+index ea5b84d23..4130ae71a 100644
+--- a/stack/sdp/sdp_db.cc
++++ b/stack/sdp/sdp_db.cc
+@@ -362,6 +362,11 @@ bool SDP_AddAttribute(uint32_t handle, uint16_t attr_id, uint8_t attr_type,
+   uint16_t xx, yy, zz;
+   tSDP_RECORD* p_rec = &sdp_cb.server_db.record[0];
+ 
++  if (p_val == nullptr) {
++    SDP_TRACE_WARNING("Trying to add attribute with p_val == nullptr, skipped");
++    return (false);
++  }
++
+   if (sdp_cb.trace_level >= BT_TRACE_LEVEL_DEBUG) {
+     if ((attr_type == UINT_DESC_TYPE) ||
+         (attr_type == TWO_COMP_INT_DESC_TYPE) ||
+@@ -398,6 +403,13 @@ bool SDP_AddAttribute(uint32_t handle, uint16_t attr_id, uint8_t attr_type,
+     if (p_rec->record_handle == handle) {
+       tSDP_ATTRIBUTE* p_attr = &p_rec->attribute[0];
+ 
++      // error out early, no need to look up
++      if (p_rec->free_pad_ptr >= SDP_MAX_PAD_LEN) {
++        SDP_TRACE_ERROR("the free pad for SDP record with handle %d is "
++                        "full, skip adding the attribute", handle);
++        return (false);
++      }
++
+       /* Found the record. Now, see if the attribute already exists */
+       for (xx = 0; xx < p_rec->num_attributes; xx++, p_attr++) {
+         /* The attribute exists. replace it */
+@@ -437,15 +449,13 @@ bool SDP_AddAttribute(uint32_t handle, uint16_t attr_id, uint8_t attr_type,
+           attr_len = 0;
+       }
+ 
+-      if ((attr_len > 0) && (p_val != 0)) {
++      if (attr_len > 0) {
+         p_attr->len = attr_len;
+         memcpy(&p_rec->attr_pad[p_rec->free_pad_ptr], p_val, (size_t)attr_len);
+         p_attr->value_ptr = &p_rec->attr_pad[p_rec->free_pad_ptr];
+         p_rec->free_pad_ptr += attr_len;
+-      } else if ((attr_len == 0 &&
+-                  p_attr->len !=
+-                      0) || /* if truncate to 0 length, simply don't add */
+-                 p_val == 0) {
++      } else if (attr_len == 0 && p_attr->len != 0) {
++        /* if truncate to 0 length, simply don't add */
+         SDP_TRACE_ERROR(
+             "SDP_AddAttribute fail, length exceed maximum: ID %d: attr_len:%d ",
+             attr_id, attr_len);

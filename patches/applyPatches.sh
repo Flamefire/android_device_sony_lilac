@@ -24,7 +24,7 @@ numApplied=0
 numSkipped=0
 numWarned=0
 
-for p in "$PATCH_ROOT/"*.patch; do
+for p in "$PATCH_ROOT/"*.patch "$PATCH_ROOT/asb-"*/*.patch; do
     patch_dir=$(head -n1 "$p" | grep "# PWD: " | awk '{print $NF}')
     if [[ "$patch_dir" == "" ]]; then
         echo "Faulty patch: $p"

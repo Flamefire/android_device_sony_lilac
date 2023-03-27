@@ -1,0 +1,177 @@
+# PWD: vendor/qcom/opensource/commonsys/system/bt
+diff --git a/btif/src/btif_rc.cc b/btif/src/btif_rc.cc
+index 0b34f7c36..a0e38998f 100644
+--- a/btif/src/btif_rc.cc
++++ b/btif/src/btif_rc.cc
+@@ -5067,13 +5067,13 @@ static void handle_app_attr_txt_response(tBTA_AV_META_MSG* pmeta_msg,
+      * for standard attributes.
+      */
+     p_app_settings->num_ext_attrs = 0;
+-    for (xx = 0; xx < p_app_settings->ext_attr_index; xx++) {
++    for (xx = 0; xx < p_app_settings->ext_attr_index && xx < AVRC_MAX_APP_ATTR_SIZE; xx++) {
+       osi_free_and_reset((void**)&p_app_settings->ext_attrs[xx].p_str);
+     }
+     p_app_settings->ext_attr_index = 0;
+ 
+     if (p_dev) {
+-      for (xx = 0; xx < p_app_settings->num_attrs; xx++) {
++      for (xx = 0; xx < p_app_settings->num_attrs && xx < AVRC_MAX_APP_ATTR_SIZE; xx++) {
+         attrs[xx] = p_app_settings->attrs[xx].attr_id;
+       }
+ 
+@@ -5086,7 +5086,7 @@ static void handle_app_attr_txt_response(tBTA_AV_META_MSG* pmeta_msg,
+ 
+   for (xx = 0; xx < p_rsp->num_attr; xx++) {
+     uint8_t x;
+-    for (x = 0; x < p_app_settings->num_ext_attrs; x++) {
++    for (x = 0; x < p_app_settings->num_ext_attrs && x < AVRC_MAX_APP_ATTR_SIZE; x++) {
+       if (p_app_settings->ext_attrs[x].attr_id == p_rsp->p_attrs[xx].attr_id) {
+         p_app_settings->ext_attrs[x].charset_id = p_rsp->p_attrs[xx].charset_id;
+         p_app_settings->ext_attrs[x].str_len = p_rsp->p_attrs[xx].str_len;
+@@ -5096,7 +5096,7 @@ static void handle_app_attr_txt_response(tBTA_AV_META_MSG* pmeta_msg,
+     }
+   }
+ 
+-  for (xx = 0; xx < p_app_settings->ext_attrs[0].num_val; xx++) {
++  for (xx = 0; xx < p_app_settings->ext_attrs[0].num_val && xx < BTRC_MAX_APP_ATTR_SIZE; xx++) {
+     vals[xx] = p_app_settings->ext_attrs[0].ext_attr_val[xx].val;
+   }
+   get_player_app_setting_value_text_cmd(vals, xx, p_dev);
+@@ -5141,11 +5141,11 @@ static void handle_app_attr_val_txt_response(
+      * for standard attributes.
+      */
+     p_app_settings->num_ext_attrs = 0;
+-    for (xx = 0; xx < p_app_settings->ext_attr_index; xx++) {
++    for (xx = 0; xx < p_app_settings->ext_attr_index && xx < AVRC_MAX_APP_ATTR_SIZE; xx++) {
+       int x;
+       btrc_player_app_ext_attr_t* p_ext_attr = &p_app_settings->ext_attrs[xx];
+ 
+-      for (x = 0; x < p_ext_attr->num_val; x++)
++      for (x = 0; x < p_ext_attr->num_val && x < BTRC_MAX_APP_ATTR_SIZE; x++)
+         osi_free_and_reset((void**)&p_ext_attr->ext_attr_val[x].p_str);
+       p_ext_attr->num_val = 0;
+       osi_free_and_reset((void**)&p_app_settings->ext_attrs[xx].p_str);
+@@ -5162,11 +5162,17 @@ static void handle_app_attr_val_txt_response(
+     return;
+   }
+ 
++  if (p_app_settings->ext_val_index >= AVRC_MAX_APP_ATTR_SIZE) {
++    BTIF_TRACE_ERROR("%s: ext_val_index is 0x%02x, overflow!",
++                     __func__, p_app_settings->ext_val_index);
++    return;
++  }
++
+   for (xx = 0; xx < p_rsp->num_attr; xx++) {
+     uint8_t x;
+     btrc_player_app_ext_attr_t* p_ext_attr;
+     p_ext_attr = &p_app_settings->ext_attrs[p_app_settings->ext_val_index];
+-    for (x = 0; x < p_rsp->num_attr; x++) {
++    for (x = 0; x < p_rsp->num_attr && x < BTRC_MAX_APP_ATTR_SIZE; x++) {
+       if (p_ext_attr->ext_attr_val[x].val == p_rsp->p_attrs[xx].attr_id) {
+         p_ext_attr->ext_attr_val[x].charset_id = p_rsp->p_attrs[xx].charset_id;
+         p_ext_attr->ext_attr_val[x].str_len = p_rsp->p_attrs[xx].str_len;
+@@ -5204,11 +5210,11 @@ static void handle_app_attr_val_txt_response(
+     /* Free the application settings information after sending to
+      * application.
+      */
+-    for (xx = 0; xx < p_app_settings->ext_attr_index; xx++) {
++    for (xx = 0; xx < p_app_settings->ext_attr_index && xx < AVRC_MAX_APP_ATTR_SIZE; xx++) {
+       int x;
+       btrc_player_app_ext_attr_t* p_ext_attr = &p_app_settings->ext_attrs[xx];
+ 
+-      for (x = 0; x < p_ext_attr->num_val; x++)
++      for (x = 0; x < p_ext_attr->num_val && x < BTRC_MAX_APP_ATTR_SIZE; x++)
+         osi_free_and_reset((void**)&p_ext_attr->ext_attr_val[x].p_str);
+       p_ext_attr->num_val = 0;
+       osi_free_and_reset((void**)&p_app_settings->ext_attrs[xx].p_str);
+diff --git a/stack/a2dp/a2dp_sbc.cc b/stack/a2dp/a2dp_sbc.cc
+index 623ecfac1..393a17ee5 100644
+--- a/stack/a2dp/a2dp_sbc.cc
++++ b/stack/a2dp/a2dp_sbc.cc
+@@ -881,6 +881,11 @@ bool A2DP_BuildCodecHeaderSbc(UNUSED_ATTR const uint8_t* p_codec_info,
+                               BT_HDR* p_buf, uint16_t frames_per_packet) {
+   uint8_t* p;
+ 
++  // there is a timestamp right following p_buf
++  if (p_buf->offset < 4 + A2DP_SBC_MPL_HDR_LEN) {
++    return false;
++  }
++
+   p_buf->offset -= A2DP_SBC_MPL_HDR_LEN;
+   p = (uint8_t*)(p_buf + 1) + p_buf->offset;
+   p_buf->len += A2DP_SBC_MPL_HDR_LEN;
+diff --git a/stack/gatt/gatt_cl.cc b/stack/gatt/gatt_cl.cc
+index 73a338b6d..98186daed 100644
+--- a/stack/gatt/gatt_cl.cc
++++ b/stack/gatt/gatt_cl.cc
+@@ -578,7 +578,8 @@ void gatt_process_prep_write_rsp(tGATT_TCB& tcb, tGATT_CLCB* p_clcb,
+   LOG(ERROR) << StringPrintf("value resp op_code = %s len = %d",
+                              gatt_dbg_op_name(op_code), len);
+ 
+-  if (len < GATT_PREP_WRITE_RSP_MIN_LEN) {
++  if (len < GATT_PREP_WRITE_RSP_MIN_LEN ||
++      len > GATT_PREP_WRITE_RSP_MIN_LEN + sizeof(value.value)) {
+     LOG(ERROR) << "illegal prepare write response length, discard";
+     gatt_end_operation(p_clcb, GATT_INVALID_PDU, &value);
+     return;
+@@ -587,7 +588,7 @@ void gatt_process_prep_write_rsp(tGATT_TCB& tcb, tGATT_CLCB* p_clcb,
+   STREAM_TO_UINT16(value.handle, p);
+   STREAM_TO_UINT16(value.offset, p);
+ 
+-  value.len = len - 4;
++  value.len = len - GATT_PREP_WRITE_RSP_MIN_LEN;
+ 
+   memcpy(value.value, p, value.len);
+ 
+diff --git a/stack/sdp/sdp_db.cc b/stack/sdp/sdp_db.cc
+index 65ed52fd9..23e5b53ff 100644
+--- a/stack/sdp/sdp_db.cc
++++ b/stack/sdp/sdp_db.cc
+@@ -399,6 +399,11 @@ bool SDP_AddAttribute(uint32_t handle, uint16_t attr_id, uint8_t attr_type,
+   uint16_t xx;
+   tSDP_RECORD* p_rec = &sdp_cb.server_db.record[0];
+ 
++  if (p_val == nullptr) {
++    SDP_TRACE_WARNING("Trying to add attribute with p_val == nullptr, skipped");
++    return (false);
++  }
++
+   if (sdp_cb.trace_level >= BT_TRACE_LEVEL_DEBUG) {
+     if ((attr_type == UINT_DESC_TYPE) ||
+         (attr_type == TWO_COMP_INT_DESC_TYPE) ||
+@@ -433,7 +438,15 @@ bool SDP_AddAttribute(uint32_t handle, uint16_t attr_id, uint8_t attr_type,
+   /* Find the record in the database */
+   for (xx = 0; xx < sdp_cb.server_db.num_records; xx++, p_rec++) {
+     if (p_rec->record_handle == handle) {
+-      return SDP_AddAttributeToRecord (p_rec, attr_id, attr_type, attr_len, p_val);
++
++      // error out early, no need to look up
++      if (p_rec->free_pad_ptr >= SDP_MAX_PAD_LEN) {
++        SDP_TRACE_ERROR("the free pad for SDP record with handle %d is "
++                        "full, skip adding the attribute", handle);
++        return (false);
++      } else {
++        return SDP_AddAttributeToRecord (p_rec, attr_id, attr_type, attr_len, p_val);
++      }
+     }
+   }
+ #endif
+@@ -500,15 +513,13 @@ bool SDP_AddAttributeToRecord (tSDP_RECORD *p_rec, uint16_t attr_id,
+         attr_len = 0;
+     }
+ 
+-    if ((attr_len > 0) && (p_val != 0)) {
++    if (attr_len > 0) {
+       p_attr->len = attr_len;
+       memcpy(&p_rec->attr_pad[p_rec->free_pad_ptr], p_val, (size_t)attr_len);
+       p_attr->value_ptr = &p_rec->attr_pad[p_rec->free_pad_ptr];
+       p_rec->free_pad_ptr += attr_len;
+-    } else if ((attr_len == 0 &&
+-                p_attr->len !=
+-                    0) || /* if truncate to 0 length, simply don't add */
+-               p_val == 0) {
++    } else if (attr_len == 0 && p_attr->len != 0) {
++      /* if truncate to 0 length, simply don't add */
+       SDP_TRACE_ERROR(
+           "SDP_AddAttributeToRecord fail, length exceed maximum: ID %d: attr_len:%d ",
+           attr_id, attr_len);
