@@ -40,6 +40,24 @@ How to build LineageOS
     </manifest>
     ```
 
+* And optional a manifest to limit the download:
+
+    ```bash
+    vim .repo/local_manifests/removals.xml
+
+    <manifest>
+        <remove-project name="platform/prebuilts/clang/host/darwin-x86"/>
+        <remove-project name="LineageOS/android_prebuilts_gcc_darwin-x86_aarch64_aarch64-linux-android-4.9"/>
+        <remove-project name="LineageOS/android_prebuilts_gcc_darwin-x86_arm_arm-linux-androideabi-4.9"/>
+        <remove-project name="platform/prebuilts/gcc/darwin-x86/host/i686-apple-darwin-4.2.1"/>
+        <remove-project name="LineageOS/android_prebuilts_gcc_darwin-x86_x86_x86_64-linux-android-4.9"/>
+        <remove-project name="platform/prebuilts/gdb/darwin-x86"/>
+        <remove-project name="platform/prebuilts/go/darwin-x86"/>
+        <remove-project name="platform/prebuilts/python/darwin-x86/2.7.5"/>
+        <remove-project name="platform/external/OpenCL-CTS"/>
+    </manifest>
+    ```
+
 * Sync the repo:
 
     ```bash
