@@ -19,7 +19,7 @@ How to build LineageOS
 * Initialize the repo:
 
     ```bash
-    repo init -u git://github.com/LineageOS/android.git -b lineage-18.1
+    repo init -u git://github.com/LineageOS/android.git -b lineage-18.1 --git-lfs
     ```
 
 * Create a local manifest:
