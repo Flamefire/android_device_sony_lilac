@@ -23,6 +23,26 @@ if [ ! -d "$repo_root/device/sony/lilac/patches" ]; then
   showError "Failed to find repository root at $repo_root"
 fi
 
+patch_set=all
+script_name=$(basename "$0")
+for arg in "$@"; do
+    case "$arg" in
+        '--help'|'-h')
+            echo "Usage: $script_name [--clean | --minimal | --minclang]"
+            echo
+            echo "Options:"
+            echo "  --clean     Revert patched dirs instead of patching"
+            echo "  --minimal   Only required & security patches"
+            echo "  --minclang  Only required, new Clang, & security patches"
+            exit 0
+            ;;
+        '--clean')      clean_patch_dirs=1;;
+        '--minimal')    patch_set=minimal;;
+        '--minclang')   patch_set=minclang;;
+        *)              showError "unknown option: $arg"
+    esac
+done
+
 numApplied=0
 numSkipped=0
 numWarned=0
@@ -33,6 +53,18 @@ function applyPatch {
     patch_dir=$(head -n1 "$patch" | grep "# PWD: " | awk '{print $NF}')
     if [[ "$patch_dir" == "" ]]; then
         showError "Faulty patch: $patch"
+    fi
+
+    if [ "${clean_patch_dirs:-}" ]; then
+        if ! git -C "$patch_dir" diff --quiet; then
+            echo -n "Cleaning ${patch_dir}: "
+            git -C "$patch_dir" reset --hard --quiet
+            git -C "$patch_dir" clean -d --force --quiet
+            echo -e "${LGREEN}Done.${NC}"
+        else
+            echo "Ignoring ${patch_dir}  (no changes detected)"
+        fi
+        return
     fi
 
     parent="$(basename "$(dirname "$patch")")"
@@ -75,8 +107,18 @@ for filename in $(find "$PATCH_ROOT/asb-"* -maxdepth 1 -type f -name '*.patch' -
 done
 
 # Apply custom patches
-for p in "$PATCH_ROOT/"*.patch; do
-    applyPatch "$p"
-done
+if [ "$patch_set" = all ]; then
+    for p in "$PATCH_ROOT/"*.patch; do
+        applyPatch "$p"
+    done
+else
+    # v17.1-20221115 fix: ValueError: list.remove(x): x not in list
+    applyPatch "$PATCH_ROOT"/fix-custom-apn-script.patch
+    if [ "$patch_set" = minclang ]; then
+        # v17.1-20230225 fix: "arm-linux-androidkernel-as" is not allowed
+        applyPatch "$PATCH_ROOT"/allow-newer-kernel-clang.patch
+        applyPatch "$PATCH_ROOT"/update-kernel-clang-for-host-cc.patch
+    fi
+fi
 
 echo -e "Patching done! ${LGREEN}Applied: ${numApplied}${NC}, ${GREEN}skipped: ${numSkipped}${NC}, ${YELLOW}warnings: ${numWarned}${NC}"
