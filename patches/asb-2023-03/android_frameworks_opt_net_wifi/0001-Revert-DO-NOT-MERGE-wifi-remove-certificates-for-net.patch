@@ -1,4 +1,28 @@
-# PWD: frameworks/opt/net/wifi
+From f8016d78f53ceedef3eed6a7118a9c8b3ec4bd03 Mon Sep 17 00:00:00 2001
+From: Alexander Grund <flamefire89@gmail.com>
+Date: Sun, 26 Mar 2023 18:59:30 +0200
+Subject: [PATCH] Revert "[DO NOT MERGE] wifi: remove certificates for network
+ factory reset"
+
+This reverts commit 5aa2d76b9d820ebe175a5f4c416a873352000c71.
+
+Reason for revert: functional regression
+
+Change-Id: Ie61d52973c9e67e6cdfa0c320024952a2b0c2d46
+(cherry picked from commit 2b280abd3cdac76a6defef7aa928629b46b93997)
+Merged-In: Ie61d52973c9e67e6cdfa0c320024952a2b0c2d46
+---
+ .../server/wifi/WifiConfigManager.java        |  2 +-
+ .../com/android/server/wifi/WifiInjector.java |  5 ----
+ .../com/android/server/wifi/WifiKeyStore.java |  7 ++---
+ .../wifi/WifiNetworkSuggestionsManager.java   |  2 +-
+ .../android/server/wifi/WifiServiceImpl.java  |  6 ----
+ .../server/wifi/WifiConfigManagerTest.java    |  6 ++--
+ .../android/server/wifi/WifiKeyStoreTest.java | 28 +++----------------
+ .../WifiNetworkSuggestionsManagerTest.java    |  2 +-
+ .../server/wifi/WifiServiceImplTest.java      | 14 ++--------
+ 9 files changed, 16 insertions(+), 56 deletions(-)
+
 diff --git a/service/java/com/android/server/wifi/WifiConfigManager.java b/service/java/com/android/server/wifi/WifiConfigManager.java
 index fce5758e1..393a5c395 100644
 --- a/service/java/com/android/server/wifi/WifiConfigManager.java
@@ -241,3 +265,6 @@ index 53d6d7815..b7137634c 100644
          verify(mClientModeImpl).syncRemovePasspointConfig(mAsyncChannel, true, fqdn);
          verify(mWifiConfigManager).clearDeletedEphemeralNetworks();
          verify(mClientModeImpl).clearNetworkRequestUserApprovedAccessPoints();
+-- 
+2.40.1
+

@@ -1,0 +1,28 @@
+From a0db0b292e5edf51f22d3d5b878db904cf80ad65 Mon Sep 17 00:00:00 2001
+From: "Kevin F. Haggerty" <haggertk@lineageos.org>
+Date: Thu, 16 Mar 2023 19:38:09 -0600
+Subject: [PATCH] Track our own fork(s) for 2023-03 ASB patching
+
+* external/zlib
+
+Change-Id: I0e0f905bb3e6411ff11696f65018bf0fd5ab9ba8
+---
+ default.xml | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/default.xml b/default.xml
+index 8e55992..ef1cc35 100644
+--- a/default.xml
++++ b/default.xml
+@@ -383,7 +383,7 @@
+   <project path="external/xz-embedded" name="platform/external/xz-embedded" groups="pdk" remote="aosp" />
+   <project path="external/xz-java" name="platform/external/xz-java" groups="pdk" remote="aosp" />
+   <project path="external/yapf" name="platform/external/yapf" groups="vts,projectarch,pdk" remote="aosp" />
+-  <project path="external/zlib" name="platform/external/zlib" groups="pdk" remote="aosp" />
++  <project path="external/zlib" name="LineageOS/android_external_zlib" groups="pdk" />
+   <project path="external/zopfli" name="platform/external/zopfli" groups="pdk" remote="aosp" />
+   <project path="external/zxing" name="platform/external/zxing" groups="pdk" remote="aosp" />
+   <project path="frameworks/av" name="LineageOS/android_frameworks_av" groups="pdk" />
+-- 
+2.40.1
+

@@ -1,0 +1,74 @@
+From 1c07411e4f522d4490486231141df8f236c7a659 Mon Sep 17 00:00:00 2001
+From: Alexander Grund <flamefire89@gmail.com>
+Date: Thu, 30 Mar 2023 16:25:30 +0200
+Subject: [PATCH] Bump Security String to 2023-03-05
+
+Implemented:
+============
+CVE:            References:    Type:  Severity:  Updated AOSP versions:
+CVE-2023-20917  A-242605257    EoP    High       11, 12, 12L, 13
+CVE-2023-20951  A-258652631    RCE    Critical   11, 12, 12L, 13
+CVE-2023-20952  A-186803518    ID     High       11, 12, 12L, 13
+CVE-2023-20954  A-261867748    RCE    Critical   11, 12, 12L, 13
+CVE-2023-20955  A-258653813    EoP    High       11, 12, 12L, 13
+CVE-2023-20957  A-258422561    EoP    High       11, 12, 12L
+CVE-2023-20963  A-220302519    EoP    High       11, 12, 12L, 13
+CVE-2023-20966  A-242299736    EoP    High       11, 12, 12L, 13
+
+Implemented (Qualcomm components):
+==================================
+CVE:            References:    Severity:  Subcomponent:
+CVE-2022-40537  A-261468700    High       Bluetooth
+                QC-CR#3278869
+
+Previously Implemented:
+=======================
+CVE:            References:    Type:  Severity:  Updated AOSP versions:  Prior Change:
+CVE-2022-20467  A-225880741    ID     High       11, 12, 12L, 13         25d8711b5
+CVE-2023-20906  A-221040577    EoP    High       11, 12, 12L, 13         fa2f23996
+CVE-2023-20911  A-242537498    EoP    High       11, 12, 12L, 13         808fb7bb8
+CVE-2023-20931  A-242535997    EoP    High       11, 12, 12L, 13         124618b11
+CVE-2023-20936  A-226927612    EoP    High       11, 12, 12L, 13         6ccf52b5b
+
+Not Implemented:
+=======================
+None
+
+Not Applicable (platform source):
+=================================
+CVE:            References:    Type:  Severity:  Updated AOSP versions:
+CVE-2022-4452   A-251802307    ID     High       13
+CVE-2022-20499  A-246539931    DoS    High       12, 12L, 13
+CVE-2023-20910  A-245299920    DoS    High       11, 12, 12L, 13
+CVE-2023-20926  A-253043058    EoP    High       12, 12L, 13
+CVE-2023-20929  A-234442700    ID     High       13
+CVE-2023-20947  A-237405974    EoP    High       12, 12L, 13
+CVE-2023-20953  A-251778420    EoP    High       13
+CVE-2023-20956  A-240140929    ID     High       12, 12L, 13
+CVE-2023-20958  A-254803162    ID     High       13
+CVE-2023-20959  A-249057848    EoP    High       13
+CVE-2023-20960  A-250589026    EoP    High       12L, 13
+CVE-2023-20962  A-256590210    ID     High       13
+CVE-2023-20964  A-238177121    DoS    High       12, 12L, 13
+
+Change-Id: Ie8cff77c9c3f75b9925d497628b1c509727e6e30
+---
+ core/version_defaults.mk | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/core/version_defaults.mk b/core/version_defaults.mk
+index 65e7f4553c..1f3a266ab6 100644
+--- a/core/version_defaults.mk
++++ b/core/version_defaults.mk
+@@ -250,7 +250,7 @@ ifndef PLATFORM_SECURITY_PATCH
+     #  It must be of the form "YYYY-MM-DD" on production devices.
+     #  It must match one of the Android Security Patch Level strings of the Public Security Bulletins.
+     #  If there is no $PLATFORM_SECURITY_PATCH set, keep it empty.
+-      PLATFORM_SECURITY_PATCH := 2023-02-05
++      PLATFORM_SECURITY_PATCH := 2023-03-05
+ endif
+ .KATI_READONLY := PLATFORM_SECURITY_PATCH
+ 
+-- 
+2.40.1
+
