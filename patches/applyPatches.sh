@@ -14,28 +14,32 @@ YELLOW='\033[0;33m'
 NC='\033[0m'
 PATCH_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+function showError {
+    echo -e "${RED}ERROR: $@${NC}" && false
+}
+
 repo_root=$(readlink -f "$PATCH_ROOT/../../../..")
 if [ ! -d "$repo_root/device/sony/lilac/patches" ]; then
-  echo -e "${RED}Failed to find repository root at $repo_root"
-  exit 1
+  showError "Failed to find repository root at $repo_root"
 fi
 
 numApplied=0
 numSkipped=0
 numWarned=0
 
-for p in "$PATCH_ROOT/"*.patch "$PATCH_ROOT/asb-"*/*.patch; do
-    patch_dir=$(head -n1 "$p" | grep "# PWD: " | awk '{print $NF}')
+function applyPatch {
+    patch=${1:?"No patch specified"}
+
+    patch_dir=$(head -n1 "$patch" | grep "# PWD: " | awk '{print $NF}')
     if [[ "$patch_dir" == "" ]]; then
-        echo "Faulty patch: $p"
-        exit 1
+        showError "Faulty patch: $patch"
     fi
 
-    echo -n "Applying $(basename "$p") in ${patch_dir}: "
+    echo -n "Applying $(basename "$patch") in ${patch_dir}: "
     patch_dir="$repo_root/$patch_dir"
     # If the reverse patch could be applied, then the patch was likely already applied
-    patch --reverse --force  -p1 -d "$patch_dir" --input "$p" --dry-run > /dev/null && applied=1 || applied=0
-    if out=$(patch --forward -p1 -d "$patch_dir" --input "$p" -r /dev/null --no-backup-if-mismatch 2>&1); then
+    patch --reverse --force  -p1 -d "$patch_dir" --input "$patch" --dry-run > /dev/null && applied=1 || applied=0
+    if out=$(patch --forward -p1 -d "$patch_dir" --input "$patch" -r /dev/null --no-backup-if-mismatch 2>&1); then
         echo -e "${LGREEN}Done.${NC}"
         ((++numApplied))
         # We applied the patch but could apply the reverse before, i.e. would detect it as already applied.
@@ -52,6 +56,10 @@ for p in "$PATCH_ROOT/"*.patch "$PATCH_ROOT/asb-"*/*.patch; do
         echo "$out"
         exit 1
     fi
+}
+
+for p in "$PATCH_ROOT/"*.patch "$PATCH_ROOT/asb-"*/*.patch; do
+    applyPatch "$p"
 done
 
 echo -e "Patching done! ${LGREEN}Applied: ${numApplied}${NC}, ${GREEN}skipped: ${numSkipped}${NC}, ${YELLOW}warnings: ${numWarned}${NC}"
