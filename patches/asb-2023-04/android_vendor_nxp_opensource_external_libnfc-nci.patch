@@ -1,0 +1,39 @@
+# PWD: vendor/nxp/opensource/commonsys/external/libnfc-nci
+diff --git a/SN100x/src/nfc/nci/nci_hmsgs.cc b/SN100x/src/nfc/nci/nci_hmsgs.cc
+index 99a40a1f..e37a82b6 100755
+--- a/SN100x/src/nfc/nci/nci_hmsgs.cc
++++ b/SN100x/src/nfc/nci/nci_hmsgs.cc
+@@ -671,10 +671,14 @@ uint8_t nci_snd_set_routing_cmd(bool more, uint8_t num_tlv, uint8_t tlv_size,
+                                 uint8_t* p_param_tlvs) {
+   NFC_HDR* p;
+   uint8_t* pp;
+   uint8_t size = tlv_size + 2;
+ 
++  if (size < tlv_size) {
++    return (NCI_STATUS_FAILED);
++  }
++
+   if (tlv_size == 0) {
+     /* just to terminate routing table
+      * 2 bytes (more=FALSE and num routing entries=0) */
+     size = 2;
+   }
+diff --git a/src/nfc/nci/nci_hmsgs.cc b/src/nfc/nci/nci_hmsgs.cc
+index eedfc084..898d1446 100755
+--- a/src/nfc/nci/nci_hmsgs.cc
++++ b/src/nfc/nci/nci_hmsgs.cc
+@@ -725,10 +725,14 @@ uint8_t nci_snd_set_routing_cmd(bool more, uint8_t num_tlv, uint8_t tlv_size,
+                                 uint8_t* p_param_tlvs) {
+   NFC_HDR* p;
+   uint8_t* pp;
+   uint8_t size = tlv_size + 2;
+ 
++  if (size < tlv_size) {
++    return (NCI_STATUS_FAILED);
++  }
++
+   if (tlv_size == 0) {
+     /* just to terminate routing table
+      * 2 bytes (more=false and num routing entries=0) */
+     size = 2;
+   }

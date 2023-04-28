@@ -1,0 +1,90 @@
+# PWD: packages/services/Telecomm
+diff --git a/src/com/android/server/telecom/CallScreeningServiceHelper.java b/src/com/android/server/telecom/CallScreeningServiceHelper.java
+index a9341ab82..89778e43a 100644
+--- a/src/com/android/server/telecom/CallScreeningServiceHelper.java
++++ b/src/com/android/server/telecom/CallScreeningServiceHelper.java
+@@ -144,10 +144,27 @@ public class CallScreeningServiceHelper {
+                     if (!mFuture.isDone()) {
+                         Log.w(CallScreeningServiceHelper.this,
+                                 "Cancelling outgoing call screen due to service disconnect.");
+                     }
+                     mFuture.complete(null);
++                    mContext.unbindService(this);
++                } finally {
++                    Log.endSession();
++                }
++            }
++
++            @Override
++            public void onNullBinding(ComponentName name) {
++                // No locking needed -- CompletableFuture only lets one thread call complete.
++                Log.continueSession(mLoggingSession, "CSSH.oNB");
++                try {
++                    if (!mFuture.isDone()) {
++                        Log.w(CallScreeningServiceHelper.this,
++                                "Cancelling outgoing call screen due to null binding.");
++                    }
++                    mFuture.complete(null);
++                    mContext.unbindService(this);
+                 } finally {
+                     Log.endSession();
+                 }
+             }
+         };
+diff --git a/src/com/android/server/telecom/NewOutgoingCallIntentBroadcaster.java b/src/com/android/server/telecom/NewOutgoingCallIntentBroadcaster.java
+index 7a641af3c..960be80a3 100644
+--- a/src/com/android/server/telecom/NewOutgoingCallIntentBroadcaster.java
++++ b/src/com/android/server/telecom/NewOutgoingCallIntentBroadcaster.java
+@@ -311,12 +311,22 @@ public class NewOutgoingCallIntentBroadcaster {
+         result.callingAddress = Uri.fromParts(scheme, number, null);
+         return result;
+     }
+ 
+     private String getNumberFromCallIntent(Intent intent) {
+-        String number;
+-        number = mPhoneNumberUtilsAdapter.getNumberFromIntent(intent, mContext);
++        String number = null;
++
++        Uri uri = intent.getData();
++        if (uri != null) {
++            String scheme = uri.getScheme();
++            if (scheme != null) {
++                if (scheme.equals("tel") || scheme.equals("sip")) {
++                    number = uri.getSchemeSpecificPart();
++                }
++            }
++        }
++
+         if (TextUtils.isEmpty(number)) {
+             Log.w(this, "Empty number obtained from the call intent.");
+             return null;
+         }
+ 
+diff --git a/tests/src/com/android/server/telecom/tests/NewOutgoingCallIntentBroadcasterTest.java b/tests/src/com/android/server/telecom/tests/NewOutgoingCallIntentBroadcasterTest.java
+index 81b43265f..b618bba1e 100644
+--- a/tests/src/com/android/server/telecom/tests/NewOutgoingCallIntentBroadcasterTest.java
++++ b/tests/src/com/android/server/telecom/tests/NewOutgoingCallIntentBroadcasterTest.java
+@@ -184,10 +184,23 @@ public class NewOutgoingCallIntentBroadcasterTest extends TelecomTestCase {
+         assertEquals(DisconnectCause.NO_PHONE_NUMBER_SUPPLIED, result);
+         verifyNoBroadcastSent();
+         verifyNoCallPlaced();
+     }
+ 
++    @Test
++    public void testNoCallsPlacedWithContentUri() {
++        Uri handle = Uri.parse("content://com.android.contacts/data/1");
++        Intent intent = new Intent(Intent.ACTION_CALL, handle);
++
++        int result = processIntent(intent, true).disconnectCause;
++
++        assertEquals(DisconnectCause.NO_PHONE_NUMBER_SUPPLIED, result);
++        verify(mContext, never()).getContentResolver();
++        verifyNoBroadcastSent();
++        verifyNoCallPlaced();
++    }
++
+     @SmallTest
+     @Test
+     public void testEmergencyCallWithNonDefaultDialer() {
+         Uri handle = Uri.parse("tel:6505551911");
+         doReturn(true).when(mPhoneNumberUtilsAdapterSpy).isPotentialLocalEmergencyNumber(

@@ -1,0 +1,37 @@
+# PWD: packages/providers/MediaProvider
+diff --git a/src/com/android/providers/media/MediaProvider.java b/src/com/android/providers/media/MediaProvider.java
+index 9032644e..b8ec75cd 100644
+--- a/src/com/android/providers/media/MediaProvider.java
++++ b/src/com/android/providers/media/MediaProvider.java
+@@ -2307,11 +2307,13 @@ public class MediaProvider extends ContentProvider {
+             return MediaStore.VOLUME_INTERNAL;
+         }
+     }
+ 
+     private static @Nullable String extractRelativePath(@Nullable String data) {
++        data = getCanonicalPath(data);
+         if (data == null) return null;
++
+         final Matcher matcher = PATTERN_RELATIVE_PATH.matcher(data);
+         if (matcher.find()) {
+             final int lastSlash = data.lastIndexOf('/');
+             if (lastSlash == -1 || lastSlash < matcher.end()) {
+                 // This is a file in the top-level directory, so relative path is "/"
+@@ -6692,6 +6694,17 @@ public class MediaProvider extends ContentProvider {
+                 s.append(", fingerprint=" + Build.FINGERPRINT);
+             }
+         }
+         return s.toString();
+     }
++
++    @Nullable
++    private static String getCanonicalPath(@Nullable String path) {
++        if (path == null) return null;
++        try {
++            return new File(path).getCanonicalPath();
++        } catch (IOException e) {
++            Log.d(TAG, "Unable to get canonical path from invalid data path: " + path, e);
++            return null;
++        }
++    }
+ }

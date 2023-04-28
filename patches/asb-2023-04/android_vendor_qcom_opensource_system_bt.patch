@@ -1,0 +1,273 @@
+# PWD: vendor/qcom/opensource/commonsys/system/bt
+diff --git a/btif/src/btif_rc.cc b/btif/src/btif_rc.cc
+index 0b34f7c36..41fd73485 100644
+--- a/btif/src/btif_rc.cc
++++ b/btif/src/btif_rc.cc
+@@ -3135,10 +3135,15 @@ static bt_status_t register_notification_rsp(
+   }
+   BTIF_TRACE_IMP("%s: event_id: %s", __func__,
+                    dump_rc_notification_event_id(event_id));
+   std::unique_lock<std::mutex> lock(btif_rc_cb.lock);
+ 
++  if (event_id > MAX_RC_NOTIFICATIONS) {
++    BTIF_TRACE_ERROR("Invalid event id");
++    return BT_STATUS_PARM_INVALID;
++  }
++
+   memset(&(avrc_rsp.reg_notif), 0, sizeof(tAVRC_REG_NOTIF_RSP));
+ 
+   avrc_rsp.reg_notif.event_id = event_id;
+   avrc_rsp.reg_notif.pdu = AVRC_PDU_REGISTER_NOTIFICATION;
+   avrc_rsp.reg_notif.opcode = opcode_from_pdu(AVRC_PDU_REGISTER_NOTIFICATION);
+@@ -5065,17 +5070,17 @@ static void handle_app_attr_txt_response(tBTA_AV_META_MSG* pmeta_msg,
+     /* Not able to fetch Text for extended Menu, skip the process
+      * and cleanup used memory. Proceed to get the current settings
+      * for standard attributes.
+      */
+     p_app_settings->num_ext_attrs = 0;
+-    for (xx = 0; xx < p_app_settings->ext_attr_index; xx++) {
++    for (xx = 0; xx < p_app_settings->ext_attr_index && xx < AVRC_MAX_APP_ATTR_SIZE; xx++) {
+       osi_free_and_reset((void**)&p_app_settings->ext_attrs[xx].p_str);
+     }
+     p_app_settings->ext_attr_index = 0;
+ 
+     if (p_dev) {
+-      for (xx = 0; xx < p_app_settings->num_attrs; xx++) {
++      for (xx = 0; xx < p_app_settings->num_attrs && xx < AVRC_MAX_APP_ATTR_SIZE; xx++) {
+         attrs[xx] = p_app_settings->attrs[xx].attr_id;
+       }
+ 
+       HAL_CBACK(bt_rc_ctrl_callbacks, playerapplicationsetting_cb, &rc_addr,
+                 p_app_settings->num_attrs, p_app_settings->attrs, 0, NULL);
+@@ -5084,21 +5089,21 @@ static void handle_app_attr_txt_response(tBTA_AV_META_MSG* pmeta_msg,
+     return;
+   }
+ 
+   for (xx = 0; xx < p_rsp->num_attr; xx++) {
+     uint8_t x;
+-    for (x = 0; x < p_app_settings->num_ext_attrs; x++) {
++    for (x = 0; x < p_app_settings->num_ext_attrs && x < AVRC_MAX_APP_ATTR_SIZE; x++) {
+       if (p_app_settings->ext_attrs[x].attr_id == p_rsp->p_attrs[xx].attr_id) {
+         p_app_settings->ext_attrs[x].charset_id = p_rsp->p_attrs[xx].charset_id;
+         p_app_settings->ext_attrs[x].str_len = p_rsp->p_attrs[xx].str_len;
+         p_app_settings->ext_attrs[x].p_str = p_rsp->p_attrs[xx].p_str;
+         break;
+       }
+     }
+   }
+ 
+-  for (xx = 0; xx < p_app_settings->ext_attrs[0].num_val; xx++) {
++  for (xx = 0; xx < p_app_settings->ext_attrs[0].num_val && xx < BTRC_MAX_APP_ATTR_SIZE; xx++) {
+     vals[xx] = p_app_settings->ext_attrs[0].ext_attr_val[xx].val;
+   }
+   get_player_app_setting_value_text_cmd(vals, xx, p_dev);
+ }
+ 
+@@ -5139,15 +5144,15 @@ static void handle_app_attr_val_txt_response(
+     /* Not able to fetch Text for extended Menu, skip the process
+      * and cleanup used memory. Proceed to get the current settings
+      * for standard attributes.
+      */
+     p_app_settings->num_ext_attrs = 0;
+-    for (xx = 0; xx < p_app_settings->ext_attr_index; xx++) {
++    for (xx = 0; xx < p_app_settings->ext_attr_index && xx < AVRC_MAX_APP_ATTR_SIZE; xx++) {
+       int x;
+       btrc_player_app_ext_attr_t* p_ext_attr = &p_app_settings->ext_attrs[xx];
+ 
+-      for (x = 0; x < p_ext_attr->num_val; x++)
++      for (x = 0; x < p_ext_attr->num_val && x < BTRC_MAX_APP_ATTR_SIZE; x++)
+         osi_free_and_reset((void**)&p_ext_attr->ext_attr_val[x].p_str);
+       p_ext_attr->num_val = 0;
+       osi_free_and_reset((void**)&p_app_settings->ext_attrs[xx].p_str);
+     }
+     p_app_settings->ext_attr_index = 0;
+@@ -5160,15 +5165,21 @@ static void handle_app_attr_val_txt_response(
+ 
+     get_player_app_setting_cmd(xx, attrs, p_dev);
+     return;
+   }
+ 
++  if (p_app_settings->ext_val_index >= AVRC_MAX_APP_ATTR_SIZE) {
++    BTIF_TRACE_ERROR("%s: ext_val_index is 0x%02x, overflow!",
++                     __func__, p_app_settings->ext_val_index);
++    return;
++  }
++
+   for (xx = 0; xx < p_rsp->num_attr; xx++) {
+     uint8_t x;
+     btrc_player_app_ext_attr_t* p_ext_attr;
+     p_ext_attr = &p_app_settings->ext_attrs[p_app_settings->ext_val_index];
+-    for (x = 0; x < p_rsp->num_attr; x++) {
++    for (x = 0; x < p_rsp->num_attr && x < BTRC_MAX_APP_ATTR_SIZE; x++) {
+       if (p_ext_attr->ext_attr_val[x].val == p_rsp->p_attrs[xx].attr_id) {
+         p_ext_attr->ext_attr_val[x].charset_id = p_rsp->p_attrs[xx].charset_id;
+         p_ext_attr->ext_attr_val[x].str_len = p_rsp->p_attrs[xx].str_len;
+         p_ext_attr->ext_attr_val[x].p_str = p_rsp->p_attrs[xx].p_str;
+         break;
+@@ -5202,15 +5213,15 @@ static void handle_app_attr_val_txt_response(
+     }
+ 
+     /* Free the application settings information after sending to
+      * application.
+      */
+-    for (xx = 0; xx < p_app_settings->ext_attr_index; xx++) {
++    for (xx = 0; xx < p_app_settings->ext_attr_index && xx < AVRC_MAX_APP_ATTR_SIZE; xx++) {
+       int x;
+       btrc_player_app_ext_attr_t* p_ext_attr = &p_app_settings->ext_attrs[xx];
+ 
+-      for (x = 0; x < p_ext_attr->num_val; x++)
++      for (x = 0; x < p_ext_attr->num_val && x < BTRC_MAX_APP_ATTR_SIZE; x++)
+         osi_free_and_reset((void**)&p_ext_attr->ext_attr_val[x].p_str);
+       p_ext_attr->num_val = 0;
+       osi_free_and_reset((void**)&p_app_settings->ext_attrs[xx].p_str);
+     }
+     p_app_settings->num_attrs = 0;
+diff --git a/stack/a2dp/a2dp_sbc.cc b/stack/a2dp/a2dp_sbc.cc
+index 623ecfac1..393a17ee5 100644
+--- a/stack/a2dp/a2dp_sbc.cc
++++ b/stack/a2dp/a2dp_sbc.cc
+@@ -879,10 +879,15 @@ bool A2DP_GetPacketTimestampSbc(UNUSED_ATTR const uint8_t* p_codec_info,
+ 
+ bool A2DP_BuildCodecHeaderSbc(UNUSED_ATTR const uint8_t* p_codec_info,
+                               BT_HDR* p_buf, uint16_t frames_per_packet) {
+   uint8_t* p;
+ 
++  // there is a timestamp right following p_buf
++  if (p_buf->offset < 4 + A2DP_SBC_MPL_HDR_LEN) {
++    return false;
++  }
++
+   p_buf->offset -= A2DP_SBC_MPL_HDR_LEN;
+   p = (uint8_t*)(p_buf + 1) + p_buf->offset;
+   p_buf->len += A2DP_SBC_MPL_HDR_LEN;
+   A2DP_BuildMediaPayloadHeaderSbc(p, false, false, false,
+                                   (uint8_t)frames_per_packet);
+diff --git a/stack/avdt/avdt_scb_act.cc b/stack/avdt/avdt_scb_act.cc
+index 130f44ab1..568575458 100644
+--- a/stack/avdt/avdt_scb_act.cc
++++ b/stack/avdt/avdt_scb_act.cc
+@@ -275,23 +275,28 @@ void avdt_scb_hdl_pkt_no_frag(tAVDT_SCB* p_scb, tAVDT_SCB_EVT* p_data) {
+   if (o_x) {
+     offset += 4;
+     if (offset > len) goto length_error;
+     p += 2;
+     BE_STREAM_TO_UINT16(ex_len, p);
+-    offset += ex_len * 4;
+     p += ex_len * 4;
+   }
+ 
++  if ((p - p_start) > len) {
++    android_errorWriteLog(0x534e4554, "142546355");
++    osi_free_and_reset((void**)&p_data->p_pkt);
++    return;
++  }
++  offset = p - p_start;
++
+   /* adjust length for any padding at end of packet */
+   if (o_p) {
+     /* padding length in last byte of packet */
+-    pad_len = *(p_start + p_data->p_pkt->len);
++    pad_len = *(p_start + len);
+   }
+ 
+   /* do sanity check */
+-  if ((offset > p_data->p_pkt->len) ||
+-      ((pad_len + offset) > p_data->p_pkt->len)) {
++  if (pad_len > (len - offset)) {
+     AVDT_TRACE_WARNING("Got bad media packet");
+     osi_free_and_reset((void**)&p_data->p_pkt);
+   }
+   /* adjust offset and length and send it up */
+   else {
+diff --git a/stack/gatt/gatt_cl.cc b/stack/gatt/gatt_cl.cc
+index 73a338b6d..98186daed 100644
+--- a/stack/gatt/gatt_cl.cc
++++ b/stack/gatt/gatt_cl.cc
+@@ -576,20 +576,21 @@ void gatt_process_prep_write_rsp(tGATT_TCB& tcb, tGATT_CLCB* p_clcb,
+   };
+ 
+   LOG(ERROR) << StringPrintf("value resp op_code = %s len = %d",
+                              gatt_dbg_op_name(op_code), len);
+ 
+-  if (len < GATT_PREP_WRITE_RSP_MIN_LEN) {
++  if (len < GATT_PREP_WRITE_RSP_MIN_LEN ||
++      len > GATT_PREP_WRITE_RSP_MIN_LEN + sizeof(value.value)) {
+     LOG(ERROR) << "illegal prepare write response length, discard";
+     gatt_end_operation(p_clcb, GATT_INVALID_PDU, &value);
+     return;
+   }
+ 
+   STREAM_TO_UINT16(value.handle, p);
+   STREAM_TO_UINT16(value.offset, p);
+ 
+-  value.len = len - 4;
++  value.len = len - GATT_PREP_WRITE_RSP_MIN_LEN;
+ 
+   memcpy(value.value, p, value.len);
+ 
+   if (!gatt_check_write_long_terminate(tcb, p_clcb, &value)) {
+     gatt_send_prepare_write(tcb, p_clcb);
+diff --git a/stack/sdp/sdp_db.cc b/stack/sdp/sdp_db.cc
+index 65ed52fd9..23e5b53ff 100644
+--- a/stack/sdp/sdp_db.cc
++++ b/stack/sdp/sdp_db.cc
+@@ -397,10 +397,15 @@ bool SDP_AddAttribute(uint32_t handle, uint16_t attr_id, uint8_t attr_type,
+                       uint32_t attr_len, uint8_t* p_val) {
+ #if (SDP_SERVER_ENABLED == TRUE)
+   uint16_t xx;
+   tSDP_RECORD* p_rec = &sdp_cb.server_db.record[0];
+ 
++  if (p_val == nullptr) {
++    SDP_TRACE_WARNING("Trying to add attribute with p_val == nullptr, skipped");
++    return (false);
++  }
++
+   if (sdp_cb.trace_level >= BT_TRACE_LEVEL_DEBUG) {
+     if ((attr_type == UINT_DESC_TYPE) ||
+         (attr_type == TWO_COMP_INT_DESC_TYPE) ||
+         (attr_type == UUID_DESC_TYPE) ||
+         (attr_type == DATA_ELE_SEQ_DESC_TYPE) ||
+@@ -431,11 +436,19 @@ bool SDP_AddAttribute(uint32_t handle, uint16_t attr_id, uint8_t attr_type,
+   }
+ 
+   /* Find the record in the database */
+   for (xx = 0; xx < sdp_cb.server_db.num_records; xx++, p_rec++) {
+     if (p_rec->record_handle == handle) {
+-      return SDP_AddAttributeToRecord (p_rec, attr_id, attr_type, attr_len, p_val);
++
++      // error out early, no need to look up
++      if (p_rec->free_pad_ptr >= SDP_MAX_PAD_LEN) {
++        SDP_TRACE_ERROR("the free pad for SDP record with handle %d is "
++                        "full, skip adding the attribute", handle);
++        return (false);
++      } else {
++        return SDP_AddAttributeToRecord (p_rec, attr_id, attr_type, attr_len, p_val);
++      }
+     }
+   }
+ #endif
+   return (false);
+ }
+@@ -498,19 +511,17 @@ bool SDP_AddAttributeToRecord (tSDP_RECORD *p_rec, uint16_t attr_id,
+         p_val[SDP_MAX_PAD_LEN - p_rec->free_pad_ptr + 1] = '\0';
+       } else
+         attr_len = 0;
+     }
+ 
+-    if ((attr_len > 0) && (p_val != 0)) {
++    if (attr_len > 0) {
+       p_attr->len = attr_len;
+       memcpy(&p_rec->attr_pad[p_rec->free_pad_ptr], p_val, (size_t)attr_len);
+       p_attr->value_ptr = &p_rec->attr_pad[p_rec->free_pad_ptr];
+       p_rec->free_pad_ptr += attr_len;
+-    } else if ((attr_len == 0 &&
+-                p_attr->len !=
+-                    0) || /* if truncate to 0 length, simply don't add */
+-               p_val == 0) {
++    } else if (attr_len == 0 && p_attr->len != 0) {
++      /* if truncate to 0 length, simply don't add */
+       SDP_TRACE_ERROR(
+           "SDP_AddAttributeToRecord fail, length exceed maximum: ID %d: attr_len:%d ",
+           attr_id, attr_len);
+       p_attr->id = p_attr->type = p_attr->len = 0;
+       return (false);

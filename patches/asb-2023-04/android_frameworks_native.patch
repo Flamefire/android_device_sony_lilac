@@ -1,0 +1,128 @@
+# PWD: frameworks/native
+diff --git a/libs/gui/LayerState.cpp b/libs/gui/LayerState.cpp
+index 6066421faf..293f042de2 100644
+--- a/libs/gui/LayerState.cpp
++++ b/libs/gui/LayerState.cpp
+@@ -235,10 +235,31 @@ void DisplayState::merge(const DisplayState& other) {
+         width = other.width;
+         height = other.height;
+     }
+ }
+ 
++void DisplayState::sanitize(bool privileged) {
++    if (what & DisplayState::eLayerStackChanged) {
++        if (!privileged) {
++            what &= ~DisplayState::eLayerStackChanged;
++            ALOGE("Stripped attempt to set eLayerStackChanged in sanitize");
++        }
++    }
++    if (what & DisplayState::eDisplayProjectionChanged) {
++        if (!privileged) {
++            what &= ~DisplayState::eDisplayProjectionChanged;
++            ALOGE("Stripped attempt to set eDisplayProjectionChanged in sanitize");
++        }
++    }
++    if (what & DisplayState::eSurfaceChanged) {
++        if (!privileged) {
++            what &= ~DisplayState::eSurfaceChanged;
++            ALOGE("Stripped attempt to set eSurfaceChanged in sanitize");
++        }
++    }
++}
++
+ void layer_state_t::merge(const layer_state_t& other) {
+     if (other.what & ePositionChanged) {
+         what |= ePositionChanged;
+         x = other.x;
+         y = other.y;
+diff --git a/libs/gui/include/gui/LayerState.h b/libs/gui/include/gui/LayerState.h
+index f438eb3d01..8a07602e41 100644
+--- a/libs/gui/include/gui/LayerState.h
++++ b/libs/gui/include/gui/LayerState.h
+@@ -229,10 +229,11 @@ struct DisplayState {
+         eDisplaySizeChanged = 0x08
+     };
+ 
+     DisplayState();
+     void merge(const DisplayState& other);
++    void sanitize(bool privileged);
+ 
+     uint32_t what;
+     sp<IBinder> token;
+     sp<IGraphicBufferProducer> surface;
+     uint32_t layerStack;
+diff --git a/services/surfaceflinger/SurfaceFlinger.cpp b/services/surfaceflinger/SurfaceFlinger.cpp
+index db26808cc2..21e9e8eb96 100644
+--- a/services/surfaceflinger/SurfaceFlinger.cpp
++++ b/services/surfaceflinger/SurfaceFlinger.cpp
+@@ -3673,11 +3673,11 @@ bool SurfaceFlinger::flushTransactionQueues() {
+         auto it = mTransactionQueues.begin();
+         while (it != mTransactionQueues.end()) {
+             auto& [applyToken, transactionQueue] = *it;
+ 
+             while (!transactionQueue.empty()) {
+-                const auto& transaction = transactionQueue.front();
++                auto& transaction = transactionQueue.front();
+                 if (!transactionIsReadyToBeApplied(transaction.desiredPresentTime,
+                                                    transaction.states)) {
+                     setTransactionFlags(eTransactionFlushNeeded);
+                     break;
+                 }
+@@ -3792,16 +3792,21 @@ void SurfaceFlinger::setTransactionState(const Vector<ComposerState>& states,
+                                                privileged);
+         setTransactionFlags(eTransactionFlushNeeded);
+         return;
+     }
+ 
+-    applyTransactionState(states, displays, flags, inputWindowCommands, desiredPresentTime,
++    Vector<DisplayState> displaysList;
++    for (auto& d : displays) {
++        displaysList.add(d);
++    }
++
++    applyTransactionState(states, displaysList, flags, inputWindowCommands, desiredPresentTime,
+                           uncacheBuffer, listenerCallbacks, postTime, privileged);
+ }
+ 
+ void SurfaceFlinger::applyTransactionState(const Vector<ComposerState>& states,
+-                                           const Vector<DisplayState>& displays, uint32_t flags,
++                                           Vector<DisplayState>& displays, uint32_t flags,
+                                            const InputWindowCommands& inputWindowCommands,
+                                            const int64_t desiredPresentTime,
+                                            const client_cache_t& uncacheBuffer,
+                                            const std::vector<ListenerCallbacks>& listenerCallbacks,
+                                            const int64_t postTime, bool privileged,
+@@ -3822,11 +3827,12 @@ void SurfaceFlinger::applyTransactionState(const Vector<ComposerState>& states,
+                 break;
+             }
+         }
+     }
+ 
+-    for (const DisplayState& display : displays) {
++    for (DisplayState& display : displays) {
++        display.sanitize(privileged);
+         transactionFlags |= setDisplayStateLocked(display);
+     }
+ 
+     // In case the client has sent a Transaction that should receive callbacks but without any
+     // SurfaceControls that should be included in the callback, send the listener and callbackIds
+diff --git a/services/surfaceflinger/SurfaceFlinger.h b/services/surfaceflinger/SurfaceFlinger.h
+index e58caa63b3..c4578d0dbb 100644
+--- a/services/surfaceflinger/SurfaceFlinger.h
++++ b/services/surfaceflinger/SurfaceFlinger.h
+@@ -566,13 +566,12 @@ private:
+     bool handlePageFlip();
+ 
+     /* ------------------------------------------------------------------------
+      * Transactions
+      */
+-    void applyTransactionState(const Vector<ComposerState>& state,
+-                               const Vector<DisplayState>& displays, uint32_t flags,
+-                               const InputWindowCommands& inputWindowCommands,
++    void applyTransactionState(const Vector<ComposerState>& state, Vector<DisplayState>& displays,
++                               uint32_t flags, const InputWindowCommands& inputWindowCommands,
+                                const int64_t desiredPresentTime,
+                                const client_cache_t& uncacheBuffer,
+                                const std::vector<ListenerCallbacks>& listenerCallbacks,
+                                const int64_t postTime, bool privileged, bool isMainThread = false)
+             REQUIRES(mStateLock);
