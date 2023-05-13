@@ -1,0 +1,263 @@
+# PWD: frameworks/native
+diff --git a/libs/gui/LayerState.cpp b/libs/gui/LayerState.cpp
+index 6066421faf..293f042de2 100644
+--- a/libs/gui/LayerState.cpp
++++ b/libs/gui/LayerState.cpp
+@@ -235,10 +235,31 @@ void DisplayState::merge(const DisplayState& other) {
+         width = other.width;
+         height = other.height;
+     }
+ }
+ 
++void DisplayState::sanitize(bool privileged) {
++    if (what & DisplayState::eLayerStackChanged) {
++        if (!privileged) {
++            what &= ~DisplayState::eLayerStackChanged;
++            ALOGE("Stripped attempt to set eLayerStackChanged in sanitize");
++        }
++    }
++    if (what & DisplayState::eDisplayProjectionChanged) {
++        if (!privileged) {
++            what &= ~DisplayState::eDisplayProjectionChanged;
++            ALOGE("Stripped attempt to set eDisplayProjectionChanged in sanitize");
++        }
++    }
++    if (what & DisplayState::eSurfaceChanged) {
++        if (!privileged) {
++            what &= ~DisplayState::eSurfaceChanged;
++            ALOGE("Stripped attempt to set eSurfaceChanged in sanitize");
++        }
++    }
++}
++
+ void layer_state_t::merge(const layer_state_t& other) {
+     if (other.what & ePositionChanged) {
+         what |= ePositionChanged;
+         x = other.x;
+         y = other.y;
+diff --git a/libs/gui/include/gui/LayerState.h b/libs/gui/include/gui/LayerState.h
+index f438eb3d01..8a07602e41 100644
+--- a/libs/gui/include/gui/LayerState.h
++++ b/libs/gui/include/gui/LayerState.h
+@@ -229,10 +229,11 @@ struct DisplayState {
+         eDisplaySizeChanged = 0x08
+     };
+ 
+     DisplayState();
+     void merge(const DisplayState& other);
++    void sanitize(bool privileged);
+ 
+     uint32_t what;
+     sp<IBinder> token;
+     sp<IGraphicBufferProducer> surface;
+     uint32_t layerStack;
+diff --git a/libs/sensor/ISensorServer.cpp b/libs/sensor/ISensorServer.cpp
+index 5200545a53..b2f1ba2507 100644
+--- a/libs/sensor/ISensorServer.cpp
++++ b/libs/sensor/ISensorServer.cpp
+@@ -64,11 +64,15 @@ public:
+         Vector<Sensor> v;
+         uint32_t n = reply.readUint32();
+         v.setCapacity(n);
+         while (n) {
+             n--;
+-            reply.read(s);
++            if(reply.read(s) != OK) {
++                ALOGE("Failed to read reply from getSensorList");
++                v.clear();
++                break;
++            }
+             v.add(s);
+         }
+         return v;
+     }
+ 
+@@ -82,11 +86,15 @@ public:
+         Vector<Sensor> v;
+         uint32_t n = reply.readUint32();
+         v.setCapacity(n);
+         while (n) {
+             n--;
+-            reply.read(s);
++            if(reply.read(s) != OK) {
++                ALOGE("Failed to read reply from getDynamicSensorList");
++                v.clear();
++                break;
++            }
+             v.add(s);
+         }
+         return v;
+     }
+ 
+diff --git a/libs/sensor/Sensor.cpp b/libs/sensor/Sensor.cpp
+index abc910302c..9d8c6c34e3 100644
+--- a/libs/sensor/Sensor.cpp
++++ b/libs/sensor/Sensor.cpp
+@@ -589,11 +589,17 @@ bool Sensor::unflattenString8(void const*& buffer, size_t& size, String8& output
+     FlattenableUtils::read(buffer, size, len);
+     if (size < len) {
+         return false;
+     }
+     outputString8.setTo(static_cast<char const*>(buffer), len);
++
++    if (size < FlattenableUtils::align<4>(len)) {
++        ALOGE("Malformed Sensor String8 field. Should be in a 4-byte aligned buffer but is not.");
++        return false;
++    }
+     FlattenableUtils::advance(buffer, size, FlattenableUtils::align<4>(len));
++
+     return true;
+ }
+ 
+ // ----------------------------------------------------------------------------
+ }; // namespace android
+diff --git a/libs/sensor/SensorManager.cpp b/libs/sensor/SensorManager.cpp
+index 96d5eb9d1f..180a0ebd85 100644
+--- a/libs/sensor/SensorManager.cpp
++++ b/libs/sensor/SensorManager.cpp
+@@ -90,10 +90,20 @@ SensorManager& SensorManager::getInstanceForPackage(const String16& packageName)
+     }
+ 
+     return *sensorManager;
+ }
+ 
++void SensorManager::removeInstanceForPackage(const String16& packageName) {
++    Mutex::Autolock _l(sLock);
++    auto iterator = sPackageInstances.find(packageName);
++    if (iterator != sPackageInstances.end()) {
++        SensorManager* sensorManager = iterator->second;
++        delete sensorManager;
++        sPackageInstances.erase(iterator);
++    }
++}
++
+ SensorManager::SensorManager(const String16& opPackageName)
+     : mSensorList(nullptr), mOpPackageName(opPackageName), mDirectConnectionHandle(1) {
+     Mutex::Autolock _l(mLock);
+     assertStateLocked();
+ }
+@@ -160,10 +170,15 @@ status_t SensorManager::assertStateLocked() {
+         mDeathObserver = new DeathObserver(*const_cast<SensorManager *>(this));
+         IInterface::asBinder(mSensorServer)->linkToDeath(mDeathObserver);
+ 
+         mSensors = mSensorServer->getSensorList(mOpPackageName);
+         size_t count = mSensors.size();
++        if (count == 0) {
++            ALOGE("Failed to get Sensor list");
++            mSensorServer.clear();
++            return UNKNOWN_ERROR;
++        }
+         mSensorList =
+                 static_cast<Sensor const**>(malloc(count * sizeof(Sensor*)));
+         LOG_ALWAYS_FATAL_IF(mSensorList == nullptr, "mSensorList NULL");
+ 
+         for (size_t i=0 ; i<count ; i++) {
+diff --git a/libs/sensor/include/sensor/SensorManager.h b/libs/sensor/include/sensor/SensorManager.h
+index f09c9c67b4..127f74f4b2 100644
+--- a/libs/sensor/include/sensor/SensorManager.h
++++ b/libs/sensor/include/sensor/SensorManager.h
+@@ -52,10 +52,11 @@ class SensorEventQueue;
+ 
+ class SensorManager : public ASensorManager
+ {
+ public:
+     static SensorManager& getInstanceForPackage(const String16& packageName);
++    static void removeInstanceForPackage(const String16& packageName);
+     ~SensorManager();
+ 
+     ssize_t getSensorList(Sensor const* const** list);
+     ssize_t getDynamicSensorList(Vector<Sensor>& list);
+     Sensor const* getDefaultSensor(int type);
+diff --git a/services/sensorservice/hidl/SensorManager.cpp b/services/sensorservice/hidl/SensorManager.cpp
+index 938060063f..0a4e68412d 100644
+--- a/services/sensorservice/hidl/SensorManager.cpp
++++ b/services/sensorservice/hidl/SensorManager.cpp
+@@ -58,10 +58,13 @@ SensorManager::~SensorManager() {
+         mLooper->wake();
+     }
+     if (mPollThread.joinable()) {
+         mPollThread.join();
+     }
++
++    ::android::SensorManager::removeInstanceForPackage(
++            String16(ISensorManager::descriptor));
+ }
+ 
+ // Methods from ::android::frameworks::sensorservice::V1_0::ISensorManager follow.
+ Return<void> SensorManager::getSensorList(getSensorList_cb _hidl_cb) {
+     ::android::Sensor const* const* list;
+diff --git a/services/surfaceflinger/SurfaceFlinger.cpp b/services/surfaceflinger/SurfaceFlinger.cpp
+index db26808cc2..21e9e8eb96 100644
+--- a/services/surfaceflinger/SurfaceFlinger.cpp
++++ b/services/surfaceflinger/SurfaceFlinger.cpp
+@@ -3673,11 +3673,11 @@ bool SurfaceFlinger::flushTransactionQueues() {
+         auto it = mTransactionQueues.begin();
+         while (it != mTransactionQueues.end()) {
+             auto& [applyToken, transactionQueue] = *it;
+ 
+             while (!transactionQueue.empty()) {
+-                const auto& transaction = transactionQueue.front();
++                auto& transaction = transactionQueue.front();
+                 if (!transactionIsReadyToBeApplied(transaction.desiredPresentTime,
+                                                    transaction.states)) {
+                     setTransactionFlags(eTransactionFlushNeeded);
+                     break;
+                 }
+@@ -3792,16 +3792,21 @@ void SurfaceFlinger::setTransactionState(const Vector<ComposerState>& states,
+                                                privileged);
+         setTransactionFlags(eTransactionFlushNeeded);
+         return;
+     }
+ 
+-    applyTransactionState(states, displays, flags, inputWindowCommands, desiredPresentTime,
++    Vector<DisplayState> displaysList;
++    for (auto& d : displays) {
++        displaysList.add(d);
++    }
++
++    applyTransactionState(states, displaysList, flags, inputWindowCommands, desiredPresentTime,
+                           uncacheBuffer, listenerCallbacks, postTime, privileged);
+ }
+ 
+ void SurfaceFlinger::applyTransactionState(const Vector<ComposerState>& states,
+-                                           const Vector<DisplayState>& displays, uint32_t flags,
++                                           Vector<DisplayState>& displays, uint32_t flags,
+                                            const InputWindowCommands& inputWindowCommands,
+                                            const int64_t desiredPresentTime,
+                                            const client_cache_t& uncacheBuffer,
+                                            const std::vector<ListenerCallbacks>& listenerCallbacks,
+                                            const int64_t postTime, bool privileged,
+@@ -3822,11 +3827,12 @@ void SurfaceFlinger::applyTransactionState(const Vector<ComposerState>& states,
+                 break;
+             }
+         }
+     }
+ 
+-    for (const DisplayState& display : displays) {
++    for (DisplayState& display : displays) {
++        display.sanitize(privileged);
+         transactionFlags |= setDisplayStateLocked(display);
+     }
+ 
+     // In case the client has sent a Transaction that should receive callbacks but without any
+     // SurfaceControls that should be included in the callback, send the listener and callbackIds
+diff --git a/services/surfaceflinger/SurfaceFlinger.h b/services/surfaceflinger/SurfaceFlinger.h
+index e58caa63b3..c4578d0dbb 100644
+--- a/services/surfaceflinger/SurfaceFlinger.h
++++ b/services/surfaceflinger/SurfaceFlinger.h
+@@ -566,13 +566,12 @@ private:
+     bool handlePageFlip();
+ 
+     /* ------------------------------------------------------------------------
+      * Transactions
+      */
+-    void applyTransactionState(const Vector<ComposerState>& state,
+-                               const Vector<DisplayState>& displays, uint32_t flags,
+-                               const InputWindowCommands& inputWindowCommands,
++    void applyTransactionState(const Vector<ComposerState>& state, Vector<DisplayState>& displays,
++                               uint32_t flags, const InputWindowCommands& inputWindowCommands,
+                                const int64_t desiredPresentTime,
+                                const client_cache_t& uncacheBuffer,
+                                const std::vector<ListenerCallbacks>& listenerCallbacks,
+                                const int64_t postTime, bool privileged, bool isMainThread = false)
+             REQUIRES(mStateLock);
