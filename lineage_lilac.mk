@@ -25,13 +25,8 @@ PRODUCT_BRAND := Sony
 PRODUCT_MODEL := G8441
 PRODUCT_MANUFACTURER := Sony
 
-PRODUCT_BUILD_PROP_OVERRIDES += \
-    PRODUCT_NAME=lilac \
-    PRIVATE_BUILD_DESC="G8441-user 9 47.2.A.11.228 3311891731 release-keys" \
-    BUILD_NUMBER=3311891731
-
 # From MagiskHideProps, Stock FP doesn't seem to work
-BUILD_FINGERPRINT := Sony/G8441/G8441:9/47.2.A.11.228/3311891731:user/release-keys
+PRODUCT_PRODUCT_PROPERTIES += ro.build.stock_fingerprint=Sony/G8441/G8441:9/47.2.A.11.228/3311891731:user/release-keys
 
 PRODUCT_GMS_CLIENTID_BASE := android-sony-mobile
 

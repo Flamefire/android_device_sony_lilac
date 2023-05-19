@@ -1,9 +1,13 @@
 # PWD: system/core
 
-Based on the work from Havoc-OS
+Based on the work from Havoc-OS:
+https://github.com/Havoc-OS/android_system_core/blob/e7243f0a78344f7c28b7fa2542fc9b215b9c83f2/init/property_service.cpp
+
+Combined with:
+"fastboot: Revert to Android 11 method of checking lock status" https://github.com/ProtonAOSP/android_system_core/commit/497ada563
 
 diff --git a/init/property_service.cpp b/init/property_service.cpp
-index 65e9cda1c..3bdeb8bdf 100644
+index 42dd5afcb..c125e8a2b 100644
 --- a/init/property_service.cpp
 +++ b/init/property_service.cpp
 @@ -45,6 +45,7 @@
@@ -32,7 +36,7 @@ index 65e9cda1c..3bdeb8bdf 100644
              *error = "Read-only property was already set";
              return PROP_ERROR_READ_ONLY_PROPERTY;
          }
-@@ -774,7 +777,74 @@ static void update_sys_usb_config() {
+@@ -757,7 +760,65 @@ static void update_sys_usb_config() {
      }
  }
  
@@ -52,15 +56,6 @@ index 65e9cda1c..3bdeb8bdf 100644
 +    {"ro.vendor.build.type", "user"},
 +    {"vendor.boot.vbmeta.device_state", "locked"},
 +    {"vendor.boot.verifiedbootstate", "green"},
-+    //{"ro.boot.selinux", "enforcing"}, - n/a
-+    //{"ro.boot.veritymode", "enforcing"}, - set
-+    //{"ro.boot.warranty_bit", "0"}, - n/a
-+    //{"ro.build.keys", "release-keys"}, - n/a
-+    //{"ro.secure", "1"}, - set
-+    //{"ro.system_ext.build.type", "user"}, - n/a
-+    //{"ro.vendor.boot.warranty_bit", "0"}, - n/a
-+    //{"ro.vendor.warranty_bit", "0"}, - n/a
-+    //{"ro.warranty_bit", "0"}, - na
 +    // Those 2 must come last!
 +    {"ro.build.version.security_patch", "2019-09-01"},
 +    {"ro.build.version.real_security_patch", nullptr},
@@ -107,3 +102,21 @@ index 65e9cda1c..3bdeb8bdf 100644
      if (ALLOW_LOCAL_PROP_OVERRIDE) {
          std::map<std::string, std::string> properties;
          load_properties_from_file("/data/local.prop", nullptr, &properties);
+diff --git a/fastboot/device/utility.cpp b/fastboot/device/utility.cpp
+index 07ad9028c..f9267e0eb 100644
+--- a/fastboot/device/utility.cpp
++++ b/fastboot/device/utility.cpp
+@@ -204,7 +204,12 @@ std::vector<std::string> ListPartitions(FastbootDevice* device) {
+ }
+ 
+ bool GetDeviceLockStatus() {
+-    return android::base::GetProperty("ro.boot.verifiedbootstate", "") != "orange";
++    std::string cmdline;
++    // Return lock status true if unable to read kernel command line.
++    if (!android::base::ReadFileToString("/proc/cmdline", &cmdline)) {
++        return true;
++    }
++    return cmdline.find("androidboot.verifiedbootstate=orange") == std::string::npos;
+ }
+ 
+ bool UpdateAllPartitionMetadata(FastbootDevice* device, const std::string& super_name,
