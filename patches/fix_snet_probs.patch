@@ -1,9 +1,10 @@
 # PWD: system/core
 
-Based on the work from Havoc-OS
+Based on the work from Havoc-OS:
+https://github.com/Havoc-OS/android_system_core/blob/e7243f0a78344f7c28b7fa2542fc9b215b9c83f2/init/property_service.cpp
 
 diff --git a/init/property_service.cpp b/init/property_service.cpp
-index 65e9cda1c..3bdeb8bdf 100644
+index 42dd5afcb..c125e8a2b 100644
 --- a/init/property_service.cpp
 +++ b/init/property_service.cpp
 @@ -45,6 +45,7 @@
@@ -32,7 +33,7 @@ index 65e9cda1c..3bdeb8bdf 100644
              *error = "Read-only property was already set";
              return PROP_ERROR_READ_ONLY_PROPERTY;
          }
-@@ -774,7 +777,74 @@ static void update_sys_usb_config() {
+@@ -757,7 +760,65 @@ static void update_sys_usb_config() {
      }
  }
  
@@ -52,15 +53,6 @@ index 65e9cda1c..3bdeb8bdf 100644
 +    {"ro.vendor.build.type", "user"},
 +    {"vendor.boot.vbmeta.device_state", "locked"},
 +    {"vendor.boot.verifiedbootstate", "green"},
-+    //{"ro.boot.selinux", "enforcing"}, - n/a
-+    //{"ro.boot.veritymode", "enforcing"}, - set
-+    //{"ro.boot.warranty_bit", "0"}, - n/a
-+    //{"ro.build.keys", "release-keys"}, - n/a
-+    //{"ro.secure", "1"}, - set
-+    //{"ro.system_ext.build.type", "user"}, - n/a
-+    //{"ro.vendor.boot.warranty_bit", "0"}, - n/a
-+    //{"ro.vendor.warranty_bit", "0"}, - n/a
-+    //{"ro.warranty_bit", "0"}, - na
 +    // Those 2 must come last!
 +    {"ro.build.version.security_patch", "2019-09-01"},
 +    {"ro.build.version.real_security_patch", nullptr},
