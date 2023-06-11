@@ -1,0 +1,22 @@
+# PWD: packages/apps/Car/Settings
+diff --git a/src/com/android/car/settings/accounts/AddAccountActivity.java b/src/com/android/car/settings/accounts/AddAccountActivity.java
+index d5ce57142..69ada037f 100644
+--- a/src/com/android/car/settings/accounts/AddAccountActivity.java
++++ b/src/com/android/car/settings/accounts/AddAccountActivity.java
+@@ -90,15 +90,15 @@ public class AddAccountActivity extends Activity {
+                 Bundle addAccountOptions = new Bundle();
+                 addAccountOptions.putBoolean(EXTRA_HAS_MULTIPLE_USERS,
+                         hasMultipleUsers(AddAccountActivity.this));
+                 addAccountOptions.putParcelable(EXTRA_USER, mUserHandle);
+                 intent.putExtras(addAccountOptions);
+                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                 startActivityForResultAsUser(
+-                        intent, ADD_ACCOUNT_REQUEST, mUserHandle);
++                        new Intent(intent), ADD_ACCOUNT_REQUEST, mUserHandle);
+                 LOG.v("account added: " + result);
+             } catch (OperationCanceledException | IOException | AuthenticatorException e) {
+                 LOG.v("addAccount error: " + e);
+             } finally {
+                 finish();
+             }
+         }

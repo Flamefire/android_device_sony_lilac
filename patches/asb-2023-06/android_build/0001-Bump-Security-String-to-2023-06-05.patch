@@ -1,0 +1,61 @@
+From 649156d2719f39d36c2c4e4db9030cec4b95f43b Mon Sep 17 00:00:00 2001
+From: "Kevin F. Haggerty" <haggertk@lineageos.org>
+Date: Fri, 9 Jun 2023 09:15:48 -0600
+Subject: [PATCH] Bump Security String to 2023-06-05
+
+Implemented:
+============
+CVE:            References:    Type:  Severity:  Updated AOSP versions:
+CVE-2023-21105  A-261036568    ID     High       11, 12, 12L, 13
+CVE-2023-21108  A-239414876    RCE    Critical   11, 12, 12L, 13
+CVE-2023-21115  A-258834033    EoP    High       11, 12, 12L
+CVE-2023-21121  A-205460459    EoP    High       11, 12
+CVE-2023-21122  A-270050191    EoP    High       11, 12, 12L, 13
+CVE-2023-21123  A-270050064    EoP    High       11, 12, 12L, 13
+CVE-2023-21124  A-265798353    EoP    High       11, 12, 12L, 13
+CVE-2023-21127  A-275418191    RCE    Critical   11, 12, 12L, 13
+CVE-2023-21129  A-274759612    EoP    High       11, 12, 12L, 13
+CVE-2023-21131  A-265015796    EoP    High       11, 12, 12L, 13
+CVE-2023-21136  A-246542285    DoS    High       11, 12, 12L, 13
+CVE-2023-21137  A-246541702    DoS    High       11, 12, 12L, 13
+CVE-2023-21138  A-273260090    EoP    High       11, 12, 12L, 13
+CVE-2023-21141  A-262244249    ID     High       11, 12, 12L, 13
+CVE-2023-21142  A-262243665    ID     High       11, 12, 12L, 13
+CVE-2023-21143  A-268193777    DoS    High       11, 12, 12L, 13
+CVE-2023-21144  A-252766417    DoS    High       11, 12, 12L, 13
+
+Not Implemented:
+=======================
+None
+
+Not Applicable (platform source):
+=================================
+CVE:            References:    Type:  Severity:  Updated AOSP versions:
+CVE-2023-21095  A-242704576    ID     High       12L, 13
+CVE-2023-21126  A-271846393    EoP    High       13
+CVE-2023-21128  A-272042183    EoP    High       11, 12, 12L, 13
+CVE-2023-21130  A-273502002    RCE    Critical   13
+CVE-2023-21135  A-260570119    EoP    High       11, 12, 12L, 13
+CVE-2023-21139  A-271845008    EoP    High       13
+
+Change-Id: I5a94f78c371d4a0cafae817cb50cd603247d615b
+---
+ core/version_defaults.mk | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/core/version_defaults.mk b/core/version_defaults.mk
+index 1eb2a61ddb..9da0446807 100644
+--- a/core/version_defaults.mk
++++ b/core/version_defaults.mk
+@@ -250,7 +250,7 @@ ifndef PLATFORM_SECURITY_PATCH
+     #  It must be of the form "YYYY-MM-DD" on production devices.
+     #  It must match one of the Android Security Patch Level strings of the Public Security Bulletins.
+     #  If there is no $PLATFORM_SECURITY_PATCH set, keep it empty.
+-      PLATFORM_SECURITY_PATCH := 2023-05-05
++      PLATFORM_SECURITY_PATCH := 2023-06-05
+ endif
+ .KATI_READONLY := PLATFORM_SECURITY_PATCH
+ 
+-- 
+2.40.1
+
