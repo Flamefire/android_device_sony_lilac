@@ -1,0 +1,512 @@
+# PWD: packages/apps/Settings
+Author: althafvly <althafvly@gmail.com>
+Date:   Wed Jun 29 16:11:25 2022 +0530
+
+    Settings: Allow user configurable fingerprint wake-and-unlock
+    
+    Change-Id: I4ee28af18fcd387f51249358809bd79190a0cc8f
+
+Imported translations by Alexander Grund
+
+diff --git a/res/values-az/cm_strings.xml b/res/values-az/cm_strings.xml
+index 5de24ab755..8053cfe78a 100644
+--- a/res/values-az/cm_strings.xml
++++ b/res/values-az/cm_strings.xml
+@@ -60,6 +60,9 @@
+     <string name="app_notification_sound_timeout_value_30_minutes">30 dəqiqə</string>
+     <string name="unlock_scramble_pin_layout_title">Düzümü qarışdır</string>
+     <string name="unlock_scramble_pin_layout_summary">Cihaz kilidini açarkən PIN düzümünü qarışdır</string>
++    <string name="fingerprint_wake_unlock_title">Kilidi açmaq üçün barmaz izinə toxunun</string>
++    <string name="fingerprint_wake_unlock_touch">Ekran sönülü ikən tədbirləri dinləyir</string>
++    <string name="fingerprint_wake_unlock_press">Yalnız ekran açıq ikən tədbirləri dinləyir</string>
+     <string name="volume_link_notification_title">Zəng səsi və bildiriş səs səviyyələrini birləşdir</string>
+     <string name="directly_show_lock">Kilidi birbaşa aç</string>
+     <string name="directly_show_lock_summary">Ekran kilidini açmaq üçün sürüşdürməni ötürün və dərhal açar daxil etməyə başlayın</string>
+diff --git a/res/values-ca/cm_strings.xml b/res/values-ca/cm_strings.xml
+index b591779a72..b6814e2ce6 100644
+--- a/res/values-ca/cm_strings.xml
++++ b/res/values-ca/cm_strings.xml
+@@ -60,6 +60,9 @@
+     <string name="app_notification_sound_timeout_value_30_minutes">30 minuts</string>
+     <string name="unlock_scramble_pin_layout_title">Disposició aleatòria</string>
+     <string name="unlock_scramble_pin_layout_summary">Disposa aleatòriament les tecles del PIN quan es desbloquegi el dispositiu</string>
++    <string name="fingerprint_wake_unlock_title">Toqueu l\'empremta per desbloquejar</string>
++    <string name="fingerprint_wake_unlock_touch">Escolta els esdeveniments mentre la pantalla està apagada</string>
++    <string name="fingerprint_wake_unlock_press">Només escolta els esdeveniments quan la pantalla està encesa</string>
+     <string name="volume_link_notification_title">Vincula el to de trucada &amp; els volums de les notificacions</string>
+     <string name="directly_show_lock">Desbloqueig directe</string>
+     <string name="directly_show_lock_summary">Omet el lliscament per desbloquejar la pantalla i inicia immediatament la introducció amb el teclat</string>
+diff --git a/res/values-cs/cm_strings.xml b/res/values-cs/cm_strings.xml
+index eb383cf914..6f3b17be78 100644
+--- a/res/values-cs/cm_strings.xml
++++ b/res/values-cs/cm_strings.xml
+@@ -62,6 +62,9 @@
+     <string name="app_notification_sound_timeout_value_30_minutes">30 minut</string>
+     <string name="unlock_scramble_pin_layout_title">Přeházet rozložení</string>
+     <string name="unlock_scramble_pin_layout_summary">Přeházet rozložení pro zadání PIN při odemykání zařízení</string>
++    <string name="fingerprint_wake_unlock_title">Odemknout použitím otisku prstu</string>
++    <string name="fingerprint_wake_unlock_touch">Naslouchá událostem, když je obrazovka vypnutá</string>
++    <string name="fingerprint_wake_unlock_press">Naslouchá událostem, pouze když je obrazovka zapnutá</string>
+     <string name="volume_link_notification_title">Spojit hlasitost vyzvánění a oznámení</string>
+     <string name="directly_show_lock">Odemykat přímo</string>
+     <string name="directly_show_lock_summary">Přeskočit odemčení obrazovky přejetím a okamžitě spustit zadávání klíče</string>
+diff --git a/res/values-cy/cm_strings.xml b/res/values-cy/cm_strings.xml
+index bb6695bfe9..145d616040 100644
+--- a/res/values-cy/cm_strings.xml
++++ b/res/values-cy/cm_strings.xml
+@@ -64,6 +64,9 @@
+     <string name="app_notification_sound_timeout_value_30_minutes">30 munud</string>
+     <string name="unlock_scramble_pin_layout_title">Cymysgu\'r cynllun</string>
+     <string name="unlock_scramble_pin_layout_summary">Cymysgu cynllun y PIN wrth ddatgloi\'r ddyfais</string>
++    <string name="fingerprint_wake_unlock_title">Cyffwrdd ag ôl bys i ddatgloi</string>
++    <string name="fingerprint_wake_unlock_touch">Mae\'n gwrando am ddigwyddiadau tra bod y sgrin i ffwrdd</string>
++    <string name="fingerprint_wake_unlock_press">Dim ond yn gwrando am ddigwyddiadau tra bod y sgrin ymlaen</string>
+     <string name="volume_link_notification_title">Cysylltu uchder sain caniad ffôn a hysbysiadau</string>
+     <string name="directly_show_lock">Datgloi uniongyrchol</string>
+     <string name="directly_show_lock_summary">Neidio\'r sgrin llithro i ddatgloi a dechrau yn hytrach yn syth gyda\'r sgrin gosod allwedd</string>
+diff --git a/res/values-de/cm_strings.xml b/res/values-de/cm_strings.xml
+index d1ed0c6863..d3fbe9c6d5 100644
+--- a/res/values-de/cm_strings.xml
++++ b/res/values-de/cm_strings.xml
+@@ -60,6 +60,9 @@
+     <string name="app_notification_sound_timeout_value_30_minutes">30 Minuten</string>
+     <string name="unlock_scramble_pin_layout_title">Zufällige Anordnung</string>
+     <string name="unlock_scramble_pin_layout_summary">Bei jedem Entsperrversuch die Ziffernanordnung zufällig neu wählen</string>
++    <string name="fingerprint_wake_unlock_title">Zum Entsperren Fingerabdrucksensor berühren</string>
++    <string name="fingerprint_wake_unlock_touch">Fingerabdrucksensor bleibt aktiv, wenn der Bildschirm aus ist</string>
++    <string name="fingerprint_wake_unlock_press">Fingerabdrucksensor ist nur aktiv, wenn der Bildschirm an ist</string>
+     <string name="volume_link_notification_title">Klingelton- und Benachrichtigungslautstärke verknüpfen</string>
+     <string name="directly_show_lock">Direktes Entsperren</string>
+     <string name="directly_show_lock_summary">Wischen zum Entsperren des Bildschirms überspringen und direkt mit der PIN-Eingabe beginnen</string>
+diff --git a/res/values-el/cm_strings.xml b/res/values-el/cm_strings.xml
+index 2df14ca460..827e8b7028 100644
+--- a/res/values-el/cm_strings.xml
++++ b/res/values-el/cm_strings.xml
+@@ -60,6 +60,9 @@
+     <string name="app_notification_sound_timeout_value_30_minutes">30 λεπτά</string>
+     <string name="unlock_scramble_pin_layout_title">Ανακάτεμα διάταξης</string>
+     <string name="unlock_scramble_pin_layout_summary">Ανακάτεμα της διάταξης PIN κατά το ξεκλείδωμα της συσκευής</string>
++    <string name="fingerprint_wake_unlock_title">Αγγίξτε το δακτυλικό αποτύπωμα για να ξεκλειδώσετε</string>
++    <string name="fingerprint_wake_unlock_touch">Ακούει για συμβάντα ενώ η οθόνη είναι απενεργοποιημένη</string>
++    <string name="fingerprint_wake_unlock_press">Ακούει για συμβάντα μόνο όταν η οθόνη είναι ενεργή</string>
+     <string name="volume_link_notification_title">Σύνδεση εντάσεων ήχου κλήσης &amp; ειδοποίησης</string>
+     <string name="directly_show_lock">Άμεσο ξεκλείδωμα</string>
+     <string name="directly_show_lock_summary">Παράλειψη συρσίματος για ξεκλείδωμα και άμεση προβολή καταχώρησης κλειδιού</string>
+diff --git a/res/values-en-rAU/cm_strings.xml b/res/values-en-rAU/cm_strings.xml
+index d5d0c8ed00..7209d4d494 100644
+--- a/res/values-en-rAU/cm_strings.xml
++++ b/res/values-en-rAU/cm_strings.xml
+@@ -60,6 +60,9 @@
+     <string name="app_notification_sound_timeout_value_30_minutes">30 minutes</string>
+     <string name="unlock_scramble_pin_layout_title">Scramble layout</string>
+     <string name="unlock_scramble_pin_layout_summary">Scramble PIN layout when unlocking device</string>
++    <string name="fingerprint_wake_unlock_title">Touch fingerprint to unlock</string>
++    <string name="fingerprint_wake_unlock_touch">Listens for events while the screen is off</string>
++    <string name="fingerprint_wake_unlock_press">Only listens for events once the screen is on</string>
+     <string name="volume_link_notification_title">Link ring &amp; notification volumes</string>
+     <string name="directly_show_lock">Direct unlock</string>
+     <string name="directly_show_lock_summary">Skip the swipe to unlock screen and immediately begin key entry</string>
+diff --git a/res/values-en-rCA/cm_strings.xml b/res/values-en-rCA/cm_strings.xml
+index 5b1ffa7dda..1e54778e60 100644
+--- a/res/values-en-rCA/cm_strings.xml
++++ b/res/values-en-rCA/cm_strings.xml
+@@ -60,6 +60,9 @@
+     <string name="app_notification_sound_timeout_value_30_minutes">30 minutes</string>
+     <string name="unlock_scramble_pin_layout_title">Scramble layout</string>
+     <string name="unlock_scramble_pin_layout_summary">Scramble PIN layout when unlocking device</string>
++    <string name="fingerprint_wake_unlock_title">Touch fingerprint to unlock</string>
++    <string name="fingerprint_wake_unlock_touch">Listens for events while the screen is off</string>
++    <string name="fingerprint_wake_unlock_press">Only listens for events once the screen is on</string>
+     <string name="volume_link_notification_title">Link ring &amp; notification volumes</string>
+     <string name="directly_show_lock">Direct unlock</string>
+     <string name="directly_show_lock_summary">Skip the swipe to unlock screen and immediately begin key entry</string>
+diff --git a/res/values-en-rGB/cm_strings.xml b/res/values-en-rGB/cm_strings.xml
+index 13aa170b52..88f209bf88 100644
+--- a/res/values-en-rGB/cm_strings.xml
++++ b/res/values-en-rGB/cm_strings.xml
+@@ -60,6 +60,9 @@
+     <string name="app_notification_sound_timeout_value_30_minutes">30 minutes</string>
+     <string name="unlock_scramble_pin_layout_title">Scramble layout</string>
+     <string name="unlock_scramble_pin_layout_summary">Scramble PIN layout when unlocking device</string>
++    <string name="fingerprint_wake_unlock_title">Touch fingerprint to unlock</string>
++    <string name="fingerprint_wake_unlock_touch">Listens for events while the screen is off</string>
++    <string name="fingerprint_wake_unlock_press">Only listens for events once the screen is on</string>
+     <string name="volume_link_notification_title">Link ring &amp; notification volumes</string>
+     <string name="directly_show_lock">Direct unlock</string>
+     <string name="directly_show_lock_summary">Skip the swipe to unlock screen and immediately begin key entry</string>
+diff --git a/res/values-en-rIN/cm_strings.xml b/res/values-en-rIN/cm_strings.xml
+index d5d0c8ed00..7209d4d494 100644
+--- a/res/values-en-rIN/cm_strings.xml
++++ b/res/values-en-rIN/cm_strings.xml
+@@ -60,6 +60,9 @@
+     <string name="app_notification_sound_timeout_value_30_minutes">30 minutes</string>
+     <string name="unlock_scramble_pin_layout_title">Scramble layout</string>
+     <string name="unlock_scramble_pin_layout_summary">Scramble PIN layout when unlocking device</string>
++    <string name="fingerprint_wake_unlock_title">Touch fingerprint to unlock</string>
++    <string name="fingerprint_wake_unlock_touch">Listens for events while the screen is off</string>
++    <string name="fingerprint_wake_unlock_press">Only listens for events once the screen is on</string>
+     <string name="volume_link_notification_title">Link ring &amp; notification volumes</string>
+     <string name="directly_show_lock">Direct unlock</string>
+     <string name="directly_show_lock_summary">Skip the swipe to unlock screen and immediately begin key entry</string>
+diff --git a/res/values-fr/cm_strings.xml b/res/values-fr/cm_strings.xml
+index 097f329199..0cd5fedcbc 100644
+--- a/res/values-fr/cm_strings.xml
++++ b/res/values-fr/cm_strings.xml
+@@ -61,6 +61,9 @@ Vous êtes maintenant à <xliff:g id="step_count">%1$d</xliff:g> étapes de l\'a
+     <string name="app_notification_sound_timeout_value_30_minutes">30 minutes</string>
+     <string name="unlock_scramble_pin_layout_title">Disposition aléatoire</string>
+     <string name="unlock_scramble_pin_layout_summary">Disposer aléatoirement les touches lors du déverrouillage</string>
++    <string name="fingerprint_wake_unlock_title">Toucher le lecteur d\'empreinte digitale pour déverrouiller</string>
++    <string name="fingerprint_wake_unlock_touch">Écoute les événements lorsque l\'écran est éteint</string>
++    <string name="fingerprint_wake_unlock_press">N\'écoute les événements que lorsque l\'écran est allumé</string>
+     <string name="volume_link_notification_title">Lier les volumes de la sonnerie &amp; des notifications</string>
+     <string name="directly_show_lock">Déverrouillage direct</string>
+     <string name="directly_show_lock_summary">Passer l\'étape du glisser pour déverrouiller l\'écran et saisir directement le code</string>
+diff --git a/res/values-hu/cm_strings.xml b/res/values-hu/cm_strings.xml
+index 69e09e20f4..2be7b83541 100644
+--- a/res/values-hu/cm_strings.xml
++++ b/res/values-hu/cm_strings.xml
+@@ -60,6 +60,9 @@
+     <string name="app_notification_sound_timeout_value_30_minutes">30 perc</string>
+     <string name="unlock_scramble_pin_layout_title">Szoros elrendezés</string>
+     <string name="unlock_scramble_pin_layout_summary">PIN szoros elrendezése az eszköz feloldásakor</string>
++    <string name="fingerprint_wake_unlock_title">Feloldás ujjlenyomattal</string>
++    <string name="fingerprint_wake_unlock_touch">Eseményfigyelés kikapcsolt képernyőn</string>
++    <string name="fingerprint_wake_unlock_press">Eseményfigyelés csak bekapcsolt képernyőn</string>
+     <string name="volume_link_notification_title">Értesítési és csengőhangok összekapcsolása</string>
+     <string name="directly_show_lock">Közvetlen feloldás</string>
+     <string name="directly_show_lock_summary">Kihagyja a csúsztatásos feloldóképernyőt és azonnal a kódos belépéssel kezdi</string>
+diff --git a/res/values-in/cm_strings.xml b/res/values-in/cm_strings.xml
+index 7b77212203..cb8bc4b9bb 100644
+--- a/res/values-in/cm_strings.xml
++++ b/res/values-in/cm_strings.xml
+@@ -55,6 +55,7 @@
+     <string name="app_notification_sound_timeout_value_30_minutes">30 menit</string>
+     <string name="unlock_scramble_pin_layout_title">Tata letak acak</string>
+     <string name="unlock_scramble_pin_layout_summary">Acak tata letak PIN saat membuka perangkat</string>
++    <string name="fingerprint_wake_unlock_title">Sentuh sensor sidik jari untuk membuka kunci</string>
+     <string name="volume_link_notification_title">Hubungkan volume dering &amp; pemberitahuan</string>
+     <string name="directly_show_lock">Buka Langsung</string>
+     <string name="directly_show_lock_summary">Lewati usapan untuk membuka kunci layar dan segera mulai masukkan kunci</string>
+diff --git a/res/values-is/cm_strings.xml b/res/values-is/cm_strings.xml
+index 9eee66cbc6..ce2cfd1673 100644
+--- a/res/values-is/cm_strings.xml
++++ b/res/values-is/cm_strings.xml
+@@ -23,4 +23,7 @@
+     <string name="adb_over_network_warning">AÐVÖRUN: Þegar valið er ADB í gegnum netkerfi, er síminn þinn óvarinn fyrir innrásum á öllum tengdum netkerfum!\n\nNotaðu þennan eiginleika eingöngu þegar þú ert tengdur á netkerfum sem þú treystir.\n\nErtu alveg viss um að þú viljir virkja þennan eiginleika?</string>
+     <string name="status_bar_double_tap_to_sleep_summary">Tvíbankaðu á stöðustikuna eða læsiskjáinn til að slökkva á skjánum</string>
+     <string name="update_recovery_title">Uppfæra endurheimtingu</string>
++    <string name="fingerprint_wake_unlock_title">Ýttu á fingrafaraskanna til að taka úr lás</string>
++    <string name="fingerprint_wake_unlock_touch">Vaktar atburði á meðan slökkt er á skjánum</string>
++    <string name="fingerprint_wake_unlock_press">Vaktar atburði einungis á meðan kveikt er á skjánum</string>
+ </resources>
+diff --git a/res/values-it/cm_strings.xml b/res/values-it/cm_strings.xml
+index c5fb4bca67..4cb8dd062f 100644
+--- a/res/values-it/cm_strings.xml
++++ b/res/values-it/cm_strings.xml
+@@ -60,6 +60,9 @@
+     <string name="app_notification_sound_timeout_value_30_minutes">30 minuti</string>
+     <string name="unlock_scramble_pin_layout_title">Mescola disposizione</string>
+     <string name="unlock_scramble_pin_layout_summary">Mescola la disposizione del tastierino PIN per lo sblocco del dispositivo</string>
++    <string name="fingerprint_wake_unlock_title">Tocca l\'impronta digitale per sbloccare il dispositivo</string>
++    <string name="fingerprint_wake_unlock_touch">Rileva eventi mentre lo schermo è spento</string>
++    <string name="fingerprint_wake_unlock_press">Rileva eventi solo quando lo schermo è acceso</string>
+     <string name="volume_link_notification_title">Collega volume suoneria e notifiche</string>
+     <string name="directly_show_lock">Sblocco diretto</string>
+     <string name="directly_show_lock_summary">Salta lo scorrimento per sbloccare lo schermo e mostra immediatamente l\'immissione del codice</string>
+diff --git a/res/values-ja/cm_strings.xml b/res/values-ja/cm_strings.xml
+index 12e26191ba..49fc5dbdc1 100644
+--- a/res/values-ja/cm_strings.xml
++++ b/res/values-ja/cm_strings.xml
+@@ -59,6 +59,9 @@
+     <string name="app_notification_sound_timeout_value_30_minutes">30分</string>
+     <string name="unlock_scramble_pin_layout_title">スクランブルレイアウト</string>
+     <string name="unlock_scramble_pin_layout_summary">端末のロック解除時にPINレイアウトをランダムにする</string>
++    <string name="fingerprint_wake_unlock_title">指紋タッチでロック解除</string>
++    <string name="fingerprint_wake_unlock_touch">画面消灯中に外部操作を受け付ける</string>
++    <string name="fingerprint_wake_unlock_press">画面点灯時にのみ外部操作を受け付ける</string>
+     <string name="volume_link_notification_title">着信と通知の音量をリンク</string>
+     <string name="directly_show_lock">直接ロックを解除</string>
+     <string name="directly_show_lock_summary">ロック解除のスワイプをスキップしてすぐに PIN 入力画面を表示</string>
+diff --git a/res/values-ka/cm_strings.xml b/res/values-ka/cm_strings.xml
+index 4896152cad..b381f53ce3 100644
+--- a/res/values-ka/cm_strings.xml
++++ b/res/values-ka/cm_strings.xml
+@@ -30,4 +30,7 @@
+     <string name="update_recovery_off_warning">ᲧᲣᲠᲐᲓᲦᲔᲑᲐ: ამ შესაძლებლობის გამორთვის შედეგად, თქვენ მიერ დაყენებული აღმდგენი გარსი არ განახლდება სისტემის განახლებისას.\n\nსისტემის მომდევნო განახლებები, შეიძლება ვეღარ ჩაიდგას ვადაგასული ან ხელით დაყენებული აღმდგენი გარსებით.\n\nნამდვილად გსურთ, ამ შესაძლებლობის გამორთვა?</string>
+     <string name="fast_charging_title">სწრაფი დამუხტვა</string>
+     <string name="fast_charging_summary">გამორთეთ გამოყოფილი სითბოს შესამცირებლად მოწყობილობის დამუხტვისას ან ბატარეის სიცოცხლის გასახანგრძლივებლად.</string>
++    <string name="fingerprint_wake_unlock_title">თითის ანაბეჭდით გახსნა</string>
++    <string name="fingerprint_wake_unlock_touch">ელოდება მოქმედებას, როცა ეკრანი ჩამქრალია</string>
++    <string name="fingerprint_wake_unlock_press">ელოდება მოქმედებას მხოლოდ ანთებული ეკრანის დროს</string>
+ </resources>
+diff --git a/res/values-ko/cm_strings.xml b/res/values-ko/cm_strings.xml
+index c75f131035..fe2d60dfa3 100644
+--- a/res/values-ko/cm_strings.xml
++++ b/res/values-ko/cm_strings.xml
+@@ -59,6 +59,9 @@
+     <string name="app_notification_sound_timeout_value_30_minutes">30분</string>
+     <string name="unlock_scramble_pin_layout_title">레이아웃 섞기</string>
+     <string name="unlock_scramble_pin_layout_summary">장치를 잠금 해제할 때 PIN 레이아웃 섞기</string>
++    <string name="fingerprint_wake_unlock_title">지문 인식으로 잠금 해제</string>
++    <string name="fingerprint_wake_unlock_touch">화면이 꺼져 있을 때에도 지문 인식 사용</string>
++    <string name="fingerprint_wake_unlock_press">화면이 켜져 있을 때만 지문 인식 사용</string>
+     <string name="volume_link_notification_title">벨소리 볼륨과 알림 볼륨 연결</string>
+     <string name="directly_show_lock">즉시 잠금 해제</string>
+     <string name="directly_show_lock_summary">스와이프하여 잠금 해제 화면을 건너뛰고 PIN 입력 화면으로 바로 진입</string>
+diff --git a/res/values-nl/cm_strings.xml b/res/values-nl/cm_strings.xml
+index 024465dad0..44185f4348 100644
+--- a/res/values-nl/cm_strings.xml
++++ b/res/values-nl/cm_strings.xml
+@@ -60,6 +60,9 @@
+     <string name="app_notification_sound_timeout_value_30_minutes">30 minuten</string>
+     <string name="unlock_scramble_pin_layout_title">Lay-out husselen</string>
+     <string name="unlock_scramble_pin_layout_summary">PIN-lay-out door elkaar husselen bij apparaat ontgrendelen</string>
++    <string name="fingerprint_wake_unlock_title">Gebruik vingerafdruk om te ontgrendelen</string>
++    <string name="fingerprint_wake_unlock_touch">Luisters voor gebeurtenissen wanneer het scherm uit is</string>
++    <string name="fingerprint_wake_unlock_press">Luistert alleen naar gebeurtenissen zodra het scherm aan is</string>
+     <string name="volume_link_notification_title">Volume beltoon en meldingen koppelen</string>
+     <string name="directly_show_lock">Directe ontgrendelen</string>
+     <string name="directly_show_lock_summary">Sla het vegen op de schermvergrendeling over en begin meteen met het invullen van de pincode</string>
+diff --git a/res/values-pl/cm_strings.xml b/res/values-pl/cm_strings.xml
+index 343465e0d4..45829d6846 100644
+--- a/res/values-pl/cm_strings.xml
++++ b/res/values-pl/cm_strings.xml
+@@ -62,6 +62,9 @@
+     <string name="app_notification_sound_timeout_value_30_minutes">30 minut</string>
+     <string name="unlock_scramble_pin_layout_title">Pomieszany układ</string>
+     <string name="unlock_scramble_pin_layout_summary">Pomieszany układ cyfr przy odblokowywaniu urządzenia kodem PIN</string>
++    <string name="fingerprint_wake_unlock_title">Dotknij czytnika linii papilarnych, aby odblokować</string>
++    <string name="fingerprint_wake_unlock_touch">Nasłuchuj wydarzeń, gdy ekran jest wyłączony</string>
++    <string name="fingerprint_wake_unlock_press">Nasłuchuj wydarzeń tylko wtedy, gdy ekran jest włączony</string>
+     <string name="volume_link_notification_title">Połącz głośność dzwonka i powiadomień</string>
+     <string name="directly_show_lock">Bezpośrednie odblokowanie</string>
+     <string name="directly_show_lock_summary">Pomiń przesunięcie po ekranie i natychmiast umożliw wprowadzanie kodu</string>
+diff --git a/res/values-pt-rPT/cm_strings.xml b/res/values-pt-rPT/cm_strings.xml
+index 22ba439fac..dfb2044517 100644
+--- a/res/values-pt-rPT/cm_strings.xml
++++ b/res/values-pt-rPT/cm_strings.xml
+@@ -60,6 +60,9 @@
+     <string name="app_notification_sound_timeout_value_30_minutes">30 minutos</string>
+     <string name="unlock_scramble_pin_layout_title">Disposição aleatória</string>
+     <string name="unlock_scramble_pin_layout_summary">Apresentar aleatoriamente a disposição do teclado numérico, quando desbloquear com PIN</string>
++    <string name="fingerprint_wake_unlock_title">Toque na impressão digital para desbloquear</string>
++    <string name="fingerprint_wake_unlock_touch">Detetar eventos enquanto o ecrã está desligado</string>
++    <string name="fingerprint_wake_unlock_press">Detetar eventos apenas com o ecrã ligado</string>
+     <string name="volume_link_notification_title">Associar volumes de toque e notificação</string>
+     <string name="directly_show_lock">Desbloqueio imediato</string>
+     <string name="directly_show_lock_summary">Ignorar o ecrã de deslizar para desbloquear e ir diretamente para a introdução do código de desbloqueio</string>
+diff --git a/res/values-ro/cm_strings.xml b/res/values-ro/cm_strings.xml
+index 1930c3b808..5e180954b9 100644
+--- a/res/values-ro/cm_strings.xml
++++ b/res/values-ro/cm_strings.xml
+@@ -61,6 +61,9 @@
+     <string name="app_notification_sound_timeout_value_30_minutes">30 de minute</string>
+     <string name="unlock_scramble_pin_layout_title">Amestecă așezarea în pagină</string>
+     <string name="unlock_scramble_pin_layout_summary">Amestecă așezarea în pagină a ecranului de PIN atunci când se deblochează aparatul</string>
++    <string name="fingerprint_wake_unlock_title">Atingeți amprenta pentru a debloca</string>
++    <string name="fingerprint_wake_unlock_touch">Ascultă evenimente în timp ce ecranul este oprit</string>
++    <string name="fingerprint_wake_unlock_press">Ascultă evenimente numai după ce ecranul este pornit</string>
+     <string name="volume_link_notification_title">Leagă volumele de apel &amp; notificare</string>
+     <string name="directly_show_lock">Deblocare directă</string>
+     <string name="directly_show_lock_summary">Treci peste glisarea pentru deblocare și începe imediat introducerea codului</string>
+diff --git a/res/values-ru/cm_strings.xml b/res/values-ru/cm_strings.xml
+index 62021e1f9b..97bc90717c 100644
+--- a/res/values-ru/cm_strings.xml
++++ b/res/values-ru/cm_strings.xml
+@@ -62,6 +62,9 @@
+     <string name="app_notification_sound_timeout_value_30_minutes">30 минут</string>
+     <string name="unlock_scramble_pin_layout_title">Перемешивать кнопки</string>
+     <string name="unlock_scramble_pin_layout_summary">Переставлять кнопки ввода PIN-кода в случайном порядке</string>
++    <string name="fingerprint_wake_unlock_title">Коснитесь сканера отпечатка пальца для разблокировки</string>
++    <string name="fingerprint_wake_unlock_touch">Прослушивание событий при выключенном экране</string>
++    <string name="fingerprint_wake_unlock_press">Прослушивать события только после включения экрана</string>
+     <string name="volume_link_notification_title">Связать громкость рингтона и уведомлений</string>
+     <string name="directly_show_lock">Прямая разблокировка</string>
+     <string name="directly_show_lock_summary">Пропускать свайп разблокировки экрана и сразу же переходить ко вводу ключа</string>
+diff --git a/res/values-sl/cm_strings.xml b/res/values-sl/cm_strings.xml
+index b4196dd689..750ac52375 100644
+--- a/res/values-sl/cm_strings.xml
++++ b/res/values-sl/cm_strings.xml
+@@ -62,6 +62,9 @@
+     <string name="app_notification_sound_timeout_value_30_minutes">30 min.</string>
+     <string name="unlock_scramble_pin_layout_title">Premešaj razporeditev</string>
+     <string name="unlock_scramble_pin_layout_summary">Premešaj razporeditev PIN ob odklepanju naprave</string>
++    <string name="fingerprint_wake_unlock_title">Dotik prstnega odtisa za odklep</string>
++    <string name="fingerprint_wake_unlock_touch">Posluša za dogodke, ko je zaslon izklopljen</string>
++    <string name="fingerprint_wake_unlock_press">Posluša za dogodke samo, ko je zaslon vklopljen</string>
+     <string name="volume_link_notification_title">Poveži glasnosti zvonjenja in obvestil</string>
+     <string name="directly_show_lock">Neposredni odklep</string>
+     <string name="directly_show_lock_summary">Preskoči poteg za odklepanje zaslona in takoj začni z vnosom ključa</string>
+diff --git a/res/values-sq/cm_strings.xml b/res/values-sq/cm_strings.xml
+index 84ba0c412a..03301923cf 100644
+--- a/res/values-sq/cm_strings.xml
++++ b/res/values-sq/cm_strings.xml
+@@ -107,4 +107,7 @@
+     <string name="backup_transport_title">Zgjidhni siguruesin e rezervës</string>
+     <string name="fast_charging_title">Karikim i shpejtë</string>
+     <string name="fast_charging_summary">Çaktivizoni për të zvogëluar nxehtësinë e prodhuar nga pajisja gjatë karikimit ose për të zgjatur jetëgjatësinë e baterisë</string>
++    <string name="fingerprint_wake_unlock_title">Prek gjurmën e gishtit për ta zhbllokuar</string>
++    <string name="fingerprint_wake_unlock_touch">Dëgjon ngjarje kur ekrani është i fikur</string>
++    <string name="fingerprint_wake_unlock_press">Dëgjon ngjarje vetëm pasi ekrani është i ndezur</string>
+ </resources>
+diff --git a/res/values-tr/cm_strings.xml b/res/values-tr/cm_strings.xml
+index 412205b964..1d97e86b46 100644
+--- a/res/values-tr/cm_strings.xml
++++ b/res/values-tr/cm_strings.xml
+@@ -60,6 +60,9 @@
+     <string name="app_notification_sound_timeout_value_30_minutes">30 dakika</string>
+     <string name="unlock_scramble_pin_layout_title">Düzeni karıştır</string>
+     <string name="unlock_scramble_pin_layout_summary">Cihaz kilidini açarken PIN düzenini karıştırır</string>
++    <string name="fingerprint_wake_unlock_title">Kilidi açmak için parmak izine dokunun</string>
++    <string name="fingerprint_wake_unlock_touch">Ekran kapalıylen etkinlikleri dinler</string>
++    <string name="fingerprint_wake_unlock_press">Etkinlikleri yalnızca ekran açıkken dinler</string>
+     <string name="volume_link_notification_title">Zil sesi ve bildirim ses düzeyini bağla</string>
+     <string name="directly_show_lock">Doğrudan kilit aç</string>
+     <string name="directly_show_lock_summary">Ekranın kilidini açmak için kaydırmayı atlayın ve hemen tuşlamaya başlayın</string>
+diff --git a/res/values-vi/cm_strings.xml b/res/values-vi/cm_strings.xml
+index 13134b72e7..818e5995a6 100644
+--- a/res/values-vi/cm_strings.xml
++++ b/res/values-vi/cm_strings.xml
+@@ -53,6 +53,9 @@
+     <string name="app_notification_sound_timeout_value_30_minutes">30 phút</string>
+     <string name="unlock_scramble_pin_layout_title">Bố trí linh tinh</string>
+     <string name="unlock_scramble_pin_layout_summary">Bố trí PIN linh tinh khi mở khóa thiết bị</string>
++    <string name="fingerprint_wake_unlock_title">Chạm vào cảm biến vân tay để mở khoá</string>
++    <string name="fingerprint_wake_unlock_touch">Mở khóa bằng cảm biến vân tay ngay cả khi màn hình tắt</string>
++    <string name="fingerprint_wake_unlock_press">Chỉ mở khóa bằng vân tay khi màn hình bật</string>
+     <string name="volume_link_notification_title">Liên kết âm lượng nhạc chuông &amp; thông báo</string>
+     <string name="directly_show_lock">Mở trực tiếp</string>
+     <string name="directly_show_lock_summary">Bỏ qua chế độ trượt để mở khóa và bắt đầu nhập mã Pin ngay lập tức</string>
+diff --git a/res/values-zh-rCN/cm_strings.xml b/res/values-zh-rCN/cm_strings.xml
+index 4ddcfa6d28..c1c7d2763b 100644
+--- a/res/values-zh-rCN/cm_strings.xml
++++ b/res/values-zh-rCN/cm_strings.xml
+@@ -59,6 +59,9 @@
+     <string name="app_notification_sound_timeout_value_30_minutes">30 分钟</string>
+     <string name="unlock_scramble_pin_layout_title">乱序布局</string>
+     <string name="unlock_scramble_pin_layout_summary">当解锁设备时使用乱序 PIN 布局</string>
++    <string name="fingerprint_wake_unlock_title">使用指纹解锁</string>
++    <string name="fingerprint_wake_unlock_touch">在屏幕关闭时监听事件</string>
++    <string name="fingerprint_wake_unlock_press">仅在屏幕开启后监听事件</string>
+     <string name="volume_link_notification_title">链接铃声和通知的音量</string>
+     <string name="directly_show_lock">直接解锁</string>
+     <string name="directly_show_lock_summary">跳过滑动解锁屏幕直接开始输入密码</string>
+diff --git a/res/values/cm_strings.xml b/res/values/cm_strings.xml
+index 12ad48e683..91f135a808 100644
+--- a/res/values/cm_strings.xml
++++ b/res/values/cm_strings.xml
+@@ -75,6 +75,11 @@
+     <!-- Lock screen visualizer -->
+     <string name="lockscreen_visualizer_title">Display music visualizer</string>
+ 
++    <!-- Fingerprint wake-and-unlock -->
++    <string name="fingerprint_wake_unlock_title">Touch fingerprint to unlock</string>
++    <string name="fingerprint_wake_unlock_touch">Listens for events while the screen is off</string>
++    <string name="fingerprint_wake_unlock_press">Only listens for events once the screen is on</string>
++
+     <!-- Lock screen pattern size -->
+     <string name="lock_pattern_size_3" translatable="false">3 \u00d7 3</string>
+     <string name="lock_pattern_size_4" translatable="false">4 \u00d7 4</string>
+diff --git a/res/xml/screen_lock_settings.xml b/res/xml/screen_lock_settings.xml
+index d4c2ef7b70..1dfafece2c 100644
+--- a/res/xml/screen_lock_settings.xml
++++ b/res/xml/screen_lock_settings.xml
+@@ -60,4 +60,11 @@
+         android:title="@string/unlock_scramble_pin_layout_title"
+         android:summary="@string/unlock_scramble_pin_layout_summary" />
+ 
++    <!-- Fingerprint wake-and-unlock toggle -->
++    <SwitchPreference
++        android:key="fingerprint_wake_unlock"
++        android:title="@string/fingerprint_wake_unlock_title"
++        android:summaryOn="@string/fingerprint_wake_unlock_touch"
++        android:summaryOff="@string/fingerprint_wake_unlock_press" />
++
+ </PreferenceScreen>
+diff --git a/src/com/android/settings/security/screenlock/FingerprintUnlockPreferenceController.java b/src/com/android/settings/security/screenlock/FingerprintUnlockPreferenceController.java
+new file mode 100644
+index 0000000000..7cc4c7ba85
+--- /dev/null
++++ b/src/com/android/settings/security/screenlock/FingerprintUnlockPreferenceController.java
+@@ -0,0 +1,68 @@
++/*
++ * Copyright (C) 2022 The LineageOS Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package com.android.settings.security.screenlock;
++
++import android.content.Context;
++import android.os.UserHandle;
++import androidx.preference.Preference;
++import androidx.preference.TwoStatePreference;
++
++import com.android.settings.core.PreferenceControllerMixin;
++import com.android.settingslib.core.AbstractPreferenceController;
++
++import lineageos.providers.LineageSettings;
++
++public class FingerprintUnlockPreferenceController extends AbstractPreferenceController
++        implements PreferenceControllerMixin, Preference.OnPreferenceChangeListener {
++
++    static final String KEY_FINGERPRINT_WAKE_UNLOCK = "fingerprint_wake_unlock";
++
++    public FingerprintUnlockPreferenceController(Context context) {
++        super(context);
++    }
++
++    private int getFingerprintSettings() {
++        return LineageSettings.System.getIntForUser(
++                mContext.getContentResolver(),
++                LineageSettings.System.FINGERPRINT_WAKE_UNLOCK, 1,
++                UserHandle.USER_CURRENT);
++    }
++
++    @Override
++    public boolean isAvailable() {
++        // Disable for devices config_fingerprintWakeAndUnlock set to false.
++        return getFingerprintSettings() != 2;
++    }
++
++    @Override
++    public String getPreferenceKey() {
++        return KEY_FINGERPRINT_WAKE_UNLOCK;
++    }
++
++    @Override
++    public void updateState(Preference preference) {
++        ((TwoStatePreference) preference).setChecked(getFingerprintSettings() == 1);
++    }
++
++    @Override
++    public boolean onPreferenceChange(Preference preference, Object newValue) {
++        LineageSettings.System.putIntForUser(mContext.getContentResolver(),
++                LineageSettings.System.FINGERPRINT_WAKE_UNLOCK,
++                (Boolean) newValue ? 1 : 0, UserHandle.USER_CURRENT);
++        return true;
++    }
++}
+diff --git a/src/com/android/settings/security/screenlock/ScreenLockSettings.java b/src/com/android/settings/security/screenlock/ScreenLockSettings.java
+index c32fb36d2c..33cb2f3ed4 100644
+--- a/src/com/android/settings/security/screenlock/ScreenLockSettings.java
++++ b/src/com/android/settings/security/screenlock/ScreenLockSettings.java
+@@ -89,6 +89,7 @@ public class ScreenLockSettings extends DashboardFragment
+                 context, MY_USER_ID, lockPatternUtils));
+         controllers.add(new PinScramblePreferenceController(
+                 context, MY_USER_ID, lockPatternUtils));
++        controllers.add(new FingerprintUnlockPreferenceController(context));
+         controllers.add(new OwnerInfoPreferenceController(context, parent, lifecycle));
+         return controllers;
+     }
