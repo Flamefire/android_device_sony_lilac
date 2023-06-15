@@ -1,0 +1,119 @@
+# PWD: frameworks/base
+
+diff --git a/core/res/res/values/config.xml b/core/res/res/values/config.xml
+index f4efcc7e4eec..c03b4a93f553 100644
+--- a/core/res/res/values/config.xml
++++ b/core/res/res/values/config.xml
+@@ -4209,6 +4209,9 @@
+         <!-- <item>0:2:15</item>  ID0:Fingerprint:Strong -->
+     </string-array>
+ 
++    <!-- Indicates whether device has a power button fingerprint sensor. -->
++    <bool name="config_is_powerbutton_fps" translatable="false" >false</bool>
++
+     <!-- Messages that should not be shown to the user during face auth enrollment. This should be
+          used to hide messages that may be too chatty or messages that the user can't do much about.
+          Entries are defined in android.hardware.biometrics.face@1.0 types.hal -->
+diff --git a/core/res/res/values/symbols.xml b/core/res/res/values/symbols.xml
+index 8401a1bc4271..cc0ff72f971f 100644
+--- a/core/res/res/values/symbols.xml
++++ b/core/res/res/values/symbols.xml
+@@ -2508,6 +2508,7 @@
+   <java-symbol type="string" name="face_error_security_update_required" />
+ 
+   <java-symbol type="array" name="config_biometric_sensors" />
++  <java-symbol type="bool" name="config_is_powerbutton_fps" />
+ 
+   <java-symbol type="array" name="config_face_acquire_enroll_ignorelist" />
+   <java-symbol type="array" name="config_face_acquire_vendor_enroll_ignorelist" />
+diff --git a/packages/SystemUI/src/com/android/keyguard/KeyguardUpdateMonitor.java b/packages/SystemUI/src/com/android/keyguard/KeyguardUpdateMonitor.java
+index 4f6447849741..98ec78675562 100644
+--- a/packages/SystemUI/src/com/android/keyguard/KeyguardUpdateMonitor.java
++++ b/packages/SystemUI/src/com/android/keyguard/KeyguardUpdateMonitor.java
+@@ -107,6 +107,7 @@ import com.android.systemui.util.RingerModeTracker;
+ import com.google.android.collect.Lists;
+ 
+ import lineageos.app.LineageContextConstants;
++import lineageos.providers.LineageSettings;
+ 
+ import java.io.FileDescriptor;
+ import java.io.PrintWriter;
+@@ -263,6 +264,7 @@ public class KeyguardUpdateMonitor implements TrustManager.TrustListener, Dumpab
+     private final ArrayList<WeakReference<KeyguardUpdateMonitorCallback>>
+             mCallbacks = Lists.newArrayList();
+     private ContentObserver mDeviceProvisionedObserver;
++    private ContentObserver mSettingsChangeObserver;
+ 
+     private boolean mSwitchingUser;
+ 
+@@ -287,7 +289,7 @@ public class KeyguardUpdateMonitor implements TrustManager.TrustListener, Dumpab
+     private int mActiveMobileDataSubscription = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
+     private final Executor mBackgroundExecutor;
+ 
+-    private final boolean mFingerprintWakeAndUnlock;
++    private boolean mFingerprintWakeAndUnlock;
+ 
+     /**
+      * Short delay before restarting fingerprint authentication after a successful try. This should
+@@ -1573,8 +1575,6 @@ public class KeyguardUpdateMonitor implements TrustManager.TrustListener, Dumpab
+         mSubscriptionManager = SubscriptionManager.from(context);
+         mDeviceProvisioned = isDeviceProvisionedInSettingsDb();
+         mStrongAuthTracker = new StrongAuthTracker(context, this::notifyStrongAuthStateChanged);
+-        mFingerprintWakeAndUnlock = mContext.getResources().getBoolean(
+-                com.android.systemui.R.bool.config_fingerprintWakeAndUnlock);
+         mBackgroundExecutor = backgroundExecutor;
+         mBroadcastDispatcher = broadcastDispatcher;
+         mRingerModeTracker = ringerModeTracker;
+@@ -1582,6 +1582,8 @@ public class KeyguardUpdateMonitor implements TrustManager.TrustListener, Dumpab
+         mLockPatternUtils = lockPatternUtils;
+         dumpManager.registerDumpable(getClass().getName(), this);
+ 
++        updateFingerprintSettings();
++
+         mHandler = new Handler(mainLooper) {
+             @Override
+             public void handleMessage(Message msg) {
+@@ -1825,6 +1827,32 @@ public class KeyguardUpdateMonitor implements TrustManager.TrustListener, Dumpab
+                 }
+             }
+         }
++
++        mSettingsChangeObserver = new ContentObserver(mHandler) {
++            @Override
++            public void onChange(boolean selfChange) {
++                updateFingerprintSettings();
++            }
++        };
++        mContext.getContentResolver().registerContentObserver(
++                LineageSettings.System.getUriFor(LineageSettings.System.FINGERPRINT_WAKE_UNLOCK),
++                false, mSettingsChangeObserver, UserHandle.USER_ALL);
++    }
++
++    private void updateFingerprintSettings() {
++        boolean defFingerprintSettings = mContext.getResources().getBoolean(
++                com.android.systemui.R.bool.config_fingerprintWakeAndUnlock);
++        if (defFingerprintSettings) {
++            mFingerprintWakeAndUnlock = LineageSettings.System.getIntForUser(
++                    mContext.getContentResolver(), LineageSettings.System.FINGERPRINT_WAKE_UNLOCK,
++                    1, UserHandle.USER_CURRENT) == 1;
++        } else {
++            mFingerprintWakeAndUnlock = defFingerprintSettings;
++            // if its false, the device meant to be used like that, disable toggle with 2.
++            LineageSettings.System.putIntForUser(mContext.getContentResolver(),
++                    LineageSettings.System.FINGERPRINT_WAKE_UNLOCK,
++                    2, UserHandle.USER_CURRENT);
++        }
+     }
+ 
+     private final UserSwitchObserver mUserSwitchObserver = new UserSwitchObserver() {
+@@ -2971,6 +2999,10 @@ public class KeyguardUpdateMonitor implements TrustManager.TrustListener, Dumpab
+             mContext.getContentResolver().unregisterContentObserver(mDeviceProvisionedObserver);
+         }
+ 
++        if (mSettingsChangeObserver != null) {
++            mContext.getContentResolver().unregisterContentObserver(mSettingsChangeObserver);
++        }
++
+         try {
+             ActivityManager.getService().unregisterUserSwitchObserver(mUserSwitchObserver);
+         } catch (RemoteException e) {
