@@ -1,0 +1,526 @@
+# PWD: tools/apksig
+diff --git a/src/main/java/com/android/apksig/ApkVerifier.java b/src/main/java/com/android/apksig/ApkVerifier.java
+index 3e1e7da..cfbc8d2 100644
+--- a/src/main/java/com/android/apksig/ApkVerifier.java
++++ b/src/main/java/com/android/apksig/ApkVerifier.java
+@@ -640,14 +640,23 @@ public class ApkVerifier {
+             }
+             for (V1SchemeVerifier.Result.SignerInfo signer : source.ignoredSigners) {
+                 mV1SchemeIgnoredSigners.add(new V1SchemeSignerInfo(signer));
+             }
+         }
+ 
+         private void mergeFrom(ApkSigningBlockUtils.Result source) {
++            if (source == null) {
++                return;
++            }
++            if (source.containsErrors()) {
++                mErrors.addAll(source.getErrors());
++            }
++            if (source.containsWarnings()) {
++                mWarnings.addAll(source.getWarnings());
++            }
+             switch (source.signatureSchemeVersion) {
+                 case ApkSigningBlockUtils.VERSION_APK_SIGNATURE_SCHEME_V2:
+                     mVerifiedUsingV2Scheme = source.verified;
+                     for (ApkSigningBlockUtils.Result.SignerInfo signer : source.signers) {
+                         mV2SchemeSigners.add(new V2SchemeSignerInfo(signer));
+                     }
+                     break;
+@@ -917,14 +926,24 @@ public class ApkVerifier {
+     public static enum Issue {
+ 
+         /**
+          * APK is not JAR-signed.
+          */
+         JAR_SIG_NO_SIGNATURES("No JAR signatures"),
+ 
++        /**
++         * APK signature scheme v1 has exceeded the maximum number of jar signers.
++         * <ul>
++         * <li>Parameter 1: maximum allowed signers ({@code Integer})</li>
++         * <li>Parameter 2: total number of signers ({@code Integer})</li>
++         * </ul>
++         */
++        JAR_SIG_MAX_SIGNATURES_EXCEEDED(
++                "APK Signature Scheme v1 only supports a maximum of %1$d signers, found %2$d"),
++
+         /**
+          * APK does not contain any entries covered by JAR signatures.
+          */
+         JAR_SIG_NO_SIGNED_ZIP_ENTRIES("No JAR entries covered by JAR signatures"),
+ 
+         /**
+          * APK contains multiple entries with the same name.
+@@ -1345,14 +1364,24 @@ public class ApkVerifier {
+          * <li>Parameter 2: APK signature scheme English name ({@code} String)</li>
+          * </ul>
+          */
+         V2_SIG_MISSING_APK_SIG_REFERENCED(
+                 "APK Signature Scheme v2 signature %1$s indicates the APK is signed using %2$s but "
+                         + "no such signature was found. Signature stripped?"),
+ 
++        /**
++         * APK signature scheme v2 has exceeded the maximum number of signers.
++         * <ul>
++         * <li>Parameter 1: maximum allowed signers ({@code Integer})</li>
++         * <li>Parameter 2: total number of signers ({@code Integer})</li>
++         * </ul>
++         */
++        V2_SIG_MAX_SIGNATURES_EXCEEDED(
++                "APK Signature Scheme V2 only supports a maximum of %1$d signers, found %2$d"),
++
+         /**
+          * APK Signature Scheme v2 signature contains no signers.
+          */
+         V2_SIG_NO_SIGNERS("No signers in APK Signature Scheme v2 signature"),
+ 
+         /**
+          * This APK Signature Scheme v2 signer contains a signature produced using an unknown
+diff --git a/src/main/java/com/android/apksig/Constants.java b/src/main/java/com/android/apksig/Constants.java
+new file mode 100644
+index 0000000..b0d1e76
+--- /dev/null
++++ b/src/main/java/com/android/apksig/Constants.java
+@@ -0,0 +1,30 @@
++/*
++ * Copyright (C) 2020 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package com.android.apksig;
++
++/**
++ * Exports internally defined constants to allow clients to reference these values without relying
++ * on internal code.
++ */
++public class Constants {
++    private Constants() {}
++
++    /**
++     * The maximum number of signers supported by the v1 and v2 APK Signature Schemes.
++     */
++    public static final int MAX_APK_SIGNERS = 10;
++}
+diff --git a/src/main/java/com/android/apksig/internal/apk/ApkSigningBlockUtils.java b/src/main/java/com/android/apksig/internal/apk/ApkSigningBlockUtils.java
+index cc69af3..3867b47 100644
+--- a/src/main/java/com/android/apksig/internal/apk/ApkSigningBlockUtils.java
++++ b/src/main/java/com/android/apksig/internal/apk/ApkSigningBlockUtils.java
+@@ -1236,14 +1236,28 @@ public class ApkSigningBlockUtils {
+             return false;
+         }
+ 
+         public void addError(ApkVerifier.Issue msg, Object... parameters) {
+             mErrors.add(new ApkVerifier.IssueWithParams(msg, parameters));
+         }
+ 
++        public boolean containsWarnings() {
++            if (!mWarnings.isEmpty()) {
++                return true;
++            }
++            if (!signers.isEmpty()) {
++                for (Result.SignerInfo signer : signers) {
++                    if (signer.containsWarnings()) {
++                        return true;
++                    }
++                }
++            }
++            return false;
++        }
++
+         public void addWarning(ApkVerifier.Issue msg, Object... parameters) {
+             mWarnings.add(new ApkVerifier.IssueWithParams(msg, parameters));
+         }
+ 
+         public List<ApkVerifier.IssueWithParams> getErrors() {
+             return mErrors;
+         }
+@@ -1276,14 +1290,18 @@ public class ApkSigningBlockUtils {
+                 mWarnings.add(new ApkVerifier.IssueWithParams(msg, parameters));
+             }
+ 
+             public boolean containsErrors() {
+                 return !mErrors.isEmpty();
+             }
+ 
++            public boolean containsWarnings() {
++                return !mWarnings.isEmpty();
++            }
++
+             public List<ApkVerifier.IssueWithParams> getErrors() {
+                 return mErrors;
+             }
+ 
+             public List<ApkVerifier.IssueWithParams> getWarnings() {
+                 return mWarnings;
+             }
+diff --git a/src/main/java/com/android/apksig/internal/apk/v1/V1SchemeSigner.java b/src/main/java/com/android/apksig/internal/apk/v1/V1SchemeSigner.java
+index f900211..6422af0 100644
+--- a/src/main/java/com/android/apksig/internal/apk/v1/V1SchemeSigner.java
++++ b/src/main/java/com/android/apksig/internal/apk/v1/V1SchemeSigner.java
+@@ -12,14 +12,16 @@
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  */
+ 
+ package com.android.apksig.internal.apk.v1;
+ 
++import static com.android.apksig.Constants.MAX_APK_SIGNERS;
++
+ import com.android.apksig.apk.ApkFormatException;
+ import com.android.apksig.internal.asn1.Asn1DerEncoder;
+ import com.android.apksig.internal.asn1.Asn1EncodingException;
+ import com.android.apksig.internal.asn1.Asn1OpaqueObject;
+ import com.android.apksig.internal.asn1.ber.BerEncoding;
+ import com.android.apksig.internal.jar.ManifestWriter;
+ import com.android.apksig.internal.jar.SignatureFileWriter;
+@@ -245,14 +247,19 @@ public abstract class V1SchemeSigner {
+             byte[] sourceManifestBytes,
+             String createdBy)
+                     throws NoSuchAlgorithmException, ApkFormatException, InvalidKeyException,
+                             CertificateException, SignatureException {
+         if (signerConfigs.isEmpty()) {
+             throw new IllegalArgumentException("At least one signer config must be provided");
+         }
++        if (signerConfigs.size() > MAX_APK_SIGNERS) {
++            throw new IllegalArgumentException(
++                    "APK Signature Scheme v1 only supports a maximum of " + MAX_APK_SIGNERS + ", "
++                            + signerConfigs.size() + " provided");
++        }
+         OutputManifestFile manifest =
+                 generateManifestFile(
+                         jarEntryDigestAlgorithm, jarEntryDigests, sourceManifestBytes);
+ 
+         return signManifest(
+                 signerConfigs, jarEntryDigestAlgorithm, apkSigningSchemeIds, createdBy, manifest);
+     }
+diff --git a/src/main/java/com/android/apksig/internal/apk/v1/V1SchemeVerifier.java b/src/main/java/com/android/apksig/internal/apk/v1/V1SchemeVerifier.java
+index 47d5b01..615215c 100644
+--- a/src/main/java/com/android/apksig/internal/apk/v1/V1SchemeVerifier.java
++++ b/src/main/java/com/android/apksig/internal/apk/v1/V1SchemeVerifier.java
+@@ -12,14 +12,16 @@
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  */
+ 
+ package com.android.apksig.internal.apk.v1;
+ 
++import static com.android.apksig.Constants.MAX_APK_SIGNERS;
++
+ import com.android.apksig.ApkVerifier.Issue;
+ import com.android.apksig.ApkVerifier.IssueWithParams;
+ import com.android.apksig.apk.ApkFormatException;
+ import com.android.apksig.apk.ApkUtils;
+ import com.android.apksig.internal.asn1.Asn1BerParser;
+ import com.android.apksig.internal.asn1.Asn1Class;
+ import com.android.apksig.internal.asn1.Asn1DecodingException;
+@@ -299,14 +301,19 @@ public abstract class V1SchemeVerifier {
+                 Signer signer = new Signer(signerName, sigBlockEntry, sigFileEntry, signerInfo);
+                 signers.add(signer);
+             }
+             if (signers.isEmpty()) {
+                 result.addError(Issue.JAR_SIG_NO_SIGNATURES);
+                 return;
+             }
++            if (signers.size() > MAX_APK_SIGNERS) {
++                result.addError(Issue.JAR_SIG_MAX_SIGNATURES_EXCEEDED, MAX_APK_SIGNERS,
++                        signers.size());
++                return;
++            }
+ 
+             // Verify each signer's signature block file .(RSA|DSA|EC) against the corresponding
+             // signature file .SF. Any error encountered for any signer terminates verification, to
+             // mimic Android's behavior.
+             for (Signer signer : signers) {
+                 signer.verifySigBlockAgainstSigFile(
+                         apk, cdStartOffset, minSdkVersion, maxSdkVersion);
+diff --git a/src/main/java/com/android/apksig/internal/apk/v2/V2SchemeSigner.java b/src/main/java/com/android/apksig/internal/apk/v2/V2SchemeSigner.java
+index d8e4723..03a0311 100644
+--- a/src/main/java/com/android/apksig/internal/apk/v2/V2SchemeSigner.java
++++ b/src/main/java/com/android/apksig/internal/apk/v2/V2SchemeSigner.java
+@@ -12,26 +12,28 @@
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  */
+ 
+ package com.android.apksig.internal.apk.v2;
+ 
++import static com.android.apksig.Constants.MAX_APK_SIGNERS;
+ import static com.android.apksig.internal.apk.ApkSigningBlockUtils.encodeAsSequenceOfLengthPrefixedElements;
+ import static com.android.apksig.internal.apk.ApkSigningBlockUtils.encodeAsSequenceOfLengthPrefixedPairsOfIntAndLengthPrefixedBytes;
+ import static com.android.apksig.internal.apk.ApkSigningBlockUtils.encodeCertificates;
+ import static com.android.apksig.internal.apk.ApkSigningBlockUtils.encodePublicKey;
+ 
+ import com.android.apksig.internal.apk.ApkSigningBlockUtils;
+ import com.android.apksig.internal.apk.ApkSigningBlockUtils.SignerConfig;
+ import com.android.apksig.internal.apk.ContentDigestAlgorithm;
+ import com.android.apksig.internal.apk.SignatureAlgorithm;
+ import com.android.apksig.internal.util.Pair;
+ import com.android.apksig.util.DataSource;
+ import com.android.apksig.util.RunnablesExecutor;
++
+ import java.io.IOException;
+ import java.nio.ByteBuffer;
+ import java.nio.ByteOrder;
+ import java.security.InvalidKeyException;
+ import java.security.NoSuchAlgorithmException;
+ import java.security.PublicKey;
+ import java.security.SignatureException;
+@@ -159,14 +161,20 @@ public abstract class V2SchemeSigner {
+             List<SignerConfig> signerConfigs,
+             Map<ContentDigestAlgorithm, byte[]> contentDigests,
+             boolean v3SigningEnabled)
+                     throws NoSuchAlgorithmException, InvalidKeyException, SignatureException {
+         // FORMAT:
+         // * length-prefixed sequence of length-prefixed signer blocks.
+ 
++        if (signerConfigs.size() > MAX_APK_SIGNERS) {
++            throw new IllegalArgumentException(
++                    "APK Signature Scheme v2 only supports a maximum of " + MAX_APK_SIGNERS + ", "
++                            + signerConfigs.size() + " provided");
++        }
++
+         List<byte[]> signerBlocks = new ArrayList<>(signerConfigs.size());
+         int signerNumber = 0;
+         for (SignerConfig signerConfig : signerConfigs) {
+             signerNumber++;
+             byte[] signerBlock;
+             try {
+                 signerBlock = generateSignerBlock(signerConfig, contentDigests, v3SigningEnabled);
+diff --git a/src/main/java/com/android/apksig/internal/apk/v2/V2SchemeVerifier.java b/src/main/java/com/android/apksig/internal/apk/v2/V2SchemeVerifier.java
+index 51c40bd..651ed5d 100644
+--- a/src/main/java/com/android/apksig/internal/apk/v2/V2SchemeVerifier.java
++++ b/src/main/java/com/android/apksig/internal/apk/v2/V2SchemeVerifier.java
+@@ -12,14 +12,16 @@
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  */
+ 
+ package com.android.apksig.internal.apk.v2;
+ 
++import static com.android.apksig.Constants.MAX_APK_SIGNERS;
++
+ import com.android.apksig.ApkVerifier.Issue;
+ import com.android.apksig.apk.ApkFormatException;
+ import com.android.apksig.apk.ApkUtils;
+ import com.android.apksig.internal.apk.ApkSigningBlockUtils;
+ import com.android.apksig.internal.apk.ContentDigestAlgorithm;
+ import com.android.apksig.internal.apk.SignatureAlgorithm;
+ import com.android.apksig.internal.apk.SignatureInfo;
+@@ -221,14 +223,17 @@ public abstract class V2SchemeVerifier {
+                         minSdkVersion,
+                         maxSdkVersion);
+             } catch (ApkFormatException | BufferUnderflowException e) {
+                 signerInfo.addError(Issue.V2_SIG_MALFORMED_SIGNER);
+                 return;
+             }
+         }
++        if (signerCount > MAX_APK_SIGNERS) {
++            result.addError(Issue.V2_SIG_MAX_SIGNATURES_EXCEEDED, MAX_APK_SIGNERS, signerCount);
++        }
+     }
+ 
+     /**
+      * Parses the provided signer block and populates the {@code result}.
+      *
+      * <p>This verifies signatures over {@code signed-data} contained in this block but does not
+      * verify the integrity of the rest of the APK. To facilitate APK integrity verification, this
+diff --git a/src/test/java/com/android/apksig/ApkSignerTest.java b/src/test/java/com/android/apksig/ApkSignerTest.java
+index 1434017..729d96f 100644
+--- a/src/test/java/com/android/apksig/ApkSignerTest.java
++++ b/src/test/java/com/android/apksig/ApkSignerTest.java
+@@ -631,14 +631,114 @@ public class ApkSignerTest {
+         try {
+             sign("v1-only-with-nul-in-entry-name.apk",
+                     new ApkSigner.Builder(signers).setV1SigningEnabled(true));
+             fail();
+         } catch (ApkFormatException expected) {}
+     }
+ 
++    @Test
++    public void testV1SigningAllowedWithMaximumNumberOfSigners() throws Exception {
++        // The APK Signature Scheme v1 supports a maximum of 10 signers; this test verifies a
++        // signing config with the maximum number of signers is allowed to sign the APK.
++        List<ApkSigner.SignerConfig> signers = List.of(
++                getDefaultSignerConfigFromResources("dsa-1024"),
++                getDefaultSignerConfigFromResources("dsa-2048"),
++                getDefaultSignerConfigFromResources("dsa-3072"),
++                getDefaultSignerConfigFromResources("rsa-1024"),
++                getDefaultSignerConfigFromResources("rsa-2048"),
++                getDefaultSignerConfigFromResources("rsa-3072"),
++                getDefaultSignerConfigFromResources("rsa-4096"),
++                getDefaultSignerConfigFromResources("rsa-8192"),
++                getDefaultSignerConfigFromResources("ec-p256"),
++                getDefaultSignerConfigFromResources("ec-p384")
++        );
++        sign("original.apk",
++                new ApkSigner.Builder(signers)
++                        .setV1SigningEnabled(true)
++                        .setV2SigningEnabled(false)
++                        .setV3SigningEnabled(false)
++                        .setV4SigningEnabled(false));
++    }
++
++    @Test
++    public void testV1SigningRejectedWithMoreThanMaximumNumberOfSigners() throws Exception {
++        // This test ensures a v1 signing config with more than the maximum supported number
++        // of signers will fail to sign.
++        List<ApkSigner.SignerConfig> signers = List.of(
++                getDefaultSignerConfigFromResources("dsa-1024"),
++                getDefaultSignerConfigFromResources("dsa-2048"),
++                getDefaultSignerConfigFromResources("dsa-3072"),
++                getDefaultSignerConfigFromResources("rsa-1024"),
++                getDefaultSignerConfigFromResources("rsa-2048"),
++                getDefaultSignerConfigFromResources("rsa-3072"),
++                getDefaultSignerConfigFromResources("rsa-4096"),
++                getDefaultSignerConfigFromResources("rsa-8192"),
++                getDefaultSignerConfigFromResources("ec-p256"),
++                getDefaultSignerConfigFromResources("ec-p384"),
++                getDefaultSignerConfigFromResources("ec-p521")
++        );
++        assertThrows(IllegalArgumentException.class, () ->
++            sign("original.apk",
++                    new ApkSigner.Builder(signers)
++                            .setV1SigningEnabled(true)
++                            .setV2SigningEnabled(false)
++                            .setV3SigningEnabled(false)
++                            .setV4SigningEnabled(false)));
++    }
++
++    @Test
++    public void testV2SigningAllowedWithMaximumNumberOfSigners() throws Exception {
++        // The APK Signature Scheme v2 supports a maximum of 10 signers; this test verifies a
++        // signing config with the maximum number of signers is allowed to sign the APK.
++        List<ApkSigner.SignerConfig> signers = List.of(
++                getDefaultSignerConfigFromResources("dsa-1024"),
++                getDefaultSignerConfigFromResources("dsa-2048"),
++                getDefaultSignerConfigFromResources("dsa-3072"),
++                getDefaultSignerConfigFromResources("rsa-1024"),
++                getDefaultSignerConfigFromResources("rsa-2048"),
++                getDefaultSignerConfigFromResources("rsa-3072"),
++                getDefaultSignerConfigFromResources("rsa-4096"),
++                getDefaultSignerConfigFromResources("rsa-8192"),
++                getDefaultSignerConfigFromResources("ec-p256"),
++                getDefaultSignerConfigFromResources("ec-p384")
++        );
++        sign("original.apk",
++                new ApkSigner.Builder(signers)
++                        .setV1SigningEnabled(false)
++                        .setV2SigningEnabled(true)
++                        .setV3SigningEnabled(false)
++                        .setV4SigningEnabled(false));
++    }
++
++    @Test
++    public void testV2SigningRejectedWithMoreThanMaximumNumberOfSigners() throws Exception {
++        // This test ensures a v2 signing config with more than the maximum supported number
++        // of signers will fail to sign.
++        List<ApkSigner.SignerConfig> signers = List.of(
++                getDefaultSignerConfigFromResources("dsa-1024"),
++                getDefaultSignerConfigFromResources("dsa-2048"),
++                getDefaultSignerConfigFromResources("dsa-3072"),
++                getDefaultSignerConfigFromResources("rsa-1024"),
++                getDefaultSignerConfigFromResources("rsa-2048"),
++                getDefaultSignerConfigFromResources("rsa-3072"),
++                getDefaultSignerConfigFromResources("rsa-4096"),
++                getDefaultSignerConfigFromResources("rsa-8192"),
++                getDefaultSignerConfigFromResources("ec-p256"),
++                getDefaultSignerConfigFromResources("ec-p384"),
++                getDefaultSignerConfigFromResources("ec-p521")
++        );
++        assertThrows(IllegalArgumentException.class, () ->
++                sign("original.apk",
++                        new ApkSigner.Builder(signers)
++                                .setV1SigningEnabled(false)
++                                .setV2SigningEnabled(true)
++                                .setV3SigningEnabled(false)
++                                .setV4SigningEnabled(false)));
++    }
++
+     @Test
+     public void testWeirdZipCompressionMethod() throws Exception {
+         // Any ZIP compression method other than STORED is treated as DEFLATED by Android.
+         // This APK declares compression method 21 (neither STORED nor DEFLATED) for CERT.RSA entry,
+         // but the entry is actually Deflate-compressed.
+         List<ApkSigner.SignerConfig> signers = Collections.singletonList(
+                 getDefaultSignerConfigFromResources(FIRST_RSA_2048_SIGNER_RESOURCE_NAME));
+diff --git a/src/test/java/com/android/apksig/ApkVerifierTest.java b/src/test/java/com/android/apksig/ApkVerifierTest.java
+index 351d0a8..2392b88 100644
+--- a/src/test/java/com/android/apksig/ApkVerifierTest.java
++++ b/src/test/java/com/android/apksig/ApkVerifierTest.java
+@@ -235,14 +235,28 @@ public class ApkVerifierTest {
+         // APK signed with v1 scheme only, one signer
+         assertVerifiedForEach(
+                 "v1-only-with-dsa-sha256-1.2.840.10040.4.1-%s.apk", DSA_KEY_NAMES);
+         assertVerifiedForEach(
+                 "v1-only-with-dsa-sha256-2.16.840.1.101.3.4.3.2-%s.apk", DSA_KEY_NAMES);
+     }
+ 
++    @Test
++    public void testV1MaxSupportedSignersAccepted() throws Exception {
++        // The APK Signature Scheme V1 supports a maximum of 10 signers; this test ensures an
++        // APK signed with that many signers successfully verifies.
++        assertVerified(verify("v1-only-10-signers.apk"));
++    }
++
++    @Test
++    public void testV1MoreThanMaxSupportedSignersRejected() throws Exception {
++        // This test ensure an APK signed with more than the supported number of signers fails
++        // to verify.
++        assertVerificationFailure("v1-only-11-signers.apk", Issue.JAR_SIG_MAX_SIGNATURES_EXCEEDED);
++    }
++
+     @Test
+     public void testV2StrippedRejected() throws Exception {
+         // APK signed with v1 and v2 schemes, but v2 signature was stripped from the file (by using
+         // zipalign).
+         // This should fail because the v1 signature indicates that the APK was supposed to be
+         // signed with v2 scheme as well, making the platform's anti-stripping protections reject
+         // the APK.
+@@ -626,14 +640,31 @@ public class ApkVerifierTest {
+         // APK v2-signed by two different signers. However, there are no supported signatures for
+         // the second signer.
+         assertVerificationFailure(
+                 "v2-only-two-signers-second-signer-no-supported-sig.apk",
+                 Issue.V2_SIG_NO_SUPPORTED_SIGNATURES);
+     }
+ 
++    @Test
++    public void testV2MaxSupportedSignersAccepted() throws Exception {
++        // The APK Signature Scheme v2 supports a maximum of 10 signers; this test ensures an
++        // APK signed with that many signers successfully verifies.
++        assertVerified(verifyForMinSdkVersion("v2-only-10-signers.apk", AndroidSdkVersion.N));
++    }
++
++    @Test
++    public void testV2MoreThanMaxSupportedSignersRejected() throws Exception {
++        // This test ensure an APK signed with more than the supported number of signers fails
++        // to verify.
++        assertVerificationFailure(
++                verifyForMinSdkVersion("v2-only-11-signers.apk", AndroidSdkVersion.N),
++                Issue.V2_SIG_MAX_SIGNATURES_EXCEEDED);
++    }
++
++
+     @Test
+     public void testCorrectCertUsedFromPkcs7SignedDataCertsSet() throws Exception {
+         // Obtained by prepending the rsa-1024 certificate to the PKCS#7 SignedData certificates set
+         // of v1-only-with-rsa-pkcs1-sha1-1.2.840.113549.1.1.1-2048.apk META-INF/CERT.RSA. The certs
+         // (in the order of appearance in the file) are thus: rsa-1024, rsa-2048. The package's
+         // signing cert is rsa-2048.
+         ApkVerifier.Result result = verify("v1-only-pkcs7-cert-bag-first-cert-not-used.apk");

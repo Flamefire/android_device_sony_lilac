@@ -1,0 +1,28 @@
+From c82929c587f43beb64a687a9c3fd572311a261bd Mon Sep 17 00:00:00 2001
+From: "Kevin F. Haggerty" <haggertk@lineageos.org>
+Date: Fri, 7 Jul 2023 06:45:19 -0600
+Subject: [PATCH] Track our own fork(s) for 2023-07 ASB patching
+
+* tools/apksig
+
+Change-Id: Icec158450e745aa6b9be3b6019d773266145d85f
+---
+ default.xml | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/default.xml b/default.xml
+index ef1cc35..aa7e930 100644
+--- a/default.xml
++++ b/default.xml
+@@ -666,7 +666,7 @@
+   <project path="tools/acloud" name="platform/tools/acloud" groups="tools,vts,projectarch,pdk,tradefed" remote="aosp" />
+   <project path="tools/adt/idea" name="platform/tools/adt/idea" groups="notdefault,tools" remote="aosp" />
+   <project path="tools/apifinder" name="platform/tools/apifinder" groups="pdk,tools" remote="aosp" />
+-  <project path="tools/apksig" name="platform/tools/apksig" groups="pdk,tradefed" remote="aosp" />
++  <project path="tools/apksig" name="LineageOS/android_tools_apksig" groups="pdk,tradefed" />
+   <project path="tools/apkzlib" name="platform/tools/apkzlib" groups="pdk,tradefed" remote="aosp" />
+   <project path="tools/asuite" name="platform/tools/asuite" groups="pdk" remote="aosp" />
+   <project path="tools/base" name="platform/tools/base" groups="notdefault,tools" remote="aosp" />
+-- 
+2.40.1
+
