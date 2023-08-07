@@ -172,7 +172,8 @@ vendor/etc/default_volume_tables.xml
 vendor/etc/graphite_ipc_platform_info.xml
 vendor/etc/listen_platform_info.xml
 vendor/etc/mixer_paths.xml
-vendor/etc/mixer_paths_tasha.xml
+# From G8441_Customized DE_47.2.A.11.228-R3C, increase headset volume
+vendor/etc/mixer_paths_tasha.xml|bb660d3ced04bb223d95408c5fb602f0d39b8323
 vendor/etc/sound_trigger_mixer_paths.xml
 vendor/etc/sound_trigger_platform_info.xml
 vendor/etc/usb_audio_policy_configuration.xml
