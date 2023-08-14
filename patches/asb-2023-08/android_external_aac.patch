@@ -1,0 +1,35 @@
+# PWD: external/aac
+diff --git a/libSBRdec/src/lpp_tran.h b/libSBRdec/src/lpp_tran.h
+index 51b4395..21c4101 100644
+--- a/libSBRdec/src/lpp_tran.h
++++ b/libSBRdec/src/lpp_tran.h
+@@ -1,11 +1,11 @@
+ /* -----------------------------------------------------------------------------
+ Software License for The Fraunhofer FDK AAC Codec Library for Android
+ 
+-© Copyright  1995 - 2018 Fraunhofer-Gesellschaft zur Förderung der angewandten
++© Copyright  1995 - 2023 Fraunhofer-Gesellschaft zur Förderung der angewandten
+ Forschung e.V. All rights reserved.
+ 
+  1.    INTRODUCTION
+ The Fraunhofer FDK AAC Codec Library for Android ("FDK AAC Codec") is software
+ that implements the MPEG Advanced Audio Coding ("AAC") encoding and decoding
+ scheme for digital audio. This FDK AAC Codec software is intended to be used on
+ a wide variety of Android devices.
+@@ -203,15 +203,15 @@ typedef struct {
+   UCHAR noOfPatches;     /*!< number of patches */
+   UCHAR lbStartPatching; /*!< first band of lowbands that will be patched */
+   UCHAR lbStopPatching;  /*!< first band that won't be patched anymore*/
+   UCHAR bwBorders[MAX_NUM_NOISE_VALUES]; /*!< spectral bands with different
+                                             inverse filtering levels */
+ 
+   PATCH_PARAM
+-  patchParam[MAX_NUM_PATCHES]; /*!< new parameter set for patching */
++  patchParam[MAX_NUM_PATCHES + 1]; /*!< new parameter set for patching */
+   WHITENING_FACTORS
+   whFactors;     /*!< the pole moving factors for certain
+                     whitening levels as indicated     in the bitstream
+                     depending on the crossover frequency */
+   UCHAR overlap; /*!< Overlap size */
+ } TRANSPOSER_SETTINGS;
+ 
