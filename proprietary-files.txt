@@ -24,6 +24,47 @@ lib/vendor.somc.hardware.camera.cacao@3.1.so
 lib/vendor.somc.hardware.camera.device@1.0.so
 lib/vendor.somc.hardware.camera.provider@1.0.so
 
+# CAMERA backport - from https://gitlab.com/xperiance/camera/ 0.3.0
+etc/permissions/com.sonymobile.securedatamanager.xml|d914e18ba055641fc5368a0f25969b59e89bf829
+etc/permissions/com.sonymobile.vibrationeffect.xml
+etc/permissions/platform-com.sonyericsson.android.camera.xml|82e4d0018ae3ea16013aba74d09c078605f2cb37
+etc/permissions/privapp-permissions-com.sonyericsson.android.camera.xml|967cd18cf3ce9993f08788dc90f7e3b7eb87c691
+etc/permissions/privapp-permissions-com.sonymobile.addoncamera.portraitselfie.xml|101a22d693c46c0ce36a36fa400473f7b5085cb6
+etc/sysconfig/somc_internal_whitelist.xml|7ac096da9452059422599bf80027d298486879ab
+framework/com.sonymobile.vibrationeffect_impl.jar
+framework/com.sonymobile.securedatamanager_impl.jar|11ab844e5885ae56882c74f07b7705d39b4b35ab
+priv-app/ArtFilterCamera-xxhdpi-release/ArtFilterCamera-xxhdpi-release.apk|f826d59c178886defeef4355154afa4890efb414
+priv-app/CameraPanorama-release/CameraPanorama-release.apk|a6163e8bed91853e81dea01ff16e9c5d7287a4c9
+priv-app/com.sonymobile.addoncamera.portraitselfie/com.sonymobile.addoncamera.portraitselfie.apk|e82e620362f5f539cb35ec2de48e21869c3bc95a
+priv-app/com.sonymobile.addoncamera.portraitselfie/lib/arm64/libarcsoft_beautyshot.so|537b170dcdd2f7f2da300707a86e517a944311d8
+priv-app/com.sonymobile.addoncamera.portraitselfie/lib/arm64/libarcsoft_picselfie_algorithm.so|4640a138ff7cb08b8707b2e3a9937d669fa34c92
+priv-app/com.sonymobile.addoncamera.portraitselfie/lib/arm64/libbeauty_picselfie.so|9311df02d8e2fbb45b9edb9d7179b0fdbc542324
+priv-app/com.sonymobile.addoncamera.portraitselfie/lib/arm64/libmpbase.so|3939f201d49bb57bd9d7778d4ed86aa797ad6d5e
+priv-app/com.sonymobile.addoncamera.portraitselfie/lib/arm64/libpp.so|adfc8e02bb1593a2667ce4c6553f7579d62f2626
+priv-app/com.sonymobile.addoncamera.portraitselfie/lib/arm/libarcsoft_beautyshot.so|861fed456957d1216737f7e5e4cdf358795138f7
+priv-app/com.sonymobile.addoncamera.portraitselfie/lib/arm/libarcsoft_picselfie_algorithm.so|c43444bd8a4033af0cff9e7fbb0327b14f5ef6d3
+priv-app/com.sonymobile.addoncamera.portraitselfie/lib/arm/libbeauty_picselfie.so|c472089164d454f85edfc051a870b3eaabb6a625
+priv-app/com.sonymobile.addoncamera.portraitselfie/lib/arm/libmpbase.so|25b49173aac8551cdebd4fbfccdbcb09e0b8469d
+priv-app/com.sonymobile.addoncamera.portraitselfie/lib/arm/libpp.so|8cf8ef05caa2c6d9fa4b3fa78672f4f8ad9c2467
+priv-app/SemcCameraUI-xxhdpi-release/lib/arm64/libarcsoft_handsigns.so|1a404edfbcf6bd54d4afdb3ac5b143bba489ed21
+priv-app/SemcCameraUI-xxhdpi-release/lib/arm64/libc++_shared.so|d5ba162c9b3165804df81d3260b7dcf32a1a46be
+priv-app/SemcCameraUI-xxhdpi-release/lib/arm64/libdetector.so|7f61fbaa5bb5041730dad69332d7251790cb2df5
+priv-app/SemcCameraUI-xxhdpi-release/lib/arm64/libhandsigns_jni.so|451b8405da08e5f5a0c723d169042e6c29da57e8
+priv-app/SemcCameraUI-xxhdpi-release/lib/arm64/libhta.so|b885aa3b34b394d1b4948b9e817f20c0522cebd9
+priv-app/SemcCameraUI-xxhdpi-release/lib/arm64/libimage_converter.so|13059ac63dca3e1af201fd659232bb23e21b9d28
+priv-app/SemcCameraUI-xxhdpi-release/lib/arm64/libmpbase.so|941457f34769d5cbf1ff33b13596307689317fc3
+priv-app/SemcCameraUI-xxhdpi-release/lib/arm64/libsnpe_adsp.so|4b21badc6b9aeaa3650a36e884fba2368ed340b9
+priv-app/SemcCameraUI-xxhdpi-release/lib/arm64/libsnpe-android.so|e26be36837cf8ece6a1bdfc1e4880a0a57644e91
+priv-app/SemcCameraUI-xxhdpi-release/lib/arm64/libsnpe_dsp_domains_skel.so|bb512c2fb90c24d9ef5a4f4a6775c8e9791b473a
+priv-app/SemcCameraUI-xxhdpi-release/lib/arm64/libsnpe_dsp_domains.so|b151efaedf82095abfb1ed1e1ccfade67769d793
+priv-app/SemcCameraUI-xxhdpi-release/lib/arm64/libsnpe_dsp_domains_v2.so|7b2aa3976134b2acef655fc2b93e2bf1ac3434ff
+priv-app/SemcCameraUI-xxhdpi-release/lib/arm64/libsnpe_dsp_skel.so|6a9cf42db67d511d9fe31f908a4ea591fd3b4049
+priv-app/SemcCameraUI-xxhdpi-release/lib/arm64/libsnpe_dsp_v65_domains_v2_skel.so|83a1aca9679015d81faa6be813f4b1414805cf71
+priv-app/SemcCameraUI-xxhdpi-release/lib/arm64/libsnpe_dsp_v66_domains_v2_skel.so|c6bc08e3478fa0c891fde5534a6d5d88d6781e23
+priv-app/SemcCameraUI-xxhdpi-release/lib/arm64/libSNPE.so|fc7b3662a8fa9f640a8a799df35f5983b94c210a
+priv-app/SemcCameraUI-xxhdpi-release/lib/arm64/libsymphony-cpu.so|236fc2af76757d84316ae0bb84c2974f6b9b2c8b
+priv-app/SemcCameraUI-xxhdpi-release/SemcCameraUI-xxhdpi-release.apk|ca3750d8b879248b7a267a5de967ea8aae855788
+
 # CAMERA_POSTPROCESSING
 lib/libjni_imageutil.so
 lib/libjni_snapcammosaic.so
@@ -209,6 +250,12 @@ etc/firmware/tztpm.b05
 etc/firmware/tztpm.b06
 etc/firmware/tztpm.b07
 etc/firmware/tztpm.mdt
+
+# FRAMEWORK_DEPENDENCIES
+etc/permissions/com.sonyericsson.idd.xml
+etc/permissions/com.sonymobile.getmore.api.xml
+framework/com.sonyericsson.idd_impl.jar
+framework/com.sonymobile.getmore.api.jar
 
 # GRAPHICS
 lib/libOpenCL_system.so
