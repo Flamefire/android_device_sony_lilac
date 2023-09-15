@@ -1,0 +1,114 @@
+From ffe1a9065688da85980a8ebd28784633f72a51f8 Mon Sep 17 00:00:00 2001
+From: Alexander Grund <flamefire89@gmail.com>
+Date: Thu, 14 Sep 2023 18:04:12 +0200
+Subject: [PATCH 4/4] Remove invalid surrogates during bindSelection
+
+Test: atest MediaProviderTests
+Bug: 223793631
+(cherry picked from https://googleplex-android-review.googlesource.com/q/commit:108f736d0ec6e974c3f947e7e568845b7e039a0a)
+(cherry picked from https://googleplex-android-review.googlesource.com/q/commit:b5aadde5f1d3c47562eade2223f7a30729dda53e)
+Merged-In: I18b879f1a51394b4739225ec88b862fd6d0d5526
+Change-Id: I18b879f1a51394b4739225ec88b862fd6d0d5526
+
+Change-Id: I719d97bb763a87b4da9f38fa64e4d08eacf19bea
+---
+ core/java/android/database/DatabaseUtils.java | 36 ++++++++++++++++++-
+ .../android/database/DatabaseUtilsTest.java   | 23 ++++++++++++
+ 2 files changed, 58 insertions(+), 1 deletion(-)
+
+diff --git a/core/java/android/database/DatabaseUtils.java b/core/java/android/database/DatabaseUtils.java
+index 992da312201d..171fc8270d37 100644
+--- a/core/java/android/database/DatabaseUtils.java
++++ b/core/java/android/database/DatabaseUtils.java
+@@ -16,6 +16,7 @@
+ 
+ package android.database;
+ 
++import android.annotation.NonNull;
+ import android.annotation.Nullable;
+ import android.annotation.UnsupportedAppUsage;
+ import android.content.ContentValues;
+@@ -292,7 +293,9 @@ public class DatabaseUtils {
+                             res.append(((Boolean) arg).booleanValue() ? 1 : 0);
+                         } else {
+                             res.append('\'');
+-                            res.append(arg.toString());
++                            // Escape single quote character while appending the string and reject
++                            // invalid unicode.
++                            res.append(escapeSingleQuoteAndRejectInvalidUnicode(arg.toString()));
+                             res.append('\'');
+                         }
+                         break;
+@@ -306,6 +309,37 @@ public class DatabaseUtils {
+         return res.toString();
+     }
+ 
++    private static String escapeSingleQuoteAndRejectInvalidUnicode(@NonNull String target) {
++        final int len = target.length();
++        final StringBuilder res = new StringBuilder(len);
++        boolean lastHigh = false;
++
++        for (int i = 0; i < len; ) {
++            final char c = target.charAt(i++);
++
++            if (lastHigh != Character.isLowSurrogate(c)) {
++                Log.e(TAG, "Invalid surrogate in string " + target);
++                throw new IllegalArgumentException("Invalid surrogate in string " + target);
++            }
++
++            lastHigh = Character.isHighSurrogate(c);
++
++            // Escape the single quotes by duplicating them
++            if (c == '\'') {
++                res.append(c);
++            }
++
++            res.append(c);
++        }
++
++        if (lastHigh) {
++            Log.e(TAG, "Invalid surrogate in string " + target);
++            throw new IllegalArgumentException("Invalid surrogate in string " + target);
++        }
++
++        return res.toString();
++    }
++
+     /**
+      * Returns data type of the given object's value.
+      *<p>
+diff --git a/core/tests/coretests/src/android/database/DatabaseUtilsTest.java b/core/tests/coretests/src/android/database/DatabaseUtilsTest.java
+index be156c8eb67a..8f23a3aeafc1 100644
+--- a/core/tests/coretests/src/android/database/DatabaseUtilsTest.java
++++ b/core/tests/coretests/src/android/database/DatabaseUtilsTest.java
+@@ -63,4 +63,27 @@ public class DatabaseUtilsTest {
+                 bindSelection("foo=?10 AND bar=? AND meow=?1",
+                         1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12));
+     }
++
++    @Test
++    public void testBindSelection_RejectInvalidUnicode() {
++        try {
++            bindSelection("DATA=?", "Fo\uD83Do");
++            fail();
++        } catch (IllegalArgumentException ignored) {
++        }
++
++	try {
++            bindSelection("DATA=?", "Fo\uDE00o");
++            fail();
++        } catch (IllegalArgumentException ignored) {
++        }
++
++	assertEquals("DATA='Fo\uD83D\uDE00o'", bindSelection("DATA=?", "Fo\uD83D\uDE00o"));
++
++	try {
++            bindSelection("DATA=?", "Fo\uDE00\uD83Do");
++            fail();
++        } catch (IllegalArgumentException ignored) {
++        }
++    }
+ }
+-- 
+2.40.1
+

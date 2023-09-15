@@ -1,0 +1,103 @@
+# PWD: frameworks/av
+diff --git a/media/libstagefright/NuMediaExtractor.cpp b/media/libstagefright/NuMediaExtractor.cpp
+index 680d426d96..ddab6d3923 100644
+--- a/media/libstagefright/NuMediaExtractor.cpp
++++ b/media/libstagefright/NuMediaExtractor.cpp
+@@ -591,17 +591,19 @@ status_t NuMediaExtractor::appendVorbisNumPageSamples(
+         MediaBufferBase *mbuf, const sp<ABuffer> &buffer) {
+     int32_t numPageSamples;
+     if (!mbuf->meta_data().findInt32(
+             kKeyValidSamples, &numPageSamples)) {
+         numPageSamples = -1;
+     }
+ 
++    // insert, including accounting for the space used.
+     memcpy((uint8_t *)buffer->data() + mbuf->range_length(),
+            &numPageSamples,
+            sizeof(numPageSamples));
++    buffer->setRange(buffer->offset(), buffer->size() + sizeof(numPageSamples));
+ 
+     uint32_t type;
+     const void *data;
+     size_t size, size2;
+     if (mbuf->meta_data().findData(kKeyEncryptedSizes, &type, &data, &size)) {
+         // Signal numPageSamples (a plain int32_t) is appended at the end,
+         // i.e. sizeof(numPageSamples) plain bytes + 0 encrypted bytes
+@@ -642,14 +644,16 @@ status_t NuMediaExtractor::appendVorbisNumPageSamples(
+ }
+ 
+ status_t NuMediaExtractor::readSampleData(const sp<ABuffer> &buffer) {
+     Mutex::Autolock autoLock(mLock);
+ 
+     ssize_t minIndex = fetchAllTrackSamples();
+ 
++    buffer->setRange(0, 0);     // start with an empty buffer
++
+     if (minIndex < 0) {
+         return ERROR_END_OF_STREAM;
+     }
+ 
+     TrackInfo *info = &mSelectedTracks.editItemAt(minIndex);
+ 
+     auto it = info->mSamples.begin();
+@@ -657,33 +661,33 @@ status_t NuMediaExtractor::readSampleData(const sp<ABuffer> &buffer) {
+ 
+     if (info->mTrackFlags & kIsVorbis) {
+         // Each sample's data is suffixed by the number of page samples
+         // or -1 if not available.
+         sampleSize += sizeof(int32_t);
+     }
+ 
++    // capacity() is ok since we cleared out the buffer
+     if (buffer->capacity() < sampleSize) {
+         return -ENOMEM;
+     }
+ 
++    const size_t srclen = it->mBuffer->range_length();
+     const uint8_t *src =
+         (const uint8_t *)it->mBuffer->data()
+             + it->mBuffer->range_offset();
+ 
+-    memcpy((uint8_t *)buffer->data(), src, it->mBuffer->range_length());
++    memcpy((uint8_t *)buffer->data(), src, srclen);
++    buffer->setRange(0, srclen);
+ 
+     status_t err = OK;
+     if (info->mTrackFlags & kIsVorbis) {
++        // adjusts range when it inserts the extra bits
+         err = appendVorbisNumPageSamples(it->mBuffer, buffer);
+     }
+ 
+-    if (err == OK) {
+-        buffer->setRange(0, sampleSize);
+-    }
+-
+     return err;
+ }
+ 
+ status_t NuMediaExtractor::getSampleSize(size_t *sampleSize) {
+     Mutex::Autolock autoLock(mLock);
+ 
+     ssize_t minIndex = fetchAllTrackSamples();
+diff --git a/media/mtp/MtpProperty.h b/media/mtp/MtpProperty.h
+index bfd5f7f59a..1eb8874af1 100644
+--- a/media/mtp/MtpProperty.h
++++ b/media/mtp/MtpProperty.h
+@@ -22,14 +22,17 @@
+ #include <string>
+ 
+ namespace android {
+ 
+ class MtpDataPacket;
+ 
+ struct MtpPropertyValue {
++    // pointer str initialized to NULL so that free operation
++    // is not called for pre-assigned value
++    MtpPropertyValue() : str (NULL) {}
+     union {
+         int8_t          i8;
+         uint8_t         u8;
+         int16_t         i16;
+         uint16_t        u16;
+         int32_t         i32;
+         uint32_t        u32;

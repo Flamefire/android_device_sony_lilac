@@ -1,0 +1,58 @@
+From a0d5d9667b940fdbc6684df5d9caf07ab6b4b0b9 Mon Sep 17 00:00:00 2001
+From: "Kevin F. Haggerty" <haggertk@lineageos.org>
+Date: Sun, 10 Sep 2023 08:51:16 -0600
+Subject: [PATCH] Bump Security String to 2023-09-05
+
+Implemented:
+============
+CVE:            References:    Type:  Severity:  Updated AOSP versions:
+CVE-2023-35658  A-274617156    RCE    Critical   11, 12, 12L, 13
+CVE-2023-35665  A-256819787    EoP    High       11, 12, 12L, 13
+CVE-2023-35666  A-269253349    EoP    High       11, 12, 12L, 13
+CVE-2023-35669  A-265798288    EoP    High       11, 12, 12L, 13
+CVE-2023-35670  A-276898626    EoP    High       11, 12, 12L, 13
+CVE-2023-35671  A-268038643    ID     High       11, 12, 12L, 13
+CVE-2023-35673  A-273966636    RCE    Critical   11, 12, 12L, 13
+CVE-2023-35677  A-280793427    DoS    High       11, 12, 12L, 13
+CVE-2023-35679  A-245137718    ID     High       11, 12, 12L, 13
+CVE-2023-35680  A-256591023    ID     High       11, 12, 12L, 13
+CVE-2023-35682  A-270152142    EoP    High       11, 12, 12L, 13
+CVE-2023-35683  A-223793631    ID     High       11, 12, 12L, 13
+CVE-2023-35684  A-280633699    EoP    High       11, 12, 12L, 13
+CVE-2023-35687  A-245135112    EoP    High       11, 12, 12L, 13
+
+Not Implemented:
+=======================
+None
+
+Not Applicable (platform source):
+=================================
+CVE:            References:    Type:  Severity:  Updated AOSP versions:
+CVE-2023-35664  A-269270167    ID     High       12, 12L, 13
+CVE-2023-35667  A-282932362    EoP    High       11, 12, 12L, 13
+CVE-2023-35674  A-264029851    EoP    High       11, 12, 12L, 13
+CVE-2023-35675  A-284297711    ID     High       11, 12, 12L, 13
+CVE-2023-35676  A-278720336    EoP    High       12, 12L, 13
+CVE-2023-35681  A-271335899    RCE    Critical   13
+
+Change-Id: I73e555113d8be34d38cf17ce387bb7195d34bf0b
+---
+ core/version_defaults.mk | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/core/version_defaults.mk b/core/version_defaults.mk
+index 1e00b751d1..a2fc3036da 100644
+--- a/core/version_defaults.mk
++++ b/core/version_defaults.mk
+@@ -250,7 +250,7 @@ ifndef PLATFORM_SECURITY_PATCH
+     #  It must be of the form "YYYY-MM-DD" on production devices.
+     #  It must match one of the Android Security Patch Level strings of the Public Security Bulletins.
+     #  If there is no $PLATFORM_SECURITY_PATCH set, keep it empty.
+-      PLATFORM_SECURITY_PATCH := 2023-08-05
++      PLATFORM_SECURITY_PATCH := 2023-09-05
+ endif
+ .KATI_READONLY := PLATFORM_SECURITY_PATCH
+ 
+-- 
+2.40.1
+

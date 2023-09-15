@@ -1,0 +1,292 @@
+# PWD: packages/services/Telephony
+diff --git a/src/com/android/phone/GsmUmtsCallForwardOptions.java b/src/com/android/phone/GsmUmtsCallForwardOptions.java
+index b8ea8fd46..b353739f0 100644
+--- a/src/com/android/phone/GsmUmtsCallForwardOptions.java
++++ b/src/com/android/phone/GsmUmtsCallForwardOptions.java
+@@ -1,14 +1,17 @@
+ package com.android.phone;
+ 
+ import android.app.ActionBar;
++import android.content.ContentProvider;
+ import android.content.Intent;
+ import android.database.Cursor;
+ import android.os.Bundle;
+ import android.os.PersistableBundle;
++import android.os.Process;
++import android.os.UserHandle;
+ import android.preference.Preference;
+ import android.preference.PreferenceScreen;
+ import android.telephony.CarrierConfigManager;
+ import android.util.Log;
+ import android.view.MenuItem;
+ 
+ import com.android.internal.telephony.CallForwardInfo;
+@@ -180,14 +183,23 @@ public class GsmUmtsCallForwardOptions extends TimeConsumingPreferenceActivity {
+         Log.d(LOG_TAG, "onActivityResult: done");
+         if (resultCode != RESULT_OK) {
+             Log.d(LOG_TAG, "onActivityResult: contact picker result not OK.");
+             return;
+         }
+         Cursor cursor = null;
+         try {
++            // check if the URI returned by the user belongs to the user
++            final int currentUser = UserHandle.getUserId(Process.myUid());
++            if (currentUser
++                    != ContentProvider.getUserIdFromUri(data.getData(), currentUser)) {
++
++                Log.w(LOG_TAG, "onActivityResult: Contact data of different user, "
++                        + "cannot access");
++                return;
++            }
+             cursor = getContentResolver().query(data.getData(),
+                 NUM_PROJECTION, null, null, null);
+             if ((cursor == null) || (!cursor.moveToFirst())) {
+                 Log.d(LOG_TAG, "onActivityResult: bad contact data, no results found.");
+                 return;
+             }
+ 
+diff --git a/src/com/android/phone/PhoneInterfaceManager.java b/src/com/android/phone/PhoneInterfaceManager.java
+index aad961f14..11b8909ac 100755
+--- a/src/com/android/phone/PhoneInterfaceManager.java
++++ b/src/com/android/phone/PhoneInterfaceManager.java
+@@ -17,14 +17,15 @@
+ package com.android.phone;
+ 
+ import static android.content.pm.PackageManager.PERMISSION_GRANTED;
+ 
+ import static com.android.internal.telephony.PhoneConstants.SUBSCRIPTION_KEY;
+ 
+ import android.Manifest.permission;
++import android.annotation.NonNull;
+ import android.annotation.Nullable;
+ import android.app.AppOpsManager;
+ import android.app.PendingIntent;
+ import android.content.ComponentName;
+ import android.content.ContentResolver;
+ import android.content.Context;
+ import android.content.Intent;
+@@ -82,14 +83,15 @@ import android.telephony.Rlog;
+ import android.telephony.ServiceState;
+ import android.telephony.SignalStrength;
+ import android.telephony.SubscriptionInfo;
+ import android.telephony.SubscriptionManager;
+ import android.telephony.TelephonyHistogram;
+ import android.telephony.TelephonyManager;
+ import android.telephony.TelephonyScanManager;
++import android.telephony.UiccAccessRule;
+ import android.telephony.UiccCardInfo;
+ import android.telephony.UiccSlotInfo;
+ import android.telephony.UssdResponse;
+ import android.telephony.VisualVoicemailSmsFilterSettings;
+ import android.telephony.cdma.CdmaCellLocation;
+ import android.telephony.data.ApnSetting;
+ import android.telephony.data.ApnSetting.ApnType;
+@@ -4804,22 +4806,26 @@ public class PhoneInterfaceManager extends ITelephony.Stub {
+         SubscriptionController subController = SubscriptionController.getInstance();
+         if (privilegeFromSim == TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS
+                 || subController == null) return privilegeFromSim;
+ 
+         int uid = Binder.getCallingUid();
+         PackageManager pkgMgr = phone.getContext().getPackageManager();
+         String[] packages = pkgMgr.getPackagesForUid(uid);
++        if (packages == null) {
++            return privilegeFromSim;
++        }
+ 
+         final long identity = Binder.clearCallingIdentity();
+         try {
+-            SubscriptionInfo subInfo = subController.getSubscriptionInfo(phone.getSubId());
+-            SubscriptionManager subManager = (SubscriptionManager)
+-                    phone.getContext().getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE);
++            int subId = phone.getSubId();
++            SubscriptionInfo subInfo = subController.getSubscriptionInfo(subId);
++            List<UiccAccessRule> carrierConfigAccessRules = subInfo.getCarrierConfigAccessRules();
++
+             for (String pkg : packages) {
+-                if (subManager.canManageSubscription(subInfo, pkg)) {
++                if (hasCarrierConfigAccess(pkg, pkgMgr, carrierConfigAccessRules)) {
+                     return TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS;
+                 }
+             }
+             return privilegeFromSim;
+         } finally {
+             Binder.restoreCallingIdentity(identity);
+         }
+@@ -4830,24 +4836,59 @@ public class PhoneInterfaceManager extends ITelephony.Stub {
+         //load access rules from carrier configs, and check those as well: b/139133814
+         SubscriptionController subController = SubscriptionController.getInstance();
+         if (privilegeFromSim == TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS
+                 || subController == null) return privilegeFromSim;
+ 
+         final long identity = Binder.clearCallingIdentity();
+         try {
+-            SubscriptionInfo subInfo = subController.getSubscriptionInfo(phone.getSubId());
+-            SubscriptionManager subManager = (SubscriptionManager)
+-                    phone.getContext().getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE);
+-            return subManager.canManageSubscription(subInfo, pkgName)
++            int subId = phone.getSubId();
++            SubscriptionInfo subInfo = subController.getSubscriptionInfo(subId);
++            List<UiccAccessRule> carrierConfigAccessRules = subInfo.getCarrierConfigAccessRules();
++
++            return hasCarrierConfigAccess(pkgName, phone.getContext().getPackageManager(),
++                carrierConfigAccessRules)
+                 ? TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS : privilegeFromSim;
+         } finally {
+             Binder.restoreCallingIdentity(identity);
+         }
+     }
+ 
++    /**
++     * Check whether carrier privilege status can be granted to the provided app for this
++     * subscription based on the carrier config access rules of the subscription.
++     *
++     * @param packageName package name of the app to check
++     * @param packageManager package manager
++     * @param carrierConfigAccessRules carrier config access rules of the subscription
++     * @return true if the app is included in the mCarrierConfigAccessRules of this subscription.
++     */
++    private boolean hasCarrierConfigAccess(String packageName, PackageManager packageManager,
++        @NonNull List<UiccAccessRule> carrierConfigAccessRules) {
++        if ((packageName == null) || (carrierConfigAccessRules.isEmpty())) {
++            return false;
++        }
++
++        PackageInfo packageInfo;
++        try {
++            packageInfo = packageManager.getPackageInfo(packageName,
++                PackageManager.GET_SIGNING_CERTIFICATES);
++        } catch (PackageManager.NameNotFoundException e) {
++            logv("Unknown package: " + packageName);
++            return false;
++        }
++
++        for (UiccAccessRule rule : carrierConfigAccessRules) {
++            if (rule.getCarrierPrivilegeStatus(packageInfo)
++                == TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS) {
++                return true;
++            }
++        }
++        return false;
++    }
++
+     @Override
+     public int getCarrierPrivilegeStatus(int subId) {
+         final Phone phone = getPhone(subId);
+         if (phone == null) {
+             loge("getCarrierPrivilegeStatus: Invalid subId");
+             return TelephonyManager.CARRIER_PRIVILEGE_STATUS_NO_ACCESS;
+         }
+diff --git a/src/com/android/phone/settings/VoicemailSettingsActivity.java b/src/com/android/phone/settings/VoicemailSettingsActivity.java
+index 2efa81c1e..484834fbc 100644
+--- a/src/com/android/phone/settings/VoicemailSettingsActivity.java
++++ b/src/com/android/phone/settings/VoicemailSettingsActivity.java
+@@ -13,22 +13,25 @@
+  * See the License for the specific language governing permissions and
+  * limitations under the License
+  */
+ 
+ package com.android.phone.settings;
+ 
+ import android.app.Dialog;
++import android.content.ContentProvider;
+ import android.content.DialogInterface;
+ import android.content.Intent;
+ import android.database.Cursor;
+ import android.os.AsyncResult;
+ import android.os.Bundle;
+ import android.os.Handler;
+ import android.os.Message;
+ import android.os.PersistableBundle;
++import android.os.Process;
++import android.os.UserHandle;
+ import android.os.UserManager;
+ import android.preference.Preference;
+ import android.preference.PreferenceActivity;
+ import android.preference.PreferenceScreen;
+ import android.provider.ContactsContract.CommonDataKinds;
+ import android.provider.Settings;
+ import android.telecom.PhoneAccountHandle;
+@@ -517,14 +520,25 @@ public class VoicemailSettingsActivity extends PreferenceActivity
+             if (resultCode != RESULT_OK) {
+                 if (DBG) log("onActivityResult: contact picker result not OK.");
+                 return;
+             }
+ 
+             Cursor cursor = null;
+             try {
++                // check if the URI returned by the user belongs to the user
++                final int currentUser = UserHandle.getUserId(Process.myUid());
++                if (currentUser
++                        != ContentProvider.getUserIdFromUri(data.getData(), currentUser)) {
++
++                    if (DBG) {
++                        log("onActivityResult: Contact data of different user, "
++                                + "cannot access");
++                    }
++                    return;
++                }
+                 cursor = getContentResolver().query(data.getData(),
+                     new String[] { CommonDataKinds.Phone.NUMBER }, null, null, null);
+                 if ((cursor == null) || (!cursor.moveToFirst())) {
+                     if (DBG) log("onActivityResult: bad contact data, no results found.");
+                     return;
+                 }
+                 if (mSubMenuVoicemailSettings != null) {
+diff --git a/src/com/android/phone/settings/fdn/EditFdnContactScreen.java b/src/com/android/phone/settings/fdn/EditFdnContactScreen.java
+index c358e27c9..e68ab7e74 100644
+--- a/src/com/android/phone/settings/fdn/EditFdnContactScreen.java
++++ b/src/com/android/phone/settings/fdn/EditFdnContactScreen.java
+@@ -14,25 +14,30 @@
+  * limitations under the License.
+  */
+ 
+ package com.android.phone.settings.fdn;
+ 
+ import static android.view.Window.PROGRESS_VISIBILITY_OFF;
+ import static android.view.Window.PROGRESS_VISIBILITY_ON;
++import static android.app.Activity.RESULT_OK;
++
+ 
+ import android.app.Activity;
+ import android.content.AsyncQueryHandler;
++import android.content.ContentProvider;
+ import android.content.ContentResolver;
+ import android.content.ContentValues;
+ import android.content.Intent;
+ import android.content.res.Resources;
+ import android.database.Cursor;
+ import android.net.Uri;
+ import android.os.Bundle;
+ import android.os.Handler;
++import android.os.Process;
++import android.os.UserHandle;
+ import android.provider.ContactsContract.CommonDataKinds;
+ import android.telephony.PhoneNumberUtils;
+ import android.text.Editable;
+ import android.text.Selection;
+ import android.text.Spannable;
+ import android.text.TextUtils;
+ import android.text.TextWatcher;
+@@ -148,14 +153,22 @@ public class EditFdnContactScreen extends Activity {
+             case CONTACTS_PICKER_CODE:
+                 if (resultCode != RESULT_OK) {
+                     if (DBG) log("onActivityResult: cancelled.");
+                     return;
+                 }
+                 Cursor cursor = null;
+                 try {
++                    // check if the URI returned by the user belongs to the user
++                    final int currentUser = UserHandle.getUserId(Process.myUid());
++                    if (currentUser
++                            != ContentProvider.getUserIdFromUri(intent.getData(), currentUser)) {
++                        Log.w(LOG_TAG, "onActivityResult: Contact data of different user, "
++                                + "cannot access");
++                        return;
++                    }
+                     cursor = getContentResolver().query(intent.getData(),
+                         NUM_PROJECTION, null, null, null);
+                     if ((cursor == null) || (!cursor.moveToFirst())) {
+                         Log.w(LOG_TAG,"onActivityResult: bad contact data, no results found.");
+                         return;
+                     }
+                     mNameField.setText(cursor.getString(0));

@@ -1,0 +1,70 @@
+# PWD: packages/providers/MediaProvider
+diff --git a/src/com/android/providers/media/MediaProvider.java b/src/com/android/providers/media/MediaProvider.java
+index 9032644e..822d6953 100644
+--- a/src/com/android/providers/media/MediaProvider.java
++++ b/src/com/android/providers/media/MediaProvider.java
+@@ -1522,17 +1522,25 @@ public class MediaProvider extends ContentProvider {
+         values.remove(ImageColumns.BUCKET_DISPLAY_NAME);
+         values.remove(ImageColumns.GROUP_ID);
+         values.remove(ImageColumns.VOLUME_NAME);
+         values.remove(ImageColumns.RELATIVE_PATH);
+         values.remove(ImageColumns.PRIMARY_DIRECTORY);
+         values.remove(ImageColumns.SECONDARY_DIRECTORY);
+ 
+-        final String data = values.getAsString(MediaColumns.DATA);
++        String data = values.getAsString(MediaColumns.DATA);
+         if (TextUtils.isEmpty(data)) return;
+ 
++        try {
++            data = new File(data).getCanonicalPath();
++            values.put(MediaColumns.DATA, data);
++        } catch (IOException e) {
++            throw new IllegalArgumentException(
++                    String.format(Locale.ROOT, "Invalid file path:%s in request.", data));
++        }
++
+         final File file = new File(data);
+         final File fileLower = new File(data.toLowerCase());
+ 
+         values.put(ImageColumns.VOLUME_NAME, extractVolumeName(data));
+         values.put(ImageColumns.RELATIVE_PATH, extractRelativePath(data));
+         values.put(ImageColumns.DISPLAY_NAME, extractDisplayName(data));
+ 
+@@ -2305,15 +2313,17 @@ public class MediaProvider extends ContentProvider {
+             }
+         } else {
+             return MediaStore.VOLUME_INTERNAL;
+         }
+     }
+ 
+     private static @Nullable String extractRelativePath(@Nullable String data) {
++        data = getCanonicalPath(data);
+         if (data == null) return null;
++
+         final Matcher matcher = PATTERN_RELATIVE_PATH.matcher(data);
+         if (matcher.find()) {
+             final int lastSlash = data.lastIndexOf('/');
+             if (lastSlash == -1 || lastSlash < matcher.end()) {
+                 // This is a file in the top-level directory, so relative path is "/"
+                 // which is different than null, which means unknown path
+                 return "/";
+@@ -6690,8 +6700,19 @@ public class MediaProvider extends ContentProvider {
+             } else {
+                 s.append(": pid=" + android.os.Process.myPid());
+                 s.append(", fingerprint=" + Build.FINGERPRINT);
+             }
+         }
+         return s.toString();
+     }
++
++    @Nullable
++    private static String getCanonicalPath(@Nullable String path) {
++        if (path == null) return null;
++        try {
++            return new File(path).getCanonicalPath();
++        } catch (IOException e) {
++            Log.d(TAG, "Unable to get canonical path from invalid data path: " + path, e);
++            return null;
++        }
++    }
+ }
