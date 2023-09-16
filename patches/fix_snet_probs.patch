@@ -102,21 +102,3 @@ index 42dd5afcb..c125e8a2b 100644
      if (ALLOW_LOCAL_PROP_OVERRIDE) {
          std::map<std::string, std::string> properties;
          load_properties_from_file("/data/local.prop", nullptr, &properties);
-diff --git a/fastboot/device/utility.cpp b/fastboot/device/utility.cpp
-index 07ad9028c..f9267e0eb 100644
---- a/fastboot/device/utility.cpp
-+++ b/fastboot/device/utility.cpp
-@@ -204,7 +204,12 @@ std::vector<std::string> ListPartitions(FastbootDevice* device) {
- }
- 
- bool GetDeviceLockStatus() {
--    return android::base::GetProperty("ro.boot.verifiedbootstate", "") != "orange";
-+    std::string cmdline;
-+    // Return lock status true if unable to read kernel command line.
-+    if (!android::base::ReadFileToString("/proc/cmdline", &cmdline)) {
-+        return true;
-+    }
-+    return cmdline.find("androidboot.verifiedbootstate=orange") == std::string::npos;
- }
- 
- bool UpdateAllPartitionMetadata(FastbootDevice* device, const std::string& super_name,
