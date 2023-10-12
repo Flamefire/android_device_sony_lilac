@@ -1,0 +1,3854 @@
+# PWD: external/webp
+diff --git a/Android.bp b/Android.bp
+index ec57ba7..2221950 100644
+--- a/Android.bp
++++ b/Android.bp
+@@ -28,19 +28,14 @@ cc_library_static {
+ 
+ //##############################################
+ 
+ cc_library_static {
+     name: "libwebp-encode",
+     host_supported: true,
+     srcs: [
+-        "src/dsp/alpha_processing.c",
+-        "src/dsp/alpha_processing_mips_dsp_r2.c",
+-        "src/dsp/alpha_processing_neon.c",
+-        "src/dsp/alpha_processing_sse2.c",
+-        "src/dsp/alpha_processing_sse41.c",
+         "src/dsp/cost.c",
+         "src/dsp/cost_mips32.c",
+         "src/dsp/cost_mips_dsp_r2.c",
+         "src/dsp/cost_neon.c",
+         "src/dsp/cost_sse2.c",
+         "src/dsp/cpu.c",
+         "src/dsp/enc.c",
+@@ -82,37 +77,30 @@ cc_library_static {
+         "src/enc/tree_enc.c",
+         "src/enc/vp8l_enc.c",
+         "src/enc/webp_enc.c",
+         "src/mux/anim_encode.c",
+         "src/mux/muxedit.c",
+         "src/mux/muxinternal.c",
+         "src/mux/muxread.c",
+-        "src/utils/bit_reader_utils.c",
+         "src/utils/bit_writer_utils.c",
+-        "src/utils/color_cache_utils.c",
+-        "src/utils/filters_utils.c",
+         "src/utils/huffman_encode_utils.c",
+-        "src/utils/huffman_utils.c",
+         "src/utils/quant_levels_utils.c",
+-        "src/utils/random_utils.c",
+-        "src/utils/rescaler_utils.c",
+-        "src/utils/thread_utils.c",
+-        "src/utils/utils.c",
+     ],
+ 
+     arch: {
+         arm: {
+             instruction_set: "arm",
+         },
+     },
+ 
+     cflags: [
+         "-O2",
+         "-DANDROID",
+         "-DWEBP_SWAP_16BIT_CSP",
++        "-DWEBP_USE_THREAD",
+         "-Wall",
+         "-Werror",
+     ],
+ 
+     local_include_dirs: ["."],
+     static_libs: ["webp-headers"],
+     export_static_lib_headers: ["webp-headers"],
+@@ -138,17 +126,19 @@ cc_library_static {
+         "src/dec/idec_dec.c",
+         "src/dec/io_dec.c",
+         "src/dec/quant_dec.c",
+         "src/dec/tree_dec.c",
+         "src/dec/vp8_dec.c",
+         "src/dec/vp8l_dec.c",
+         "src/dec/webp_dec.c",
++        "src/demux/anim_decode.c",
+         "src/demux/demux.c",
+         "src/dsp/alpha_processing.c",
+         "src/dsp/alpha_processing_mips_dsp_r2.c",
++        "src/dsp/alpha_processing_neon.c",
+         "src/dsp/alpha_processing_sse2.c",
+         "src/dsp/alpha_processing_sse41.c",
+         "src/dsp/cpu.c",
+         "src/dsp/dec.c",
+         "src/dsp/dec_clip_tables.c",
+         "src/dsp/dec_mips32.c",
+         "src/dsp/dec_mips_dsp_r2.c",
+@@ -201,14 +191,15 @@ cc_library_static {
+         },
+     },
+ 
+     cflags: [
+         "-O2",
+         "-DANDROID",
+         "-DWEBP_SWAP_16BIT_CSP",
++        "-DWEBP_USE_THREAD",
+         "-Wall",
+         "-Werror",
+     ],
+ 
+     local_include_dirs: ["."],
+     static_libs: ["webp-headers"],
+     export_static_lib_headers: ["webp-headers"],
+diff --git a/ChangeLog b/ChangeLog
+deleted file mode 100644
+index 3a0c4a2..0000000
+--- a/ChangeLog
++++ /dev/null
+@@ -1,21 +0,0 @@
+-- 9/10: initial release version 0.1
+-- 5/11: release version 0.1.2
+-- 6/11: Added encoder (version 0.1.2) as well
+-- 7/11: Updated WebP with head change#Ia53f845b
+-- 8/12: release version 0.2.0-rc1 (head change#Ia5475247)
+--     : Updated WebP with head change#I3da2063b
+-- 3/13: Updated WebP with head change#I9e5ae737
+-- 8/13: Release version 0.3.1 (head change#Idea3464b)
+-- 9/13: Fix memleak in WebPIDelete() (change#Id4faef1b)
+-- 1/14: Release version 0.4.0-rc1 (change#I22be12d8)
+-- 7/14: Release version 0.4.1-rc1 (change#I5346984d2)
+-- 1/15: Release version 0.4.2 (change#I32a22786f)
+-- 3/17: Release version 0.4.3 (tag: v0.4.3)
+-- 11/2: Release version 0.4.4 (tag: v0.4.4)
+-- 1/12: Release version 0.5.0 (tag: v0.5.0)
+-- 7/12: Release version 0.5.1 (tag: v0.5.1)
+-- 12/20: Release version 0.5.2 (tag: v0.5.2)
+-- 1/30: Release version 0.6.0 (tag: v0.6.0)
+-- 1/10: Release version 0.6.1 (tag: v0.6.1)
+-- 4/20: Release version 1.0.0 (tag: v1.0.0)
+-- 11/15: Release version 1.0.1 (tag: v1.0.1)
+diff --git a/README b/README
+index 502a4c1..0592727 100644
+--- a/README
++++ b/README
+@@ -1,14 +1,14 @@
+           __   __  ____  ____  ____
+          /  \\/  \/  _ \/  _ )/  _ \
+          \       /   __/  _  \   __/
+           \__\__/\____/\_____/__/ ____  ___
+                 / _/ /    \    \ /  _ \/ _/
+                /  \_/   / /   \ \   __/  \__
+-               \____/____/\_____/_____/____/v1.0.2
++               \____/____/\_____/_____/____/v1.1.0
+ 
+ Description:
+ ============
+ 
+ WebP codec: library to encode and decode images in WebP format. This package
+ contains the library that can be used in other programs to add WebP support,
+ as well as the command line tools 'cwebp' and 'dwebp'.
+@@ -593,15 +593,15 @@ The encoding flow looks like:
+ -------------------------------------- BEGIN PSEUDO EXAMPLE
+ 
+ #include <webp/encode.h>
+ 
+   // Setup a config, starting form a preset and tuning some additional
+   // parameters
+   WebPConfig config;
+-  if (!WebPConfigPreset(&config, WEBP_PRESET_PHOTO, quality_factor))
++  if (!WebPConfigPreset(&config, WEBP_PRESET_PHOTO, quality_factor)) {
+     return 0;   // version error
+   }
+   // ... additional tuning
+   config.sns_strength = 90;
+   config.filter_sharpness = 6;
+   config_error = WebPValidateConfig(&config);  // not mandatory, but useful
+ 
+diff --git a/README.android b/README.android
+index 8717982..94fd4d4 100644
+--- a/README.android
++++ b/README.android
+@@ -1,16 +1,14 @@
+ URL: https://chromium.googlesource.com/webm/libwebp
+-Version: v1.0.2
++Version: v1.1.0
+ License: Google BSD like
+ 
+ Local modifications:
+ - Copy public headers from src/webp to include/webp, so path to headers
+   may be appended into CFLAGS without risk for other private headers
+   (e.g. bits.h) to leak into
+ - Removed build files necessary for building via autoconf/automake tools
+   These files are not required to build via Android.bp
+-- cherry-pick ab2dc893 Rescaler: fix rounding error
+-- cherry-pick aa65f89a HistogramCombineStochastic: fix free of uninit value
+ 
+ The Android.bp file creates WebP decoder and encoder static libraries which
+ can be added to any application by adding libwebp-decode and libwebp-encode to
+ 'static_libs'.
+diff --git a/README.version b/README.version
+index 467dfaf..f94ac05 100644
+--- a/README.version
++++ b/README.version
+@@ -1,3 +1,3 @@
+-URL: https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-1.0.2.tar.gz
+-Version: 1.0.2
++URL: https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-1.1.0.tar.gz
++Version: 1.1.0
+ BugComponent: 20174
+diff --git a/include/webp/decode.h b/include/webp/decode.h
+index ae8bfe8..80dd0ef 100644
+--- a/include/webp/decode.h
++++ b/include/webp/decode.h
+@@ -16,15 +16,15 @@
+ 
+ #include "./types.h"
+ 
+ #ifdef __cplusplus
+ extern "C" {
+ #endif
+ 
+-#define WEBP_DECODER_ABI_VERSION 0x0208    // MAJOR(8b) + MINOR(8b)
++#define WEBP_DECODER_ABI_VERSION 0x0209    // MAJOR(8b) + MINOR(8b)
+ 
+ // Note: forward declaring enumerations is not allowed in (strict) C and C++,
+ // the types are left here for reference.
+ // typedef enum VP8StatusCode VP8StatusCode;
+ // typedef enum WEBP_CSP_MODE WEBP_CSP_MODE;
+ typedef struct WebPRGBABuffer WebPRGBABuffer;
+ typedef struct WebPYUVABuffer WebPYUVABuffer;
+@@ -87,17 +87,14 @@ WEBP_EXTERN uint8_t* WebPDecodeBGR(const uint8_t* data, size_t data_size,
+ // Return NULL in case of error.
+ // (*) Also named Y'CbCr. See: http://en.wikipedia.org/wiki/YCbCr
+ WEBP_EXTERN uint8_t* WebPDecodeYUV(const uint8_t* data, size_t data_size,
+                                    int* width, int* height,
+                                    uint8_t** u, uint8_t** v,
+                                    int* stride, int* uv_stride);
+ 
+-// Releases memory returned by the WebPDecode*() functions above.
+-WEBP_EXTERN void WebPFree(void* ptr);
+-
+ // These five functions are variants of the above ones, that decode the image
+ // directly into a pre-allocated buffer 'output_buffer'. The maximum storage
+ // available in this buffer is indicated by 'output_buffer_size'. If this
+ // storage is not sufficient (or an error occurred), NULL is returned.
+ // Otherwise, output_buffer is returned, for convenience.
+ // The parameter 'output_stride' specifies the distance (in bytes)
+ // between scanlines. Hence, output_buffer_size is expected to be at least
+diff --git a/include/webp/encode.h b/include/webp/encode.h
+index 549cf07..655166e 100644
+--- a/include/webp/encode.h
++++ b/include/webp/encode.h
+@@ -16,15 +16,15 @@
+ 
+ #include "./types.h"
+ 
+ #ifdef __cplusplus
+ extern "C" {
+ #endif
+ 
+-#define WEBP_ENCODER_ABI_VERSION 0x020e    // MAJOR(8b) + MINOR(8b)
++#define WEBP_ENCODER_ABI_VERSION 0x020f    // MAJOR(8b) + MINOR(8b)
+ 
+ // Note: forward declaring enumerations is not allowed in (strict) C and C++,
+ // the types are left here for reference.
+ // typedef enum WebPImageHint WebPImageHint;
+ // typedef enum WebPEncCSP WebPEncCSP;
+ // typedef enum WebPPreset WebPPreset;
+ // typedef enum WebPEncodingError WebPEncodingError;
+@@ -58,30 +58,31 @@ WEBP_EXTERN size_t WebPEncodeRGBA(const uint8_t* rgba,
+ WEBP_EXTERN size_t WebPEncodeBGRA(const uint8_t* bgra,
+                                   int width, int height, int stride,
+                                   float quality_factor, uint8_t** output);
+ 
+ // These functions are the equivalent of the above, but compressing in a
+ // lossless manner. Files are usually larger than lossy format, but will
+ // not suffer any compression loss.
++// Note these functions, like the lossy versions, use the library's default
++// settings. For lossless this means 'exact' is disabled. RGB values in
++// transparent areas will be modified to improve compression. To avoid this,
++// use WebPEncode() and set WebPConfig::exact to 1.
+ WEBP_EXTERN size_t WebPEncodeLosslessRGB(const uint8_t* rgb,
+                                          int width, int height, int stride,
+                                          uint8_t** output);
+ WEBP_EXTERN size_t WebPEncodeLosslessBGR(const uint8_t* bgr,
+                                          int width, int height, int stride,
+                                          uint8_t** output);
+ WEBP_EXTERN size_t WebPEncodeLosslessRGBA(const uint8_t* rgba,
+                                           int width, int height, int stride,
+                                           uint8_t** output);
+ WEBP_EXTERN size_t WebPEncodeLosslessBGRA(const uint8_t* bgra,
+                                           int width, int height, int stride,
+                                           uint8_t** output);
+ 
+-// Releases memory returned by the WebPEncode*() functions above.
+-WEBP_EXTERN void WebPFree(void* ptr);
+-
+ //------------------------------------------------------------------------------
+ // Coding parameters
+ 
+ // Image characteristics hint for the underlying encoder.
+ typedef enum WebPImageHint {
+   WEBP_HINT_DEFAULT = 0,  // default preset.
+   WEBP_HINT_PICTURE,      // digital picture, like portrait, inner shot
+@@ -298,15 +299,15 @@ struct WebPPicture {
+   // compression, and YUV input (*y, *u, *v, etc.) for lossy compression
+   // since these are the respective native colorspace for these formats.
+   int use_argb;
+ 
+   // YUV input (mostly used for input to lossy compression)
+   WebPEncCSP colorspace;     // colorspace: should be YUV420 for now (=Y'CbCr).
+   int width, height;         // dimensions (less or equal to WEBP_MAX_DIMENSION)
+-  uint8_t *y, *u, *v;        // pointers to luma/chroma planes.
++  uint8_t* y, *u, *v;        // pointers to luma/chroma planes.
+   int y_stride, uv_stride;   // luma/chroma strides.
+   uint8_t* a;                // pointer to the alpha plane
+   int a_stride;              // stride of the alpha plane
+   uint32_t pad1[2];          // padding for later use
+ 
+   // ARGB input (mostly used for input to lossless compression)
+   uint32_t* argb;            // Pointer to argb (32 bit) plane.
+@@ -342,15 +343,15 @@ struct WebPPicture {
+ 
+   void* user_data;        // this field is free to be set to any value and
+                           // used during callbacks (like progress-report e.g.).
+ 
+   uint32_t pad3[3];       // padding for later use
+ 
+   // Unused for now
+-  uint8_t *pad4, *pad5;
++  uint8_t* pad4, *pad5;
+   uint32_t pad6[8];       // padding for later use
+ 
+   // PRIVATE FIELDS
+   ////////////////////
+   void* memory_;          // row chunk of memory for yuva planes
+   void* memory_argb_;     // and for argb too.
+   void* pad7[2];          // padding for later use
+diff --git a/include/webp/mux.h b/include/webp/mux.h
+index 66096a9..7d27489 100644
+--- a/include/webp/mux.h
++++ b/include/webp/mux.h
+@@ -53,15 +53,15 @@ extern "C" {
+   // ... (Read data from file).
+   WebPMux* mux = WebPMuxCreate(&data, copy_data);
+   WebPMuxGetFrame(mux, 1, &image);
+   // ... (Consume image; e.g. call WebPDecode() to decode the data).
+   WebPMuxGetChunk(mux, "ICCP", &icc_profile);
+   // ... (Consume icc_data).
+   WebPMuxDelete(mux);
+-  free(data);
++  WebPFree(data);
+ */
+ 
+ // Note: forward declaring enumerations is not allowed in (strict) C and C++,
+ // the types are left here for reference.
+ // typedef enum WebPMuxError WebPMuxError;
+ // typedef enum WebPChunkId WebPChunkId;
+ typedef struct WebPMux WebPMux;   // main opaque object.
+@@ -241,15 +241,15 @@ WEBP_EXTERN WebPMuxError WebPMuxSetImage(
+ //                               or if content of 'frame' is invalid.
+ //   WEBP_MUX_MEMORY_ERROR - on memory allocation error.
+ //   WEBP_MUX_OK - on success.
+ WEBP_EXTERN WebPMuxError WebPMuxPushFrame(
+     WebPMux* mux, const WebPMuxFrameInfo* frame, int copy_data);
+ 
+ // Gets the nth frame from the mux object.
+-// The content of 'frame->bitstream' is allocated using malloc(), and NOT
++// The content of 'frame->bitstream' is allocated using WebPMalloc(), and NOT
+ // owned by the 'mux' object. It MUST be deallocated by the caller by calling
+ // WebPDataClear().
+ // nth=0 has a special meaning - last position.
+ // Parameters:
+ //   mux - (in) object from which the info is to be fetched
+ //   nth - (in) index of the frame in the mux object
+ //   frame - (out) data of the returned frame
+@@ -372,18 +372,18 @@ WEBP_EXTERN WebPMuxError WebPMuxGetFeatures(const WebPMux* mux,
+ //   WEBP_MUX_OK - on success.
+ WEBP_EXTERN WebPMuxError WebPMuxNumChunks(const WebPMux* mux,
+                                           WebPChunkId id, int* num_elements);
+ 
+ // Assembles all chunks in WebP RIFF format and returns in 'assembled_data'.
+ // This function also validates the mux object.
+ // Note: The content of 'assembled_data' will be ignored and overwritten.
+-// Also, the content of 'assembled_data' is allocated using malloc(), and NOT
+-// owned by the 'mux' object. It MUST be deallocated by the caller by calling
+-// WebPDataClear(). It's always safe to call WebPDataClear() upon return,
+-// even in case of error.
++// Also, the content of 'assembled_data' is allocated using WebPMalloc(), and
++// NOT owned by the 'mux' object. It MUST be deallocated by the caller by
++// calling WebPDataClear(). It's always safe to call WebPDataClear() upon
++// return, even in case of error.
+ // Parameters:
+ //   mux - (in/out) object whose chunks are to be assembled
+ //   assembled_data - (out) assembled WebP data
+ // Returns:
+ //   WEBP_MUX_BAD_DATA - if mux object is invalid.
+ //   WEBP_MUX_INVALID_ARGUMENT - if mux or assembled_data is NULL.
+ //   WEBP_MUX_MEMORY_ERROR - on memory allocation error.
+diff --git a/include/webp/mux_types.h b/include/webp/mux_types.h
+index ceea77d..2fe8195 100644
+--- a/include/webp/mux_types.h
++++ b/include/webp/mux_types.h
+@@ -10,15 +10,14 @@
+ // Data-types common to the mux and demux libraries.
+ //
+ // Author: Urvang (urvang@google.com)
+ 
+ #ifndef WEBP_WEBP_MUX_TYPES_H_
+ #define WEBP_WEBP_MUX_TYPES_H_
+ 
+-#include <stdlib.h>  // free()
+ #include <string.h>  // memset()
+ #include "./types.h"
+ 
+ #ifdef __cplusplus
+ extern "C" {
+ #endif
+ 
+@@ -52,42 +51,43 @@ typedef enum WebPMuxAnimDispose {
+ typedef enum WebPMuxAnimBlend {
+   WEBP_MUX_BLEND,              // Blend.
+   WEBP_MUX_NO_BLEND            // Do not blend.
+ } WebPMuxAnimBlend;
+ 
+ // Data type used to describe 'raw' data, e.g., chunk data
+ // (ICC profile, metadata) and WebP compressed image data.
++// 'bytes' memory must be allocated using WebPMalloc() and such.
+ struct WebPData {
+   const uint8_t* bytes;
+   size_t size;
+ };
+ 
+ // Initializes the contents of the 'webp_data' object with default values.
+ static WEBP_INLINE void WebPDataInit(WebPData* webp_data) {
+   if (webp_data != NULL) {
+     memset(webp_data, 0, sizeof(*webp_data));
+   }
+ }
+ 
+-// Clears the contents of the 'webp_data' object by calling free(). Does not
+-// deallocate the object itself.
++// Clears the contents of the 'webp_data' object by calling WebPFree().
++// Does not deallocate the object itself.
+ static WEBP_INLINE void WebPDataClear(WebPData* webp_data) {
+   if (webp_data != NULL) {
+-    free((void*)webp_data->bytes);
++    WebPFree((void*)webp_data->bytes);
+     WebPDataInit(webp_data);
+   }
+ }
+ 
+ // Allocates necessary storage for 'dst' and copies the contents of 'src'.
+ // Returns true on success.
+ static WEBP_INLINE int WebPDataCopy(const WebPData* src, WebPData* dst) {
+   if (src == NULL || dst == NULL) return 0;
+   WebPDataInit(dst);
+   if (src->bytes != NULL && src->size != 0) {
+-    dst->bytes = (uint8_t*)malloc(src->size);
++    dst->bytes = (uint8_t*)WebPMalloc(src->size);
+     if (dst->bytes == NULL) return 0;
+     memcpy((void*)dst->bytes, src->bytes, src->size);
+     dst->size = src->size;
+   }
+   return 1;
+ }
+ 
+diff --git a/include/webp/types.h b/include/webp/types.h
+index 0ce2622..47f7f2b 100644
+--- a/include/webp/types.h
++++ b/include/webp/types.h
+@@ -3,15 +3,15 @@
+ // Use of this source code is governed by a BSD-style license
+ // that can be found in the COPYING file in the root of the source
+ // tree. An additional intellectual property rights grant can be found
+ // in the file PATENTS. All contributing project authors may
+ // be found in the AUTHORS file in the root of the source tree.
+ // -----------------------------------------------------------------------------
+ //
+-//  Common types
++//  Common types + memory wrappers
+ //
+ // Author: Skal (pascal.massimino@gmail.com)
+ 
+ #ifndef WEBP_WEBP_TYPES_H_
+ #define WEBP_WEBP_TYPES_H_
+ 
+ #include <stddef.h>  // for size_t
+@@ -45,8 +45,24 @@ typedef long long int int64_t;
+ #  define WEBP_EXTERN extern
+ # endif  /* __GNUC__ >= 4 */
+ #endif  /* WEBP_EXTERN */
+ 
+ // Macro to check ABI compatibility (same major revision number)
+ #define WEBP_ABI_IS_INCOMPATIBLE(a, b) (((a) >> 8) != ((b) >> 8))
+ 
++#ifdef __cplusplus
++extern "C" {
++#endif
++
++// Allocates 'size' bytes of memory. Returns NULL upon error. Memory
++// must be deallocated by calling WebPFree(). This function is made available
++// by the core 'libwebp' library.
++WEBP_EXTERN void* WebPMalloc(size_t size);
++
++// Releases memory returned by the WebPDecode*() functions (from decode.h).
++WEBP_EXTERN void WebPFree(void* ptr);
++
++#ifdef __cplusplus
++}    // extern "C"
++#endif
++
+ #endif  // WEBP_WEBP_TYPES_H_
+diff --git a/src/dec/frame_dec.c b/src/dec/frame_dec.c
+index bda9e1a..04609a8 100644
+--- a/src/dec/frame_dec.c
++++ b/src/dec/frame_dec.c
+@@ -728,15 +728,15 @@ static int AllocateMemory(VP8Decoder* const dec) {
+   dec->mb_info_ = ((VP8MB*)mem) + 1;
+   mem += mb_info_size;
+ 
+   dec->f_info_ = f_info_size ? (VP8FInfo*)mem : NULL;
+   mem += f_info_size;
+   dec->thread_ctx_.id_ = 0;
+   dec->thread_ctx_.f_info_ = dec->f_info_;
+-  if (dec->mt_method_ > 0) {
++  if (dec->filter_type_ > 0 && dec->mt_method_ > 0) {
+     // secondary cache line. The deblocking process need to make use of the
+     // filtering strength from previous macroblock row, while the new ones
+     // are being decoded in parallel. We'll just swap the pointers.
+     dec->thread_ctx_.f_info_ += mb_w;
+   }
+ 
+   mem = (uint8_t*)WEBP_ALIGN(mem);
+diff --git a/src/dec/idec_dec.c b/src/dec/idec_dec.c
+index 9bc9166..9035df5 100644
+--- a/src/dec/idec_dec.c
++++ b/src/dec/idec_dec.c
+@@ -162,17 +162,19 @@ static void DoRemap(WebPIDecoder* const idec, ptrdiff_t offset) {
+ // Appends data to the end of MemBuffer->buf_. It expands the allocated memory
+ // size if required and also updates VP8BitReader's if new memory is allocated.
+ static int AppendToMemBuffer(WebPIDecoder* const idec,
+                              const uint8_t* const data, size_t data_size) {
+   VP8Decoder* const dec = (VP8Decoder*)idec->dec_;
+   MemBuffer* const mem = &idec->mem_;
+   const int need_compressed_alpha = NeedCompressedAlpha(idec);
+-  const uint8_t* const old_start = mem->buf_ + mem->start_;
++  const uint8_t* const old_start =
++      (mem->buf_ == NULL) ? NULL : mem->buf_ + mem->start_;
+   const uint8_t* const old_base =
+       need_compressed_alpha ? dec->alpha_data_ : old_start;
++  assert(mem->buf_ != NULL || mem->start_ == 0);
+   assert(mem->mode_ == MEM_MODE_APPEND);
+   if (data_size > MAX_CHUNK_PAYLOAD) {
+     // security safeguard: trying to allocate more than what the format
+     // allows for a chunk should be considered a smoke smell.
+     return 0;
+   }
+ 
+@@ -180,35 +182,38 @@ static int AppendToMemBuffer(WebPIDecoder* const idec,
+     const size_t new_mem_start = old_start - old_base;
+     const size_t current_size = MemDataSize(mem) + new_mem_start;
+     const uint64_t new_size = (uint64_t)current_size + data_size;
+     const uint64_t extra_size = (new_size + CHUNK_SIZE - 1) & ~(CHUNK_SIZE - 1);
+     uint8_t* const new_buf =
+         (uint8_t*)WebPSafeMalloc(extra_size, sizeof(*new_buf));
+     if (new_buf == NULL) return 0;
+-    memcpy(new_buf, old_base, current_size);
++    if (old_base != NULL) memcpy(new_buf, old_base, current_size);
+     WebPSafeFree(mem->buf_);
+     mem->buf_ = new_buf;
+     mem->buf_size_ = (size_t)extra_size;
+     mem->start_ = new_mem_start;
+     mem->end_ = current_size;
+   }
+ 
++  assert(mem->buf_ != NULL);
+   memcpy(mem->buf_ + mem->end_, data, data_size);
+   mem->end_ += data_size;
+   assert(mem->end_ <= mem->buf_size_);
+ 
+   DoRemap(idec, mem->buf_ + mem->start_ - old_start);
+   return 1;
+ }
+ 
+ static int RemapMemBuffer(WebPIDecoder* const idec,
+                           const uint8_t* const data, size_t data_size) {
+   MemBuffer* const mem = &idec->mem_;
+   const uint8_t* const old_buf = mem->buf_;
+-  const uint8_t* const old_start = old_buf + mem->start_;
++  const uint8_t* const old_start =
++      (old_buf == NULL) ? NULL : old_buf + mem->start_;
++  assert(old_buf != NULL || mem->start_ == 0);
+   assert(mem->mode_ == MEM_MODE_MAP);
+ 
+   if (data_size < mem->buf_size_) return 0;  // can't remap to a shorter buffer!
+ 
+   mem->buf_ = (uint8_t*)data;
+   mem->end_ = mem->buf_size_ = data_size;
+ 
+diff --git a/src/dec/quant_dec.c b/src/dec/quant_dec.c
+index f07212a..a0ac018 100644
+--- a/src/dec/quant_dec.c
++++ b/src/dec/quant_dec.c
+@@ -57,20 +57,25 @@ static const uint16_t kAcTable[128] = {
+ };
+ 
+ //------------------------------------------------------------------------------
+ // Paragraph 9.6
+ 
+ void VP8ParseQuant(VP8Decoder* const dec) {
+   VP8BitReader* const br = &dec->br_;
+-  const int base_q0 = VP8GetValue(br, 7);
+-  const int dqy1_dc = VP8Get(br) ? VP8GetSignedValue(br, 4) : 0;
+-  const int dqy2_dc = VP8Get(br) ? VP8GetSignedValue(br, 4) : 0;
+-  const int dqy2_ac = VP8Get(br) ? VP8GetSignedValue(br, 4) : 0;
+-  const int dquv_dc = VP8Get(br) ? VP8GetSignedValue(br, 4) : 0;
+-  const int dquv_ac = VP8Get(br) ? VP8GetSignedValue(br, 4) : 0;
++  const int base_q0 = VP8GetValue(br, 7, "global-header");
++  const int dqy1_dc = VP8Get(br, "global-header") ?
++       VP8GetSignedValue(br, 4, "global-header") : 0;
++  const int dqy2_dc = VP8Get(br, "global-header") ?
++       VP8GetSignedValue(br, 4, "global-header") : 0;
++  const int dqy2_ac = VP8Get(br, "global-header") ?
++       VP8GetSignedValue(br, 4, "global-header") : 0;
++  const int dquv_dc = VP8Get(br, "global-header") ?
++       VP8GetSignedValue(br, 4, "global-header") : 0;
++  const int dquv_ac = VP8Get(br, "global-header") ?
++       VP8GetSignedValue(br, 4, "global-header") : 0;
+ 
+   const VP8SegmentHeader* const hdr = &dec->segment_hdr_;
+   int i;
+ 
+   for (i = 0; i < NUM_MB_SEGMENTS; ++i) {
+     int q;
+     if (hdr->use_segment_) {
+diff --git a/src/dec/tree_dec.c b/src/dec/tree_dec.c
+index 3f5a957..1c6fdea 100644
+--- a/src/dec/tree_dec.c
++++ b/src/dec/tree_dec.c
+@@ -292,69 +292,73 @@ static void ParseIntraMode(VP8BitReader* const br,
+   uint8_t* const left = dec->intra_l_;
+   VP8MBData* const block = dec->mb_data_ + mb_x;
+ 
+   // Note: we don't save segment map (yet), as we don't expect
+   // to decode more than 1 keyframe.
+   if (dec->segment_hdr_.update_map_) {
+     // Hardcoded tree parsing
+-    block->segment_ = !VP8GetBit(br, dec->proba_.segments_[0])
+-                    ? VP8GetBit(br, dec->proba_.segments_[1])
+-                    : 2 + VP8GetBit(br, dec->proba_.segments_[2]);
++    block->segment_ = !VP8GetBit(br, dec->proba_.segments_[0], "segments")
++                    ?  VP8GetBit(br, dec->proba_.segments_[1], "segments")
++                    :  VP8GetBit(br, dec->proba_.segments_[2], "segments") + 2;
+   } else {
+     block->segment_ = 0;  // default for intra
+   }
+-  if (dec->use_skip_proba_) block->skip_ = VP8GetBit(br, dec->skip_p_);
++  if (dec->use_skip_proba_) block->skip_ = VP8GetBit(br, dec->skip_p_, "skip");
+ 
+-  block->is_i4x4_ = !VP8GetBit(br, 145);   // decide for B_PRED first
++  block->is_i4x4_ = !VP8GetBit(br, 145, "block-size");
+   if (!block->is_i4x4_) {
+     // Hardcoded 16x16 intra-mode decision tree.
+     const int ymode =
+-        VP8GetBit(br, 156) ? (VP8GetBit(br, 128) ? TM_PRED : H_PRED)
+-                           : (VP8GetBit(br, 163) ? V_PRED : DC_PRED);
++        VP8GetBit(br, 156, "pred-modes") ?
++            (VP8GetBit(br, 128, "pred-modes") ? TM_PRED : H_PRED) :
++            (VP8GetBit(br, 163, "pred-modes") ? V_PRED : DC_PRED);
+     block->imodes_[0] = ymode;
+     memset(top, ymode, 4 * sizeof(*top));
+     memset(left, ymode, 4 * sizeof(*left));
+   } else {
+     uint8_t* modes = block->imodes_;
+     int y;
+     for (y = 0; y < 4; ++y) {
+       int ymode = left[y];
+       int x;
+       for (x = 0; x < 4; ++x) {
+         const uint8_t* const prob = kBModesProba[top[x]][ymode];
+ #if (USE_GENERIC_TREE == 1)
+         // Generic tree-parsing
+-        int i = kYModesIntra4[VP8GetBit(br, prob[0])];
++        int i = kYModesIntra4[VP8GetBit(br, prob[0], "pred-modes")];
+         while (i > 0) {
+-          i = kYModesIntra4[2 * i + VP8GetBit(br, prob[i])];
++          i = kYModesIntra4[2 * i + VP8GetBit(br, prob[i], "pred-modes")];
+         }
+         ymode = -i;
+ #else
+         // Hardcoded tree parsing
+-        ymode = !VP8GetBit(br, prob[0]) ? B_DC_PRED :
+-                  !VP8GetBit(br, prob[1]) ? B_TM_PRED :
+-                    !VP8GetBit(br, prob[2]) ? B_VE_PRED :
+-                      !VP8GetBit(br, prob[3]) ?
+-                        (!VP8GetBit(br, prob[4]) ? B_HE_PRED :
+-                          (!VP8GetBit(br, prob[5]) ? B_RD_PRED : B_VR_PRED)) :
+-                        (!VP8GetBit(br, prob[6]) ? B_LD_PRED :
+-                          (!VP8GetBit(br, prob[7]) ? B_VL_PRED :
+-                            (!VP8GetBit(br, prob[8]) ? B_HD_PRED : B_HU_PRED)));
++        ymode = !VP8GetBit(br, prob[0], "pred-modes") ? B_DC_PRED :
++                  !VP8GetBit(br, prob[1], "pred-modes") ? B_TM_PRED :
++                    !VP8GetBit(br, prob[2], "pred-modes") ? B_VE_PRED :
++                      !VP8GetBit(br, prob[3], "pred-modes") ?
++                        (!VP8GetBit(br, prob[4], "pred-modes") ? B_HE_PRED :
++                          (!VP8GetBit(br, prob[5], "pred-modes") ? B_RD_PRED
++                                                                 : B_VR_PRED)) :
++                        (!VP8GetBit(br, prob[6], "pred-modes") ? B_LD_PRED :
++                          (!VP8GetBit(br, prob[7], "pred-modes") ? B_VL_PRED :
++                            (!VP8GetBit(br, prob[8], "pred-modes") ? B_HD_PRED
++                                                                   : B_HU_PRED))
++                        );
+ #endif  // USE_GENERIC_TREE
+         top[x] = ymode;
+       }
+       memcpy(modes, top, 4 * sizeof(*top));
+       modes += 4;
+       left[y] = ymode;
+     }
+   }
+   // Hardcoded UVMode decision tree
+-  block->uvmode_ = !VP8GetBit(br, 142) ? DC_PRED
+-                 : !VP8GetBit(br, 114) ? V_PRED
+-                 : VP8GetBit(br, 183) ? TM_PRED : H_PRED;
++  block->uvmode_ = !VP8GetBit(br, 142, "pred-modes-uv") ? DC_PRED
++                 : !VP8GetBit(br, 114, "pred-modes-uv") ? V_PRED
++                 : VP8GetBit(br, 183, "pred-modes-uv") ? TM_PRED : H_PRED;
+ }
+ 
+ int VP8ParseIntraModeRow(VP8BitReader* const br, VP8Decoder* const dec) {
+   int mb_x;
+   for (mb_x = 0; mb_x < dec->mb_w_; ++mb_x) {
+     ParseIntraMode(br, dec, mb_x);
+   }
+@@ -510,23 +514,24 @@ static const uint8_t kBands[16 + 1] = {
+ void VP8ParseProba(VP8BitReader* const br, VP8Decoder* const dec) {
+   VP8Proba* const proba = &dec->proba_;
+   int t, b, c, p;
+   for (t = 0; t < NUM_TYPES; ++t) {
+     for (b = 0; b < NUM_BANDS; ++b) {
+       for (c = 0; c < NUM_CTX; ++c) {
+         for (p = 0; p < NUM_PROBAS; ++p) {
+-          const int v = VP8GetBit(br, CoeffsUpdateProba[t][b][c][p]) ?
+-                        VP8GetValue(br, 8) : CoeffsProba0[t][b][c][p];
++          const int v =
++              VP8GetBit(br, CoeffsUpdateProba[t][b][c][p], "global-header") ?
++                        VP8GetValue(br, 8, "global-header") :
++                        CoeffsProba0[t][b][c][p];
+           proba->bands_[t][b].probas_[c][p] = v;
+         }
+       }
+     }
+     for (b = 0; b < 16 + 1; ++b) {
+       proba->bands_ptr_[t][b] = &proba->bands_[t][kBands[b]];
+     }
+   }
+-  dec->use_skip_proba_ = VP8Get(br);
++  dec->use_skip_proba_ = VP8Get(br, "global-header");
+   if (dec->use_skip_proba_) {
+-    dec->skip_p_ = VP8GetValue(br, 8);
++    dec->skip_p_ = VP8GetValue(br, 8, "global-header");
+   }
+ }
+-
+diff --git a/src/dec/vp8_dec.c b/src/dec/vp8_dec.c
+index c904b52..57efb69 100644
+--- a/src/dec/vp8_dec.c
++++ b/src/dec/vp8_dec.c
+@@ -157,31 +157,34 @@ static void ResetSegmentHeader(VP8SegmentHeader* const hdr) {
+ }
+ 
+ // Paragraph 9.3
+ static int ParseSegmentHeader(VP8BitReader* br,
+                               VP8SegmentHeader* hdr, VP8Proba* proba) {
+   assert(br != NULL);
+   assert(hdr != NULL);
+-  hdr->use_segment_ = VP8Get(br);
++  hdr->use_segment_ = VP8Get(br, "global-header");
+   if (hdr->use_segment_) {
+-    hdr->update_map_ = VP8Get(br);
+-    if (VP8Get(br)) {   // update data
++    hdr->update_map_ = VP8Get(br, "global-header");
++    if (VP8Get(br, "global-header")) {   // update data
+       int s;
+-      hdr->absolute_delta_ = VP8Get(br);
++      hdr->absolute_delta_ = VP8Get(br, "global-header");
+       for (s = 0; s < NUM_MB_SEGMENTS; ++s) {
+-        hdr->quantizer_[s] = VP8Get(br) ? VP8GetSignedValue(br, 7) : 0;
++        hdr->quantizer_[s] = VP8Get(br, "global-header") ?
++            VP8GetSignedValue(br, 7, "global-header") : 0;
+       }
+       for (s = 0; s < NUM_MB_SEGMENTS; ++s) {
+-        hdr->filter_strength_[s] = VP8Get(br) ? VP8GetSignedValue(br, 6) : 0;
++        hdr->filter_strength_[s] = VP8Get(br, "global-header") ?
++            VP8GetSignedValue(br, 6, "global-header") : 0;
+       }
+     }
+     if (hdr->update_map_) {
+       int s;
+       for (s = 0; s < MB_FEATURE_TREE_PROBS; ++s) {
+-        proba->segments_[s] = VP8Get(br) ? VP8GetValue(br, 8) : 255u;
++        proba->segments_[s] = VP8Get(br, "global-header") ?
++            VP8GetValue(br, 8, "global-header") : 255u;
+       }
+     }
+   } else {
+     hdr->update_map_ = 0;
+   }
+   return !br->eof_;
+ }
+@@ -201,15 +204,15 @@ static VP8StatusCode ParsePartitions(VP8Decoder* const dec,
+   const uint8_t* sz = buf;
+   const uint8_t* buf_end = buf + size;
+   const uint8_t* part_start;
+   size_t size_left = size;
+   size_t last_part;
+   size_t p;
+ 
+-  dec->num_parts_minus_one_ = (1 << VP8GetValue(br, 2)) - 1;
++  dec->num_parts_minus_one_ = (1 << VP8GetValue(br, 2, "global-header")) - 1;
+   last_part = dec->num_parts_minus_one_;
+   if (size < 3 * last_part) {
+     // we can't even read the sizes with sz[]! That's a failure.
+     return VP8_STATUS_NOT_ENOUGH_DATA;
+   }
+   part_start = buf + last_part * 3;
+   size_left -= last_part * 3;
+@@ -225,29 +228,29 @@ static VP8StatusCode ParsePartitions(VP8Decoder* const dec,
+   return (part_start < buf_end) ? VP8_STATUS_OK :
+            VP8_STATUS_SUSPENDED;   // Init is ok, but there's not enough data
+ }
+ 
+ // Paragraph 9.4
+ static int ParseFilterHeader(VP8BitReader* br, VP8Decoder* const dec) {
+   VP8FilterHeader* const hdr = &dec->filter_hdr_;
+-  hdr->simple_    = VP8Get(br);
+-  hdr->level_     = VP8GetValue(br, 6);
+-  hdr->sharpness_ = VP8GetValue(br, 3);
+-  hdr->use_lf_delta_ = VP8Get(br);
++  hdr->simple_    = VP8Get(br, "global-header");
++  hdr->level_     = VP8GetValue(br, 6, "global-header");
++  hdr->sharpness_ = VP8GetValue(br, 3, "global-header");
++  hdr->use_lf_delta_ = VP8Get(br, "global-header");
+   if (hdr->use_lf_delta_) {
+-    if (VP8Get(br)) {   // update lf-delta?
++    if (VP8Get(br, "global-header")) {   // update lf-delta?
+       int i;
+       for (i = 0; i < NUM_REF_LF_DELTAS; ++i) {
+-        if (VP8Get(br)) {
+-          hdr->ref_lf_delta_[i] = VP8GetSignedValue(br, 6);
++        if (VP8Get(br, "global-header")) {
++          hdr->ref_lf_delta_[i] = VP8GetSignedValue(br, 6, "global-header");
+         }
+       }
+       for (i = 0; i < NUM_MODE_LF_DELTAS; ++i) {
+-        if (VP8Get(br)) {
+-          hdr->mode_lf_delta_[i] = VP8GetSignedValue(br, 6);
++        if (VP8Get(br, "global-header")) {
++          hdr->mode_lf_delta_[i] = VP8GetSignedValue(br, 6, "global-header");
+         }
+       }
+     }
+   }
+   dec->filter_type_ = (hdr->level_ == 0) ? 0 : hdr->simple_ ? 1 : 2;
+   return !br->eof_;
+ }
+@@ -348,16 +351,16 @@ int VP8GetHeaders(VP8Decoder* const dec, VP8Io* const io) {
+ 
+   br = &dec->br_;
+   VP8InitBitReader(br, buf, frm_hdr->partition_length_);
+   buf += frm_hdr->partition_length_;
+   buf_size -= frm_hdr->partition_length_;
+ 
+   if (frm_hdr->key_frame_) {
+-    pic_hdr->colorspace_ = VP8Get(br);
+-    pic_hdr->clamp_type_ = VP8Get(br);
++    pic_hdr->colorspace_ = VP8Get(br, "global-header");
++    pic_hdr->clamp_type_ = VP8Get(br, "global-header");
+   }
+   if (!ParseSegmentHeader(br, &dec->segment_hdr_, &dec->proba_)) {
+     return VP8SetError(dec, VP8_STATUS_BITSTREAM_ERROR,
+                        "cannot parse segment header");
+   }
+   // Filter specs
+   if (!ParseFilterHeader(br, dec)) {
+@@ -374,15 +377,15 @@ int VP8GetHeaders(VP8Decoder* const dec, VP8Io* const io) {
+ 
+   // Frame buffer marking
+   if (!frm_hdr->key_frame_) {
+     return VP8SetError(dec, VP8_STATUS_UNSUPPORTED_FEATURE,
+                        "Not a key frame.");
+   }
+ 
+-  VP8Get(br);   // ignore the value of update_proba_
++  VP8Get(br, "global-header");   // ignore the value of update_proba_
+ 
+   VP8ParseProba(br, dec);
+ 
+   // sanitized state
+   dec->ready_ = 1;
+   return 1;
+ }
+@@ -399,97 +402,97 @@ static const uint8_t* const kCat3456[] = { kCat3, kCat4, kCat5, kCat6 };
+ static const uint8_t kZigzag[16] = {
+   0, 1, 4, 8,  5, 2, 3, 6,  9, 12, 13, 10,  7, 11, 14, 15
+ };
+ 
+ // See section 13-2: http://tools.ietf.org/html/rfc6386#section-13.2
+ static int GetLargeValue(VP8BitReader* const br, const uint8_t* const p) {
+   int v;
+-  if (!VP8GetBit(br, p[3])) {
+-    if (!VP8GetBit(br, p[4])) {
++  if (!VP8GetBit(br, p[3], "coeffs")) {
++    if (!VP8GetBit(br, p[4], "coeffs")) {
+       v = 2;
+     } else {
+-      v = 3 + VP8GetBit(br, p[5]);
++      v = 3 + VP8GetBit(br, p[5], "coeffs");
+     }
+   } else {
+-    if (!VP8GetBit(br, p[6])) {
+-      if (!VP8GetBit(br, p[7])) {
+-        v = 5 + VP8GetBit(br, 159);
++    if (!VP8GetBit(br, p[6], "coeffs")) {
++      if (!VP8GetBit(br, p[7], "coeffs")) {
++        v = 5 + VP8GetBit(br, 159, "coeffs");
+       } else {
+-        v = 7 + 2 * VP8GetBit(br, 165);
+-        v += VP8GetBit(br, 145);
++        v = 7 + 2 * VP8GetBit(br, 165, "coeffs");
++        v += VP8GetBit(br, 145, "coeffs");
+       }
+     } else {
+       const uint8_t* tab;
+-      const int bit1 = VP8GetBit(br, p[8]);
+-      const int bit0 = VP8GetBit(br, p[9 + bit1]);
++      const int bit1 = VP8GetBit(br, p[8], "coeffs");
++      const int bit0 = VP8GetBit(br, p[9 + bit1], "coeffs");
+       const int cat = 2 * bit1 + bit0;
+       v = 0;
+       for (tab = kCat3456[cat]; *tab; ++tab) {
+-        v += v + VP8GetBit(br, *tab);
++        v += v + VP8GetBit(br, *tab, "coeffs");
+       }
+       v += 3 + (8 << cat);
+     }
+   }
+   return v;
+ }
+ 
+ // Returns the position of the last non-zero coeff plus one
+ static int GetCoeffsFast(VP8BitReader* const br,
+                          const VP8BandProbas* const prob[],
+                          int ctx, const quant_t dq, int n, int16_t* out) {
+   const uint8_t* p = prob[n]->probas_[ctx];
+   for (; n < 16; ++n) {
+-    if (!VP8GetBit(br, p[0])) {
++    if (!VP8GetBit(br, p[0], "coeffs")) {
+       return n;  // previous coeff was last non-zero coeff
+     }
+-    while (!VP8GetBit(br, p[1])) {       // sequence of zero coeffs
++    while (!VP8GetBit(br, p[1], "coeffs")) {       // sequence of zero coeffs
+       p = prob[++n]->probas_[0];
+       if (n == 16) return 16;
+     }
+     {        // non zero coeff
+       const VP8ProbaArray* const p_ctx = &prob[n + 1]->probas_[0];
+       int v;
+-      if (!VP8GetBit(br, p[2])) {
++      if (!VP8GetBit(br, p[2], "coeffs")) {
+         v = 1;
+         p = p_ctx[1];
+       } else {
+         v = GetLargeValue(br, p);
+         p = p_ctx[2];
+       }
+-      out[kZigzag[n]] = VP8GetSigned(br, v) * dq[n > 0];
++      out[kZigzag[n]] = VP8GetSigned(br, v, "coeffs") * dq[n > 0];
+     }
+   }
+   return 16;
+ }
+ 
+ // This version of GetCoeffs() uses VP8GetBitAlt() which is an alternate version
+ // of VP8GetBitAlt() targeting specific platforms.
+ static int GetCoeffsAlt(VP8BitReader* const br,
+                         const VP8BandProbas* const prob[],
+                         int ctx, const quant_t dq, int n, int16_t* out) {
+   const uint8_t* p = prob[n]->probas_[ctx];
+   for (; n < 16; ++n) {
+-    if (!VP8GetBitAlt(br, p[0])) {
++    if (!VP8GetBitAlt(br, p[0], "coeffs")) {
+       return n;  // previous coeff was last non-zero coeff
+     }
+-    while (!VP8GetBitAlt(br, p[1])) {       // sequence of zero coeffs
++    while (!VP8GetBitAlt(br, p[1], "coeffs")) {       // sequence of zero coeffs
+       p = prob[++n]->probas_[0];
+       if (n == 16) return 16;
+     }
+     {        // non zero coeff
+       const VP8ProbaArray* const p_ctx = &prob[n + 1]->probas_[0];
+       int v;
+-      if (!VP8GetBitAlt(br, p[2])) {
++      if (!VP8GetBitAlt(br, p[2], "coeffs")) {
+         v = 1;
+         p = p_ctx[1];
+       } else {
+         v = GetLargeValue(br, p);
+         p = p_ctx[2];
+       }
+-      out[kZigzag[n]] = VP8GetSigned(br, v) * dq[n > 0];
++      out[kZigzag[n]] = VP8GetSigned(br, v, "coeffs") * dq[n > 0];
+     }
+   }
+   return 16;
+ }
+ 
+ static WEBP_TSAN_IGNORE_FUNCTION void InitGetCoeffs(void) {
+   if (GetCoeffs == NULL) {
+diff --git a/src/dec/vp8i_dec.h b/src/dec/vp8i_dec.h
+index 2d7900a..600a684 100644
+--- a/src/dec/vp8i_dec.h
++++ b/src/dec/vp8i_dec.h
+@@ -27,16 +27,16 @@ extern "C" {
+ #endif
+ 
+ //------------------------------------------------------------------------------
+ // Various defines and enums
+ 
+ // version numbers
+ #define DEC_MAJ_VERSION 1
+-#define DEC_MIN_VERSION 0
+-#define DEC_REV_VERSION 2
++#define DEC_MIN_VERSION 1
++#define DEC_REV_VERSION 0
+ 
+ // YUV-cache parameters. Cache is 32-bytes wide (= one cacheline).
+ // Constraints are: We need to store one 16x16 block of luma samples (y),
+ // and two 8x8 chroma blocks (u/v). These are better be 16-bytes aligned,
+ // in order to be SIMD-friendly. We also need to store the top, left and
+ // top-left samples (from previously decoded blocks), along with four
+ // extra top-right samples for luma (intra4x4 prediction only).
+diff --git a/src/dec/vp8l_dec.c b/src/dec/vp8l_dec.c
+index 333bb3e..0d38314 100644
+--- a/src/dec/vp8l_dec.c
++++ b/src/dec/vp8l_dec.c
+@@ -249,19 +249,19 @@ static int ReadHuffmanCodeLengths(
+     VP8LDecoder* const dec, const int* const code_length_code_lengths,
+     int num_symbols, int* const code_lengths) {
+   int ok = 0;
+   VP8LBitReader* const br = &dec->br_;
+   int symbol;
+   int max_symbol;
+   int prev_code_len = DEFAULT_CODE_LENGTH;
+-  HuffmanCode table[1 << LENGTHS_TABLE_BITS];
++  HuffmanTables tables;
+ 
+-  if (!VP8LBuildHuffmanTable(table, LENGTHS_TABLE_BITS,
+-                             code_length_code_lengths,
+-                             NUM_CODE_LENGTH_CODES)) {
++  if (!VP8LHuffmanTablesAllocate(1 << LENGTHS_TABLE_BITS, &tables) ||
++      !VP8LBuildHuffmanTable(&tables, LENGTHS_TABLE_BITS,
++                             code_length_code_lengths, NUM_CODE_LENGTH_CODES)) {
+     goto End;
+   }
+ 
+   if (VP8LReadBits(br, 1)) {    // use length
+     const int length_nbits = 2 + 2 * VP8LReadBits(br, 3);
+     max_symbol = 2 + VP8LReadBits(br, length_nbits);
+     if (max_symbol > num_symbols) {
+@@ -273,15 +273,15 @@ static int ReadHuffmanCodeLengths(
+ 
+   symbol = 0;
+   while (symbol < num_symbols) {
+     const HuffmanCode* p;
+     int code_len;
+     if (max_symbol-- == 0) break;
+     VP8LFillBitWindow(br);
+-    p = &table[VP8LPrefetchBits(br) & LENGTHS_TABLE_MASK];
++    p = &tables.curr_segment->start[VP8LPrefetchBits(br) & LENGTHS_TABLE_MASK];
+     VP8LSetBitPos(br, br->bit_pos_ + p->bits);
+     code_len = p->value;
+     if (code_len < kCodeLengthLiterals) {
+       code_lengths[symbol++] = code_len;
+       if (code_len != 0) prev_code_len = code_len;
+     } else {
+       const int use_prev = (code_len == kCodeLengthRepeatCode);
+@@ -296,22 +296,24 @@ static int ReadHuffmanCodeLengths(
+         while (repeat-- > 0) code_lengths[symbol++] = length;
+       }
+     }
+   }
+   ok = 1;
+ 
+  End:
++  VP8LHuffmanTablesDeallocate(&tables);
+   if (!ok) dec->status_ = VP8_STATUS_BITSTREAM_ERROR;
+   return ok;
+ }
+ 
+ // 'code_lengths' is pre-allocated temporary buffer, used for creating Huffman
+ // tree.
+ static int ReadHuffmanCode(int alphabet_size, VP8LDecoder* const dec,
+-                           int* const code_lengths, HuffmanCode* const table) {
++                           int* const code_lengths,
++                           HuffmanTables* const table) {
+   int ok = 0;
+   int size = 0;
+   VP8LBitReader* const br = &dec->br_;
+   const int simple_code = VP8LReadBits(br, 1);
+ 
+   memset(code_lengths, 0, alphabet_size * sizeof(*code_lengths));
+ 
+@@ -358,28 +360,27 @@ static int ReadHuffmanCode(int alphabet_size, VP8LDecoder* const dec,
+ static int ReadHuffmanCodes(VP8LDecoder* const dec, int xsize, int ysize,
+                             int color_cache_bits, int allow_recursion) {
+   int i, j;
+   VP8LBitReader* const br = &dec->br_;
+   VP8LMetadata* const hdr = &dec->hdr_;
+   uint32_t* huffman_image = NULL;
+   HTreeGroup* htree_groups = NULL;
+-  // When reading htrees, some might be unused, as the format allows it.
+-  // We will still read them but put them in this htree_group_bogus.
+-  HTreeGroup htree_group_bogus;
+-  HuffmanCode* huffman_tables = NULL;
+-  HuffmanCode* huffman_tables_bogus = NULL;
+-  HuffmanCode* next = NULL;
++  HuffmanTables* huffman_tables = &hdr->huffman_tables_;
+   int num_htree_groups = 1;
+   int num_htree_groups_max = 1;
+   int max_alphabet_size = 0;
+   int* code_lengths = NULL;
+   const int table_size = kTableSize[color_cache_bits];
+   int* mapping = NULL;
+   int ok = 0;
+ 
++  // Check the table has been 0 initialized (through InitMetadata).
++  assert(huffman_tables->root.start == NULL);
++  assert(huffman_tables->curr_segment == NULL);
++
+   if (allow_recursion && VP8LReadBits(br, 1)) {
+     // use meta Huffman codes.
+     const int huffman_precision = VP8LReadBits(br, 3) + 2;
+     const int huffman_xsize = VP8LSubSampleSize(xsize, huffman_precision);
+     const int huffman_ysize = VP8LSubSampleSize(ysize, huffman_precision);
+     const int huffman_pixs = huffman_xsize * huffman_ysize;
+     if (!DecodeImageStream(huffman_xsize, huffman_ysize, 0, dec,
+@@ -414,20 +415,14 @@ static int ReadHuffmanCodes(VP8LDecoder* const dec, int xsize, int ysize,
+       memset(mapping, 0xff, num_htree_groups_max * sizeof(*mapping));
+       for (num_htree_groups = 0, i = 0; i < huffman_pixs; ++i) {
+         // Get the current mapping for the group and remap the Huffman image.
+         int* const mapped_group = &mapping[huffman_image[i]];
+         if (*mapped_group == -1) *mapped_group = num_htree_groups++;
+         huffman_image[i] = *mapped_group;
+       }
+-      huffman_tables_bogus = (HuffmanCode*)WebPSafeMalloc(
+-          table_size, sizeof(*huffman_tables_bogus));
+-      if (huffman_tables_bogus == NULL) {
+-        dec->status_ = VP8_STATUS_OUT_OF_MEMORY;
+-        goto Error;
+-      }
+     } else {
+       num_htree_groups = num_htree_groups_max;
+     }
+   }
+ 
+   if (br->eos_) goto Error;
+ 
+@@ -440,96 +435,102 @@ static int ReadHuffmanCodes(VP8LDecoder* const dec, int xsize, int ysize,
+     if (max_alphabet_size < alphabet_size) {
+       max_alphabet_size = alphabet_size;
+     }
+   }
+ 
+   code_lengths = (int*)WebPSafeCalloc((uint64_t)max_alphabet_size,
+                                       sizeof(*code_lengths));
+-  huffman_tables = (HuffmanCode*)WebPSafeMalloc(num_htree_groups * table_size,
+-                                                sizeof(*huffman_tables));
+   htree_groups = VP8LHtreeGroupsNew(num_htree_groups);
+ 
+-  if (htree_groups == NULL || code_lengths == NULL || huffman_tables == NULL) {
++  if (htree_groups == NULL || code_lengths == NULL ||
++      !VP8LHuffmanTablesAllocate(num_htree_groups * table_size,
++                                 huffman_tables)) {
+     dec->status_ = VP8_STATUS_OUT_OF_MEMORY;
+     goto Error;
+   }
+ 
+-  next = huffman_tables;
+   for (i = 0; i < num_htree_groups_max; ++i) {
+-    // If the index "i" is unused in the Huffman image, read the coefficients
+-    // but store them to a bogus htree_group.
+-    const int is_bogus = (mapping != NULL && mapping[i] == -1);
+-    HTreeGroup* const htree_group =
+-        is_bogus ? &htree_group_bogus :
+-        &htree_groups[(mapping == NULL) ? i : mapping[i]];
+-    HuffmanCode** const htrees = htree_group->htrees;
+-    HuffmanCode* huffman_tables_i = is_bogus ? huffman_tables_bogus : next;
+-    int size;
+-    int total_size = 0;
+-    int is_trivial_literal = 1;
+-    int max_bits = 0;
+-    for (j = 0; j < HUFFMAN_CODES_PER_META_CODE; ++j) {
+-      int alphabet_size = kAlphabetSize[j];
+-      htrees[j] = huffman_tables_i;
+-      if (j == 0 && color_cache_bits > 0) {
+-        alphabet_size += 1 << color_cache_bits;
+-      }
+-      size =
+-          ReadHuffmanCode(alphabet_size, dec, code_lengths, huffman_tables_i);
+-      if (size == 0) {
+-        goto Error;
+-      }
+-      if (is_trivial_literal && kLiteralMap[j] == 1) {
+-        is_trivial_literal = (huffman_tables_i->bits == 0);
++    // If the index "i" is unused in the Huffman image, just make sure the
++    // coefficients are valid but do not store them.
++    if (mapping != NULL && mapping[i] == -1) {
++      for (j = 0; j < HUFFMAN_CODES_PER_META_CODE; ++j) {
++        int alphabet_size = kAlphabetSize[j];
++        if (j == 0 && color_cache_bits > 0) {
++          alphabet_size += (1 << color_cache_bits);
++        }
++        // Passing in NULL so that nothing gets filled.
++        if (!ReadHuffmanCode(alphabet_size, dec, code_lengths, NULL)) {
++          goto Error;
++        }
+       }
+-      total_size += huffman_tables_i->bits;
+-      huffman_tables_i += size;
+-      if (j <= ALPHA) {
+-        int local_max_bits = code_lengths[0];
+-        int k;
+-        for (k = 1; k < alphabet_size; ++k) {
+-          if (code_lengths[k] > local_max_bits) {
+-            local_max_bits = code_lengths[k];
++    } else {
++      HTreeGroup* const htree_group =
++          &htree_groups[(mapping == NULL) ? i : mapping[i]];
++      HuffmanCode** const htrees = htree_group->htrees;
++      int size;
++      int total_size = 0;
++      int is_trivial_literal = 1;
++      int max_bits = 0;
++      for (j = 0; j < HUFFMAN_CODES_PER_META_CODE; ++j) {
++        int alphabet_size = kAlphabetSize[j];
++        if (j == 0 && color_cache_bits > 0) {
++          alphabet_size += (1 << color_cache_bits);
++        }
++        size =
++            ReadHuffmanCode(alphabet_size, dec, code_lengths, huffman_tables);
++        htrees[j] = huffman_tables->curr_segment->curr_table;
++        if (size == 0) {
++          goto Error;
++        }
++        if (is_trivial_literal && kLiteralMap[j] == 1) {
++          is_trivial_literal = (htrees[j]->bits == 0);
++        }
++        total_size += htrees[j]->bits;
++        huffman_tables->curr_segment->curr_table += size;
++        if (j <= ALPHA) {
++          int local_max_bits = code_lengths[0];
++          int k;
++          for (k = 1; k < alphabet_size; ++k) {
++            if (code_lengths[k] > local_max_bits) {
++              local_max_bits = code_lengths[k];
++            }
+           }
++          max_bits += local_max_bits;
+         }
+-        max_bits += local_max_bits;
+       }
+-    }
+-    if (!is_bogus) next = huffman_tables_i;
+-    htree_group->is_trivial_literal = is_trivial_literal;
+-    htree_group->is_trivial_code = 0;
+-    if (is_trivial_literal) {
+-      const int red = htrees[RED][0].value;
+-      const int blue = htrees[BLUE][0].value;
+-      const int alpha = htrees[ALPHA][0].value;
+-      htree_group->literal_arb = ((uint32_t)alpha << 24) | (red << 16) | blue;
+-      if (total_size == 0 && htrees[GREEN][0].value < NUM_LITERAL_CODES) {
+-        htree_group->is_trivial_code = 1;
+-        htree_group->literal_arb |= htrees[GREEN][0].value << 8;
++      htree_group->is_trivial_literal = is_trivial_literal;
++      htree_group->is_trivial_code = 0;
++      if (is_trivial_literal) {
++        const int red = htrees[RED][0].value;
++        const int blue = htrees[BLUE][0].value;
++        const int alpha = htrees[ALPHA][0].value;
++        htree_group->literal_arb = ((uint32_t)alpha << 24) | (red << 16) | blue;
++        if (total_size == 0 && htrees[GREEN][0].value < NUM_LITERAL_CODES) {
++          htree_group->is_trivial_code = 1;
++          htree_group->literal_arb |= htrees[GREEN][0].value << 8;
++        }
+       }
++      htree_group->use_packed_table =
++          !htree_group->is_trivial_code && (max_bits < HUFFMAN_PACKED_BITS);
++      if (htree_group->use_packed_table) BuildPackedTable(htree_group);
+     }
+-    htree_group->use_packed_table =
+-        !htree_group->is_trivial_code && (max_bits < HUFFMAN_PACKED_BITS);
+-    if (htree_group->use_packed_table) BuildPackedTable(htree_group);
+   }
+   ok = 1;
+ 
+   // All OK. Finalize pointers.
+   hdr->huffman_image_ = huffman_image;
+   hdr->num_htree_groups_ = num_htree_groups;
+   hdr->htree_groups_ = htree_groups;
+-  hdr->huffman_tables_ = huffman_tables;
+ 
+  Error:
+   WebPSafeFree(code_lengths);
+-  WebPSafeFree(huffman_tables_bogus);
+   WebPSafeFree(mapping);
+   if (!ok) {
+     WebPSafeFree(huffman_image);
+-    WebPSafeFree(huffman_tables);
++    VP8LHuffmanTablesDeallocate(huffman_tables);
+     VP8LHtreeGroupsFree(htree_groups);
+   }
+   return ok;
+ }
+ 
+ //------------------------------------------------------------------------------
+ // Scaling.
+@@ -753,19 +754,19 @@ static WEBP_INLINE HTreeGroup* GetHtreeGroupForPos(VP8LMetadata* const hdr,
+ }
+ 
+ //------------------------------------------------------------------------------
+ // Main loop, with custom row-processing function
+ 
+ typedef void (*ProcessRowsFunc)(VP8LDecoder* const dec, int row);
+ 
+-static void ApplyInverseTransforms(VP8LDecoder* const dec, int num_rows,
++static void ApplyInverseTransforms(VP8LDecoder* const dec,
++                                   int start_row, int num_rows,
+                                    const uint32_t* const rows) {
+   int n = dec->next_transform_;
+   const int cache_pixs = dec->width_ * num_rows;
+-  const int start_row = dec->last_row_;
+   const int end_row = start_row + num_rows;
+   const uint32_t* rows_in = rows;
+   uint32_t* const rows_out = dec->argb_cache_;
+ 
+   // Inverse transforms.
+   while (n-- > 0) {
+     VP8LTransform* const transform = &dec->transforms_[n];
+@@ -788,16 +789,15 @@ static void ProcessRows(VP8LDecoder* const dec, int row) {
+   // We can't process more than NUM_ARGB_CACHE_ROWS at a time (that's the size
+   // of argb_cache_), but we currently don't need more than that.
+   assert(num_rows <= NUM_ARGB_CACHE_ROWS);
+   if (num_rows > 0) {    // Emit output.
+     VP8Io* const io = dec->io_;
+     uint8_t* rows_data = (uint8_t*)dec->argb_cache_;
+     const int in_stride = io->width * sizeof(uint32_t);  // in unit of RGBA
+-
+-    ApplyInverseTransforms(dec, num_rows, rows);
++    ApplyInverseTransforms(dec, dec->last_row_, num_rows, rows);
+     if (!SetCropWindow(io, dec->last_row_, row, &rows_data, in_stride)) {
+       // Nothing to output (this time).
+     } else {
+       const WebPDecBuffer* const output = dec->output_;
+       if (WebPIsRGBMode(output->colorspace)) {  // convert to RGBA
+         const WebPRGBABuffer* const buf = &output->u.RGBA;
+         uint8_t* const rgba = buf->rgba + dec->last_out_row_ * buf->stride;
+@@ -1192,14 +1192,15 @@ static int DecodeImageData(VP8LDecoder* const dec, uint32_t* const data,
+       int dist_code, dist;
+       const int length_sym = code - NUM_LITERAL_CODES;
+       const int length = GetCopyLength(length_sym, br);
+       const int dist_symbol = ReadSymbol(htree_group->htrees[DIST], br);
+       VP8LFillBitWindow(br);
+       dist_code = GetCopyDistance(dist_symbol, br);
+       dist = PlaneCodeToDistance(width, dist_code);
++
+       if (VP8LIsEndOfStream(br)) break;
+       if (src - data < (ptrdiff_t)dist || src_end - src < (ptrdiff_t)length) {
+         goto Error;
+       } else {
+         CopyBlock32b(src, dist, length);
+       }
+       src += length;
+@@ -1353,15 +1354,15 @@ static void InitMetadata(VP8LMetadata* const hdr) {
+   memset(hdr, 0, sizeof(*hdr));
+ }
+ 
+ static void ClearMetadata(VP8LMetadata* const hdr) {
+   assert(hdr != NULL);
+ 
+   WebPSafeFree(hdr->huffman_image_);
+-  WebPSafeFree(hdr->huffman_tables_);
++  VP8LHuffmanTablesDeallocate(&hdr->huffman_tables_);
+   VP8LHtreeGroupsFree(hdr->htree_groups_);
+   VP8LColorCacheClear(&hdr->color_cache_);
+   VP8LColorCacheClear(&hdr->saved_color_cache_);
+   InitMetadata(hdr);
+ }
+ 
+ // -----------------------------------------------------------------------------
+@@ -1552,15 +1553,15 @@ static void ExtractAlphaRows(VP8LDecoder* const dec, int last_row) {
+     // Extract alpha (which is stored in the green plane).
+     ALPHDecoder* const alph_dec = (ALPHDecoder*)dec->io_->opaque;
+     uint8_t* const output = alph_dec->output_;
+     const int width = dec->io_->width;      // the final width (!= dec->width_)
+     const int cache_pixs = width * num_rows_to_process;
+     uint8_t* const dst = output + width * cur_row;
+     const uint32_t* const src = dec->argb_cache_;
+-    ApplyInverseTransforms(dec, num_rows_to_process, in);
++    ApplyInverseTransforms(dec, cur_row, num_rows_to_process, in);
+     WebPExtractGreen(src, dst, cache_pixs);
+     AlphaApplyFilter(alph_dec,
+                      cur_row, cur_row + num_rows_to_process, dst, width);
+     num_rows -= num_rows_to_process;
+     in += num_rows_to_process * dec->width_;
+     cur_row += num_rows_to_process;
+   }
+@@ -1669,15 +1670,15 @@ int VP8LDecodeHeader(VP8LDecoder* const dec, VP8Io* const io) {
+ int VP8LDecodeImage(VP8LDecoder* const dec) {
+   VP8Io* io = NULL;
+   WebPDecParams* params = NULL;
+ 
+   // Sanity checks.
+   if (dec == NULL) return 0;
+ 
+-  assert(dec->hdr_.huffman_tables_ != NULL);
++  assert(dec->hdr_.huffman_tables_.root.start != NULL);
+   assert(dec->hdr_.htree_groups_ != NULL);
+   assert(dec->hdr_.num_htree_groups_ > 0);
+ 
+   io = dec->io_;
+   assert(io != NULL);
+   params = (WebPDecParams*)io->opaque;
+   assert(params != NULL);
+diff --git a/src/dec/vp8li_dec.h b/src/dec/vp8li_dec.h
+index 0a4d613..32540a4 100644
+--- a/src/dec/vp8li_dec.h
++++ b/src/dec/vp8li_dec.h
+@@ -33,42 +33,42 @@ typedef enum {
+ 
+ typedef struct VP8LTransform VP8LTransform;
+ struct VP8LTransform {
+   VP8LImageTransformType type_;   // transform type.
+   int                    bits_;   // subsampling bits defining transform window.
+   int                    xsize_;  // transform window X index.
+   int                    ysize_;  // transform window Y index.
+-  uint32_t              *data_;   // transform data.
++  uint32_t*              data_;   // transform data.
+ };
+ 
+ typedef struct {
+   int             color_cache_size_;
+   VP8LColorCache  color_cache_;
+   VP8LColorCache  saved_color_cache_;  // for incremental
+ 
+   int             huffman_mask_;
+   int             huffman_subsample_bits_;
+   int             huffman_xsize_;
+-  uint32_t       *huffman_image_;
++  uint32_t*       huffman_image_;
+   int             num_htree_groups_;
+-  HTreeGroup     *htree_groups_;
+-  HuffmanCode    *huffman_tables_;
++  HTreeGroup*     htree_groups_;
++  HuffmanTables   huffman_tables_;
+ } VP8LMetadata;
+ 
+ typedef struct VP8LDecoder VP8LDecoder;
+ struct VP8LDecoder {
+   VP8StatusCode    status_;
+   VP8LDecodeState  state_;
+-  VP8Io           *io_;
++  VP8Io*           io_;
+ 
+-  const WebPDecBuffer *output_;    // shortcut to io->opaque->output
++  const WebPDecBuffer* output_;    // shortcut to io->opaque->output
+ 
+-  uint32_t        *pixels_;        // Internal data: either uint8_t* for alpha
++  uint32_t*        pixels_;        // Internal data: either uint8_t* for alpha
+                                    // or uint32_t* for BGRA.
+-  uint32_t        *argb_cache_;    // Scratch buffer for temporary BGRA storage.
++  uint32_t*        argb_cache_;    // Scratch buffer for temporary BGRA storage.
+ 
+   VP8LBitReader    br_;
+   int              incremental_;   // if true, incremental decoding is expected
+   VP8LBitReader    saved_br_;      // note: could be local variables too
+   int              saved_last_pixel_;
+ 
+   int              width_;
+@@ -82,16 +82,16 @@ struct VP8LDecoder {
+   VP8LMetadata     hdr_;
+ 
+   int              next_transform_;
+   VP8LTransform    transforms_[NUM_TRANSFORMS];
+   // or'd bitset storing the transforms types.
+   uint32_t         transforms_seen_;
+ 
+-  uint8_t         *rescaler_memory;  // Working memory for rescaling work.
+-  WebPRescaler    *rescaler;         // Common rescaler for all channels.
++  uint8_t*         rescaler_memory;  // Working memory for rescaling work.
++  WebPRescaler*    rescaler;         // Common rescaler for all channels.
+ };
+ 
+ //------------------------------------------------------------------------------
+ // internal functions. Not public.
+ 
+ struct ALPHDecoder;  // Defined in dec/alphai.h.
+ 
+diff --git a/src/demux/demux.c b/src/demux/demux.c
+index d8f7a40..1b3cc2e 100644
+--- a/src/demux/demux.c
++++ b/src/demux/demux.c
+@@ -20,16 +20,16 @@
+ 
+ #include "src/utils/utils.h"
+ #include "src/webp/decode.h"     // WebPGetFeatures
+ #include "src/webp/demux.h"
+ #include "src/webp/format_constants.h"
+ 
+ #define DMUX_MAJ_VERSION 1
+-#define DMUX_MIN_VERSION 0
+-#define DMUX_REV_VERSION 2
++#define DMUX_MIN_VERSION 1
++#define DMUX_REV_VERSION 0
+ 
+ typedef struct {
+   size_t start_;        // start location of the data
+   size_t end_;          // end location
+   size_t riff_end_;     // riff chunk end location, can be > end_.
+   size_t buf_size_;     // size of the buffer
+   const uint8_t* buf_;
+diff --git a/src/dsp/alpha_processing_sse2.c b/src/dsp/alpha_processing_sse2.c
+index 7658700..2871c56 100644
+--- a/src/dsp/alpha_processing_sse2.c
++++ b/src/dsp/alpha_processing_sse2.c
+@@ -210,29 +210,29 @@ static void ApplyAlphaMultiply_SSE2(uint8_t* rgba, int alpha_first,
+ #undef MULTIPLIER
+ #undef PREMULTIPLY
+ 
+ //------------------------------------------------------------------------------
+ // Alpha detection
+ 
+ static int HasAlpha8b_SSE2(const uint8_t* src, int length) {
+-  const __m128i all_0xff = _mm_set1_epi8(0xff);
++  const __m128i all_0xff = _mm_set1_epi8((char)0xff);
+   int i = 0;
+   for (; i + 16 <= length; i += 16) {
+     const __m128i v = _mm_loadu_si128((const __m128i*)(src + i));
+     const __m128i bits = _mm_cmpeq_epi8(v, all_0xff);
+     const int mask = _mm_movemask_epi8(bits);
+     if (mask != 0xffff) return 1;
+   }
+   for (; i < length; ++i) if (src[i] != 0xff) return 1;
+   return 0;
+ }
+ 
+ static int HasAlpha32b_SSE2(const uint8_t* src, int length) {
+   const __m128i alpha_mask = _mm_set1_epi32(0xff);
+-  const __m128i all_0xff = _mm_set1_epi8(0xff);
++  const __m128i all_0xff = _mm_set1_epi8((char)0xff);
+   int i = 0;
+   // We don't know if we can access the last 3 bytes after the last alpha
+   // value 'src[4 * length - 4]' (because we don't know if alpha is the first
+   // or the last byte of the quadruplet). Hence the '-3' protection below.
+   length = length * 4 - 3;   // size in bytes
+   for (; i + 64 <= length; i += 64) {
+     const __m128i a0 = _mm_loadu_si128((const __m128i*)(src + i +  0));
+diff --git a/src/dsp/cpu.c b/src/dsp/cpu.c
+index 8b40fee..0fa5b6a 100644
+--- a/src/dsp/cpu.c
++++ b/src/dsp/cpu.c
+@@ -169,16 +169,16 @@ static int x86CPUInfo(CPUFeature feature) {
+ }
+ VP8CPUInfo VP8GetCPUInfo = x86CPUInfo;
+ #elif defined(WEBP_ANDROID_NEON)  // NB: needs to be before generic NEON test.
+ static int AndroidCPUInfo(CPUFeature feature) {
+   const AndroidCpuFamily cpu_family = android_getCpuFamily();
+   const uint64_t cpu_features = android_getCpuFeatures();
+   if (feature == kNEON) {
+-    return (cpu_family == ANDROID_CPU_FAMILY_ARM &&
+-            0 != (cpu_features & ANDROID_CPU_ARM_FEATURE_NEON));
++    return cpu_family == ANDROID_CPU_FAMILY_ARM &&
++           (cpu_features & ANDROID_CPU_ARM_FEATURE_NEON) != 0;
+   }
+   return 0;
+ }
+ VP8CPUInfo VP8GetCPUInfo = AndroidCPUInfo;
+ #elif defined(WEBP_USE_NEON)
+ // define a dummy function to enable turning off NEON at runtime by setting
+ // VP8DecGetCPUInfo = NULL
+diff --git a/src/dsp/dec_neon.c b/src/dsp/dec_neon.c
+index ffa697f..239ec41 100644
+--- a/src/dsp/dec_neon.c
++++ b/src/dsp/dec_neon.c
+@@ -1357,15 +1357,16 @@ static void RD4_NEON(uint8_t* dst) {   // Down-right
+   const uint8x8_t XABCD_u8 = vld1_u8(dst - BPS - 1);
+   const uint64x1_t XABCD = vreinterpret_u64_u8(XABCD_u8);
+   const uint64x1_t ____XABC = vshl_n_u64(XABCD, 32);
+   const uint32_t I = dst[-1 + 0 * BPS];
+   const uint32_t J = dst[-1 + 1 * BPS];
+   const uint32_t K = dst[-1 + 2 * BPS];
+   const uint32_t L = dst[-1 + 3 * BPS];
+-  const uint64x1_t LKJI____ = vcreate_u64(L | (K << 8) | (J << 16) | (I << 24));
++  const uint64x1_t LKJI____ =
++      vcreate_u64((uint64_t)L | (K << 8) | (J << 16) | (I << 24));
+   const uint64x1_t LKJIXABC = vorr_u64(LKJI____, ____XABC);
+   const uint8x8_t KJIXABC_ = vreinterpret_u8_u64(vshr_n_u64(LKJIXABC, 8));
+   const uint8x8_t JIXABC__ = vreinterpret_u8_u64(vshr_n_u64(LKJIXABC, 16));
+   const uint8_t D = vget_lane_u8(XABCD_u8, 4);
+   const uint8x8_t JIXABCD_ = vset_lane_u8(D, JIXABC__, 6);
+   const uint8x8_t LKJIXABC_u8 = vreinterpret_u8_u64(LKJIXABC);
+   const uint8x8_t avg1 = vhadd_u8(JIXABCD_, LKJIXABC_u8);
+@@ -1423,18 +1424,24 @@ static void HE8uv_NEON(uint8_t* dst) {    // horizontal
+ static WEBP_INLINE void DC8_NEON(uint8_t* dst, int do_top, int do_left) {
+   uint16x8_t sum_top;
+   uint16x8_t sum_left;
+   uint8x8_t dc0;
+ 
+   if (do_top) {
+     const uint8x8_t A = vld1_u8(dst - BPS);  // top row
++#if defined(__aarch64__)
++    const uint16x8_t B = vmovl_u8(A);
++    const uint16_t p2 = vaddvq_u16(B);
++    sum_top = vdupq_n_u16(p2);
++#else
+     const uint16x4_t p0 = vpaddl_u8(A);  // cascading summation of the top
+     const uint16x4_t p1 = vpadd_u16(p0, p0);
+     const uint16x4_t p2 = vpadd_u16(p1, p1);
+     sum_top = vcombine_u16(p2, p2);
++#endif
+   }
+ 
+   if (do_left) {
+     const uint16x8_t L0 = vmovl_u8(vld1_u8(dst + 0 * BPS - 1));
+     const uint16x8_t L1 = vmovl_u8(vld1_u8(dst + 1 * BPS - 1));
+     const uint16x8_t L2 = vmovl_u8(vld1_u8(dst + 2 * BPS - 1));
+     const uint16x8_t L3 = vmovl_u8(vld1_u8(dst + 3 * BPS - 1));
+diff --git a/src/dsp/dec_sse2.c b/src/dsp/dec_sse2.c
+index b3840fa..873aa59 100644
+--- a/src/dsp/dec_sse2.c
++++ b/src/dsp/dec_sse2.c
+@@ -322,29 +322,29 @@ static WEBP_INLINE void DoSimpleFilter_SSE2(__m128i* const p0,
+ // Pixels 'pi' and 'qi' are int8_t on input, uint8_t on output (sign flip).
+ static WEBP_INLINE void Update2Pixels_SSE2(__m128i* const pi, __m128i* const qi,
+                                            const __m128i* const a0_lo,
+                                            const __m128i* const a0_hi) {
+   const __m128i a1_lo = _mm_srai_epi16(*a0_lo, 7);
+   const __m128i a1_hi = _mm_srai_epi16(*a0_hi, 7);
+   const __m128i delta = _mm_packs_epi16(a1_lo, a1_hi);
+-  const __m128i sign_bit = _mm_set1_epi8(0x80);
++  const __m128i sign_bit = _mm_set1_epi8((char)0x80);
+   *pi = _mm_adds_epi8(*pi, delta);
+   *qi = _mm_subs_epi8(*qi, delta);
+   FLIP_SIGN_BIT2(*pi, *qi);
+ }
+ 
+ // input pixels are uint8_t
+ static WEBP_INLINE void NeedsFilter_SSE2(const __m128i* const p1,
+                                          const __m128i* const p0,
+                                          const __m128i* const q0,
+                                          const __m128i* const q1,
+                                          int thresh, __m128i* const mask) {
+-  const __m128i m_thresh = _mm_set1_epi8(thresh);
++  const __m128i m_thresh = _mm_set1_epi8((char)thresh);
+   const __m128i t1 = MM_ABS(*p1, *q1);        // abs(p1 - q1)
+-  const __m128i kFE = _mm_set1_epi8(0xFE);
++  const __m128i kFE = _mm_set1_epi8((char)0xFE);
+   const __m128i t2 = _mm_and_si128(t1, kFE);  // set lsb of each byte to zero
+   const __m128i t3 = _mm_srli_epi16(t2, 1);   // abs(p1 - q1) / 2
+ 
+   const __m128i t4 = MM_ABS(*p0, *q0);        // abs(p0 - q0)
+   const __m128i t5 = _mm_adds_epu8(t4, t4);   // abs(p0 - q0) * 2
+   const __m128i t6 = _mm_adds_epu8(t5, t3);   // abs(p0-q0)*2 + abs(p1-q1)/2
+ 
+@@ -356,15 +356,15 @@ static WEBP_INLINE void NeedsFilter_SSE2(const __m128i* const p1,
+ // Edge filtering functions
+ 
+ // Applies filter on 2 pixels (p0 and q0)
+ static WEBP_INLINE void DoFilter2_SSE2(__m128i* const p1, __m128i* const p0,
+                                        __m128i* const q0, __m128i* const q1,
+                                        int thresh) {
+   __m128i a, mask;
+-  const __m128i sign_bit = _mm_set1_epi8(0x80);
++  const __m128i sign_bit = _mm_set1_epi8((char)0x80);
+   // convert p1/q1 to int8_t (for GetBaseDelta_SSE2)
+   const __m128i p1s = _mm_xor_si128(*p1, sign_bit);
+   const __m128i q1s = _mm_xor_si128(*q1, sign_bit);
+ 
+   NeedsFilter_SSE2(p1, p0, q0, q1, thresh, &mask);
+ 
+   FLIP_SIGN_BIT2(*p0, *q0);
+@@ -376,15 +376,15 @@ static WEBP_INLINE void DoFilter2_SSE2(__m128i* const p1, __m128i* const p0,
+ 
+ // Applies filter on 4 pixels (p1, p0, q0 and q1)
+ static WEBP_INLINE void DoFilter4_SSE2(__m128i* const p1, __m128i* const p0,
+                                        __m128i* const q0, __m128i* const q1,
+                                        const __m128i* const mask,
+                                        int hev_thresh) {
+   const __m128i zero = _mm_setzero_si128();
+-  const __m128i sign_bit = _mm_set1_epi8(0x80);
++  const __m128i sign_bit = _mm_set1_epi8((char)0x80);
+   const __m128i k64 = _mm_set1_epi8(64);
+   const __m128i k3 = _mm_set1_epi8(3);
+   const __m128i k4 = _mm_set1_epi8(4);
+   __m128i not_hev;
+   __m128i t1, t2, t3;
+ 
+   // compute hev mask
+@@ -423,15 +423,15 @@ static WEBP_INLINE void DoFilter4_SSE2(__m128i* const p1, __m128i* const p0,
+ // Applies filter on 6 pixels (p2, p1, p0, q0, q1 and q2)
+ static WEBP_INLINE void DoFilter6_SSE2(__m128i* const p2, __m128i* const p1,
+                                        __m128i* const p0, __m128i* const q0,
+                                        __m128i* const q1, __m128i* const q2,
+                                        const __m128i* const mask,
+                                        int hev_thresh) {
+   const __m128i zero = _mm_setzero_si128();
+-  const __m128i sign_bit = _mm_set1_epi8(0x80);
++  const __m128i sign_bit = _mm_set1_epi8((char)0x80);
+   __m128i a, not_hev;
+ 
+   // compute hev mask
+   GetNotHEV_SSE2(p1, p0, q0, q1, hev_thresh, &not_hev);
+ 
+   FLIP_SIGN_BIT4(*p1, *p0, *q0, *q1);
+   FLIP_SIGN_BIT2(*p2, *q2);
+@@ -937,15 +937,15 @@ static void VR4_SSE2(uint8_t* dst) {   // Vertical-Right
+   const int J = dst[-1 + 1 * BPS];
+   const int K = dst[-1 + 2 * BPS];
+   const int X = dst[-1 - BPS];
+   const __m128i XABCD = _mm_loadl_epi64((__m128i*)(dst - BPS - 1));
+   const __m128i ABCD0 = _mm_srli_si128(XABCD, 1);
+   const __m128i abcd = _mm_avg_epu8(XABCD, ABCD0);
+   const __m128i _XABCD = _mm_slli_si128(XABCD, 1);
+-  const __m128i IXABCD = _mm_insert_epi16(_XABCD, I | (X << 8), 0);
++  const __m128i IXABCD = _mm_insert_epi16(_XABCD, (short)(I | (X << 8)), 0);
+   const __m128i avg1 = _mm_avg_epu8(IXABCD, ABCD0);
+   const __m128i lsb = _mm_and_si128(_mm_xor_si128(IXABCD, ABCD0), one);
+   const __m128i avg2 = _mm_subs_epu8(avg1, lsb);
+   const __m128i efgh = _mm_avg_epu8(avg2, XABCD);
+   WebPUint32ToMem(dst + 0 * BPS, _mm_cvtsi128_si32(               abcd    ));
+   WebPUint32ToMem(dst + 1 * BPS, _mm_cvtsi128_si32(               efgh    ));
+   WebPUint32ToMem(dst + 2 * BPS, _mm_cvtsi128_si32(_mm_slli_si128(abcd, 1)));
+diff --git a/src/dsp/dsp.h b/src/dsp/dsp.h
+index fafc2d0..a784de3 100644
+--- a/src/dsp/dsp.h
++++ b/src/dsp/dsp.h
+@@ -242,17 +242,17 @@ typedef void (*VP8Fdct)(const uint8_t* src, const uint8_t* ref, int16_t* out);
+ typedef void (*VP8WHT)(const int16_t* in, int16_t* out);
+ extern VP8Idct VP8ITransform;
+ extern VP8Fdct VP8FTransform;
+ extern VP8Fdct VP8FTransform2;   // performs two transforms at a time
+ extern VP8WHT VP8FTransformWHT;
+ // Predictions
+ // *dst is the destination block. *top and *left can be NULL.
+-typedef void (*VP8IntraPreds)(uint8_t *dst, const uint8_t* left,
++typedef void (*VP8IntraPreds)(uint8_t* dst, const uint8_t* left,
+                               const uint8_t* top);
+-typedef void (*VP8Intra4Preds)(uint8_t *dst, const uint8_t* top);
++typedef void (*VP8Intra4Preds)(uint8_t* dst, const uint8_t* top);
+ extern VP8Intra4Preds VP8EncPredLuma4;
+ extern VP8IntraPreds VP8EncPredLuma16;
+ extern VP8IntraPreds VP8EncPredChroma8;
+ 
+ typedef int (*VP8Metric)(const uint8_t* pix, const uint8_t* ref);
+ extern VP8Metric VP8SSE16x16, VP8SSE16x8, VP8SSE8x8, VP8SSE4x4;
+ typedef int (*VP8WMetric)(const uint8_t* pix, const uint8_t* ref,
+diff --git a/src/dsp/enc_sse2.c b/src/dsp/enc_sse2.c
+index 7b3f142..b2e78ed 100644
+--- a/src/dsp/enc_sse2.c
++++ b/src/dsp/enc_sse2.c
+@@ -773,15 +773,15 @@ static WEBP_INLINE void VR4_SSE2(uint8_t* dst,
+   const int J = top[-3];
+   const int K = top[-4];
+   const int X = top[-1];
+   const __m128i XABCD = _mm_loadl_epi64((const __m128i*)(top - 1));
+   const __m128i ABCD0 = _mm_srli_si128(XABCD, 1);
+   const __m128i abcd = _mm_avg_epu8(XABCD, ABCD0);
+   const __m128i _XABCD = _mm_slli_si128(XABCD, 1);
+-  const __m128i IXABCD = _mm_insert_epi16(_XABCD, I | (X << 8), 0);
++  const __m128i IXABCD = _mm_insert_epi16(_XABCD, (short)(I | (X << 8)), 0);
+   const __m128i avg1 = _mm_avg_epu8(IXABCD, ABCD0);
+   const __m128i lsb = _mm_and_si128(_mm_xor_si128(IXABCD, ABCD0), one);
+   const __m128i avg2 = _mm_subs_epu8(avg1, lsb);
+   const __m128i efgh = _mm_avg_epu8(avg2, XABCD);
+   WebPUint32ToMem(dst + 0 * BPS, _mm_cvtsi128_si32(               abcd    ));
+   WebPUint32ToMem(dst + 1 * BPS, _mm_cvtsi128_si32(               efgh    ));
+   WebPUint32ToMem(dst + 2 * BPS, _mm_cvtsi128_si32(_mm_slli_si128(abcd, 1)));
+diff --git a/src/dsp/filters.c b/src/dsp/filters.c
+index 069a22e..9e910d9 100644
+--- a/src/dsp/filters.c
++++ b/src/dsp/filters.c
+@@ -29,17 +29,17 @@
+   (void)height;  // Silence unused warning.
+ 
+ #if !WEBP_NEON_OMIT_C_CODE
+ static WEBP_INLINE void PredictLine_C(const uint8_t* src, const uint8_t* pred,
+                                       uint8_t* dst, int length, int inverse) {
+   int i;
+   if (inverse) {
+-    for (i = 0; i < length; ++i) dst[i] = src[i] + pred[i];
++    for (i = 0; i < length; ++i) dst[i] = (uint8_t)(src[i] + pred[i]);
+   } else {
+-    for (i = 0; i < length; ++i) dst[i] = src[i] - pred[i];
++    for (i = 0; i < length; ++i) dst[i] = (uint8_t)(src[i] - pred[i]);
+   }
+ }
+ 
+ //------------------------------------------------------------------------------
+ // Horizontal filter.
+ 
+ static WEBP_INLINE void DoHorizontalFilter_C(const uint8_t* in,
+@@ -151,15 +151,15 @@ static WEBP_INLINE void DoGradientFilter_C(const uint8_t* in,
+     int w;
+     // leftmost pixel: predict from above.
+     PredictLine_C(in, preds - stride, out, 1, inverse);
+     for (w = 1; w < width; ++w) {
+       const int pred = GradientPredictor_C(preds[w - 1],
+                                            preds[w - stride],
+                                            preds[w - stride - 1]);
+-      out[w] = in[w] + (inverse ? pred : -pred);
++      out[w] = (uint8_t)(in[w] + (inverse ? pred : -pred));
+     }
+     ++row;
+     preds += stride;
+     in += stride;
+     out += stride;
+   }
+ }
+@@ -190,41 +190,41 @@ static void GradientFilter_C(const uint8_t* data, int width, int height,
+ //------------------------------------------------------------------------------
+ 
+ static void HorizontalUnfilter_C(const uint8_t* prev, const uint8_t* in,
+                                  uint8_t* out, int width) {
+   uint8_t pred = (prev == NULL) ? 0 : prev[0];
+   int i;
+   for (i = 0; i < width; ++i) {
+-    out[i] = pred + in[i];
++    out[i] = (uint8_t)(pred + in[i]);
+     pred = out[i];
+   }
+ }
+ 
+ #if !WEBP_NEON_OMIT_C_CODE
+ static void VerticalUnfilter_C(const uint8_t* prev, const uint8_t* in,
+                                uint8_t* out, int width) {
+   if (prev == NULL) {
+     HorizontalUnfilter_C(NULL, in, out, width);
+   } else {
+     int i;
+-    for (i = 0; i < width; ++i) out[i] = prev[i] + in[i];
++    for (i = 0; i < width; ++i) out[i] = (uint8_t)(prev[i] + in[i]);
+   }
+ }
+ #endif  // !WEBP_NEON_OMIT_C_CODE
+ 
+ static void GradientUnfilter_C(const uint8_t* prev, const uint8_t* in,
+                                uint8_t* out, int width) {
+   if (prev == NULL) {
+     HorizontalUnfilter_C(NULL, in, out, width);
+   } else {
+     uint8_t top = prev[0], top_left = top, left = top;
+     int i;
+     for (i = 0; i < width; ++i) {
+       top = prev[i];  // need to read this first, in case prev==out
+-      left = in[i] + GradientPredictor_C(left, top, top_left);
++      left = (uint8_t)(in[i] + GradientPredictor_C(left, top, top_left));
+       top_left = top;
+       out[i] = left;
+     }
+   }
+ }
+ 
+ //------------------------------------------------------------------------------
+diff --git a/src/dsp/filters_sse2.c b/src/dsp/filters_sse2.c
+index 5a18895..4b3f2d0 100644
+--- a/src/dsp/filters_sse2.c
++++ b/src/dsp/filters_sse2.c
+@@ -159,15 +159,16 @@ static void GradientPredictDirect_SSE2(const uint8_t* const row,
+     const __m128i E = _mm_add_epi16(A1, B1);
+     const __m128i F = _mm_sub_epi16(E, C1);
+     const __m128i G = _mm_packus_epi16(F, zero);
+     const __m128i H = _mm_sub_epi8(D, G);
+     _mm_storel_epi64((__m128i*)(out + i), H);
+   }
+   for (; i < length; ++i) {
+-    out[i] = row[i] - GradientPredictor_SSE2(row[i - 1], top[i], top[i - 1]);
++    const int delta = GradientPredictor_SSE2(row[i - 1], top[i], top[i - 1]);
++    out[i] = (uint8_t)(row[i] - delta);
+   }
+ }
+ 
+ static WEBP_INLINE void DoGradientFilter_SSE2(const uint8_t* in,
+                                               int width, int height, int stride,
+                                               int row, int num_rows,
+                                               uint8_t* out) {
+@@ -184,15 +185,15 @@ static WEBP_INLINE void DoGradientFilter_SSE2(const uint8_t* in,
+     row = 1;
+     in += stride;
+     out += stride;
+   }
+ 
+   // Filter line-by-line.
+   while (row < last_row) {
+-    out[0] = in[0] - in[-stride];
++    out[0] = (uint8_t)(in[0] - in[-stride]);
+     GradientPredictDirect_SSE2(in + 1, in + 1 - stride, out + 1, width - 1);
+     ++row;
+     in += stride;
+     out += stride;
+   }
+ }
+ 
+@@ -219,30 +220,30 @@ static void GradientFilter_SSE2(const uint8_t* data, int width, int height,
+ //------------------------------------------------------------------------------
+ // Inverse transforms
+ 
+ static void HorizontalUnfilter_SSE2(const uint8_t* prev, const uint8_t* in,
+                                     uint8_t* out, int width) {
+   int i;
+   __m128i last;
+-  out[0] = in[0] + (prev == NULL ? 0 : prev[0]);
++  out[0] = (uint8_t)(in[0] + (prev == NULL ? 0 : prev[0]));
+   if (width <= 1) return;
+   last = _mm_set_epi32(0, 0, 0, out[0]);
+   for (i = 1; i + 8 <= width; i += 8) {
+     const __m128i A0 = _mm_loadl_epi64((const __m128i*)(in + i));
+     const __m128i A1 = _mm_add_epi8(A0, last);
+     const __m128i A2 = _mm_slli_si128(A1, 1);
+     const __m128i A3 = _mm_add_epi8(A1, A2);
+     const __m128i A4 = _mm_slli_si128(A3, 2);
+     const __m128i A5 = _mm_add_epi8(A3, A4);
+     const __m128i A6 = _mm_slli_si128(A5, 4);
+     const __m128i A7 = _mm_add_epi8(A5, A6);
+     _mm_storel_epi64((__m128i*)(out + i), A7);
+     last = _mm_srli_epi64(A7, 56);
+   }
+-  for (; i < width; ++i) out[i] = in[i] + out[i - 1];
++  for (; i < width; ++i) out[i] = (uint8_t)(in[i] + out[i - 1]);
+ }
+ 
+ static void VerticalUnfilter_SSE2(const uint8_t* prev, const uint8_t* in,
+                                   uint8_t* out, int width) {
+   if (prev == NULL) {
+     HorizontalUnfilter_SSE2(NULL, in, out, width);
+   } else {
+@@ -255,15 +256,15 @@ static void VerticalUnfilter_SSE2(const uint8_t* prev, const uint8_t* in,
+       const __m128i B0 = _mm_loadu_si128((const __m128i*)&prev[i +  0]);
+       const __m128i B1 = _mm_loadu_si128((const __m128i*)&prev[i + 16]);
+       const __m128i C0 = _mm_add_epi8(A0, B0);
+       const __m128i C1 = _mm_add_epi8(A1, B1);
+       _mm_storeu_si128((__m128i*)&out[i +  0], C0);
+       _mm_storeu_si128((__m128i*)&out[i + 16], C1);
+     }
+-    for (; i < width; ++i) out[i] = in[i] + prev[i];
++    for (; i < width; ++i) out[i] = (uint8_t)(in[i] + prev[i]);
+   }
+ }
+ 
+ static void GradientPredictInverse_SSE2(const uint8_t* const in,
+                                         const uint8_t* const top,
+                                         uint8_t* const row, int length) {
+   if (length > 0) {
+@@ -292,25 +293,26 @@ static void GradientPredictInverse_SSE2(const uint8_t* const in,
+         mask_hi = _mm_slli_si128(mask_hi, 1);            // rotate mask
+         A = _mm_unpacklo_epi8(A, zero);                  // convert 8b->16b
+       }
+       A = _mm_srli_si128(A, 7);       // prepare left sample for next iteration
+       _mm_storel_epi64((__m128i*)&row[i], out);
+     }
+     for (; i < length; ++i) {
+-      row[i] = in[i] + GradientPredictor_SSE2(row[i - 1], top[i], top[i - 1]);
++      const int delta = GradientPredictor_SSE2(row[i - 1], top[i], top[i - 1]);
++      row[i] = (uint8_t)(in[i] + delta);
+     }
+   }
+ }
+ 
+ static void GradientUnfilter_SSE2(const uint8_t* prev, const uint8_t* in,
+                                   uint8_t* out, int width) {
+   if (prev == NULL) {
+     HorizontalUnfilter_SSE2(NULL, in, out, width);
+   } else {
+-    out[0] = in[0] + prev[0];  // predict from above
++    out[0] = (uint8_t)(in[0] + prev[0]);  // predict from above
+     GradientPredictInverse_SSE2(in + 1, prev + 1, out + 1, width - 1);
+   }
+ }
+ 
+ //------------------------------------------------------------------------------
+ // Entry point
+ 
+diff --git a/src/dsp/lossless.c b/src/dsp/lossless.c
+index d21aa6a..aad5f43 100644
+--- a/src/dsp/lossless.c
++++ b/src/dsp/lossless.c
+@@ -77,15 +77,15 @@ static WEBP_INLINE uint32_t ClampedAddSubtractHalf(uint32_t c0, uint32_t c1,
+   const int g = AddSubtractComponentHalf((ave >> 8) & 0xff, (c2 >> 8) & 0xff);
+   const int b = AddSubtractComponentHalf((ave >> 0) & 0xff, (c2 >> 0) & 0xff);
+   return ((uint32_t)a << 24) | (r << 16) | (g << 8) | b;
+ }
+ 
+ // gcc <= 4.9 on ARM generates incorrect code in Select() when Sub3() is
+ // inlined.
+-#if defined(__arm__) && LOCAL_GCC_VERSION <= 0x409
++#if defined(__arm__) && defined(__GNUC__) && LOCAL_GCC_VERSION <= 0x409
+ # define LOCAL_INLINE __attribute__ ((noinline))
+ #else
+ # define LOCAL_INLINE WEBP_INLINE
+ #endif
+ 
+ static LOCAL_INLINE int Sub3(int a, int b, int c) {
+   const int pb = b - c;
+@@ -163,23 +163,28 @@ static uint32_t Predictor12_C(uint32_t left, const uint32_t* const top) {
+   return pred;
+ }
+ static uint32_t Predictor13_C(uint32_t left, const uint32_t* const top) {
+   const uint32_t pred = ClampedAddSubtractHalf(left, top[0], top[-1]);
+   return pred;
+ }
+ 
+-GENERATE_PREDICTOR_ADD(Predictor0_C, PredictorAdd0_C)
++static void PredictorAdd0_C(const uint32_t* in, const uint32_t* upper,
++                            int num_pixels, uint32_t* out) {
++  int x;
++  (void)upper;
++  for (x = 0; x < num_pixels; ++x) out[x] = VP8LAddPixels(in[x], ARGB_BLACK);
++}
+ static void PredictorAdd1_C(const uint32_t* in, const uint32_t* upper,
+                             int num_pixels, uint32_t* out) {
+   int i;
+   uint32_t left = out[-1];
++  (void)upper;
+   for (i = 0; i < num_pixels; ++i) {
+     out[i] = left = VP8LAddPixels(in[i], left);
+   }
+-  (void)upper;
+ }
+ GENERATE_PREDICTOR_ADD(Predictor2_C, PredictorAdd2_C)
+ GENERATE_PREDICTOR_ADD(Predictor3_C, PredictorAdd3_C)
+ GENERATE_PREDICTOR_ADD(Predictor4_C, PredictorAdd4_C)
+ GENERATE_PREDICTOR_ADD(Predictor5_C, PredictorAdd5_C)
+ GENERATE_PREDICTOR_ADD(Predictor6_C, PredictorAdd6_C)
+ GENERATE_PREDICTOR_ADD(Predictor7_C, PredictorAdd7_C)
+@@ -266,22 +271,22 @@ static WEBP_INLINE void ColorCodeToMultipliers(uint32_t color_code,
+ 
+ void VP8LTransformColorInverse_C(const VP8LMultipliers* const m,
+                                  const uint32_t* src, int num_pixels,
+                                  uint32_t* dst) {
+   int i;
+   for (i = 0; i < num_pixels; ++i) {
+     const uint32_t argb = src[i];
+-    const uint32_t green = argb >> 8;
++    const int8_t green = (int8_t)(argb >> 8);
+     const uint32_t red = argb >> 16;
+     int new_red = red & 0xff;
+     int new_blue = argb & 0xff;
+     new_red += ColorTransformDelta(m->green_to_red_, green);
+     new_red &= 0xff;
+     new_blue += ColorTransformDelta(m->green_to_blue_, green);
+-    new_blue += ColorTransformDelta(m->red_to_blue_, new_red);
++    new_blue += ColorTransformDelta(m->red_to_blue_, (int8_t)new_red);
+     new_blue &= 0xff;
+     dst[i] = (argb & 0xff00ff00u) | (new_red << 16) | (new_blue);
+   }
+ }
+ 
+ // Color space inverse transform.
+ static void ColorSpaceInverseTransform_C(const VP8LTransform* const transform,
+diff --git a/src/dsp/lossless_common.h b/src/dsp/lossless_common.h
+index a2648d1..9c2ebe6 100644
+--- a/src/dsp/lossless_common.h
++++ b/src/dsp/lossless_common.h
+@@ -173,26 +173,28 @@ uint32_t VP8LSubPixels(uint32_t a, uint32_t b) {
+ 
+ // The predictor is added to the output pixel (which
+ // is therefore considered as a residual) to get the final prediction.
+ #define GENERATE_PREDICTOR_ADD(PREDICTOR, PREDICTOR_ADD)             \
+ static void PREDICTOR_ADD(const uint32_t* in, const uint32_t* upper, \
+                           int num_pixels, uint32_t* out) {           \
+   int x;                                                             \
++  assert(upper != NULL);                                             \
+   for (x = 0; x < num_pixels; ++x) {                                 \
+     const uint32_t pred = (PREDICTOR)(out[x - 1], upper + x);        \
+     out[x] = VP8LAddPixels(in[x], pred);                             \
+   }                                                                  \
+ }
+ 
+ // It subtracts the prediction from the input pixel and stores the residual
+ // in the output pixel.
+ #define GENERATE_PREDICTOR_SUB(PREDICTOR, PREDICTOR_SUB)             \
+ static void PREDICTOR_SUB(const uint32_t* in, const uint32_t* upper, \
+                           int num_pixels, uint32_t* out) {           \
+   int x;                                                             \
++  assert(upper != NULL);                                             \
+   for (x = 0; x < num_pixels; ++x) {                                 \
+     const uint32_t pred = (PREDICTOR)(in[x - 1], upper + x);         \
+     out[x] = VP8LSubPixels(in[x], pred);                             \
+   }                                                                  \
+ }
+ 
+ #ifdef __cplusplus
+diff --git a/src/dsp/lossless_enc.c b/src/dsp/lossless_enc.c
+index 1408fbf..9c36055 100644
+--- a/src/dsp/lossless_enc.c
++++ b/src/dsp/lossless_enc.c
+@@ -511,71 +511,76 @@ void VP8LSubtractGreenFromBlueAndRed_C(uint32_t* argb_data, int num_pixels) {
+   }
+ }
+ 
+ static WEBP_INLINE int ColorTransformDelta(int8_t color_pred, int8_t color) {
+   return ((int)color_pred * color) >> 5;
+ }
+ 
++static WEBP_INLINE int8_t U32ToS8(uint32_t v) {
++  return (int8_t)(v & 0xff);
++}
++
+ void VP8LTransformColor_C(const VP8LMultipliers* const m, uint32_t* data,
+                           int num_pixels) {
+   int i;
+   for (i = 0; i < num_pixels; ++i) {
+     const uint32_t argb = data[i];
+-    const uint32_t green = argb >> 8;
+-    const uint32_t red = argb >> 16;
++    const int8_t green = U32ToS8(argb >>  8);
++    const int8_t red   = U32ToS8(argb >> 16);
+     int new_red = red & 0xff;
+     int new_blue = argb & 0xff;
+     new_red -= ColorTransformDelta(m->green_to_red_, green);
+     new_red &= 0xff;
+     new_blue -= ColorTransformDelta(m->green_to_blue_, green);
+     new_blue -= ColorTransformDelta(m->red_to_blue_, red);
+     new_blue &= 0xff;
+     data[i] = (argb & 0xff00ff00u) | (new_red << 16) | (new_blue);
+   }
+ }
+ 
+ static WEBP_INLINE uint8_t TransformColorRed(uint8_t green_to_red,
+                                              uint32_t argb) {
+-  const uint32_t green = argb >> 8;
++  const int8_t green = U32ToS8(argb >> 8);
+   int new_red = argb >> 16;
+   new_red -= ColorTransformDelta(green_to_red, green);
+   return (new_red & 0xff);
+ }
+ 
+ static WEBP_INLINE uint8_t TransformColorBlue(uint8_t green_to_blue,
+                                               uint8_t red_to_blue,
+                                               uint32_t argb) {
+-  const uint32_t green = argb >> 8;
+-  const uint32_t red = argb >> 16;
+-  uint8_t new_blue = argb;
++  const int8_t green = U32ToS8(argb >>  8);
++  const int8_t red   = U32ToS8(argb >> 16);
++  uint8_t new_blue = argb & 0xff;
+   new_blue -= ColorTransformDelta(green_to_blue, green);
+   new_blue -= ColorTransformDelta(red_to_blue, red);
+   return (new_blue & 0xff);
+ }
+ 
+ void VP8LCollectColorRedTransforms_C(const uint32_t* argb, int stride,
+                                      int tile_width, int tile_height,
+                                      int green_to_red, int histo[]) {
+   while (tile_height-- > 0) {
+     int x;
+     for (x = 0; x < tile_width; ++x) {
+-      ++histo[TransformColorRed(green_to_red, argb[x])];
++      ++histo[TransformColorRed((uint8_t)green_to_red, argb[x])];
+     }
+     argb += stride;
+   }
+ }
+ 
+ void VP8LCollectColorBlueTransforms_C(const uint32_t* argb, int stride,
+                                       int tile_width, int tile_height,
+                                       int green_to_blue, int red_to_blue,
+                                       int histo[]) {
+   while (tile_height-- > 0) {
+     int x;
+     for (x = 0; x < tile_width; ++x) {
+-      ++histo[TransformColorBlue(green_to_blue, red_to_blue, argb[x])];
++      ++histo[TransformColorBlue((uint8_t)green_to_blue, (uint8_t)red_to_blue,
++                                 argb[x])];
+     }
+     argb += stride;
+   }
+ }
+ 
+ //------------------------------------------------------------------------------
+ 
+diff --git a/src/dsp/lossless_enc_sse2.c b/src/dsp/lossless_enc_sse2.c
+index 36478c4..e676f6f 100644
+--- a/src/dsp/lossless_enc_sse2.c
++++ b/src/dsp/lossless_enc_sse2.c
+@@ -359,15 +359,15 @@ static int VectorMismatch_SSE2(const uint32_t* const array1,
+ static void BundleColorMap_SSE2(const uint8_t* const row, int width, int xbits,
+                                 uint32_t* dst) {
+   int x;
+   assert(xbits >= 0);
+   assert(xbits <= 3);
+   switch (xbits) {
+     case 0: {
+-      const __m128i ff = _mm_set1_epi16(0xff00);
++      const __m128i ff = _mm_set1_epi16((short)0xff00);
+       const __m128i zero = _mm_setzero_si128();
+       // Store 0xff000000 | (row[x] << 8).
+       for (x = 0; x + 16 <= width; x += 16, dst += 16) {
+         const __m128i in = _mm_loadu_si128((const __m128i*)&row[x]);
+         const __m128i in_lo = _mm_unpacklo_epi8(zero, in);
+         const __m128i dst0 = _mm_unpacklo_epi16(in_lo, ff);
+         const __m128i dst1 = _mm_unpackhi_epi16(in_lo, ff);
+@@ -378,15 +378,15 @@ static void BundleColorMap_SSE2(const uint8_t* const row, int width, int xbits,
+         _mm_storeu_si128((__m128i*)&dst[4], dst1);
+         _mm_storeu_si128((__m128i*)&dst[8], dst2);
+         _mm_storeu_si128((__m128i*)&dst[12], dst3);
+       }
+       break;
+     }
+     case 1: {
+-      const __m128i ff = _mm_set1_epi16(0xff00);
++      const __m128i ff = _mm_set1_epi16((short)0xff00);
+       const __m128i mul = _mm_set1_epi16(0x110);
+       for (x = 0; x + 16 <= width; x += 16, dst += 8) {
+         // 0a0b | (where a/b are 4 bits).
+         const __m128i in = _mm_loadu_si128((const __m128i*)&row[x]);
+         const __m128i tmp = _mm_mullo_epi16(in, mul);  // aba0
+         const __m128i pack = _mm_and_si128(tmp, ff);   // ab00
+         const __m128i dst0 = _mm_unpacklo_epi16(pack, ff);
+@@ -451,16 +451,17 @@ static void PredictorSub0_SSE2(const uint32_t* in, const uint32_t* upper,
+   const __m128i black = _mm_set1_epi32(ARGB_BLACK);
+   for (i = 0; i + 4 <= num_pixels; i += 4) {
+     const __m128i src = _mm_loadu_si128((const __m128i*)&in[i]);
+     const __m128i res = _mm_sub_epi8(src, black);
+     _mm_storeu_si128((__m128i*)&out[i], res);
+   }
+   if (i != num_pixels) {
+-    VP8LPredictorsSub_C[0](in + i, upper + i, num_pixels - i, out + i);
++    VP8LPredictorsSub_C[0](in + i, NULL, num_pixels - i, out + i);
+   }
++  (void)upper;
+ }
+ 
+ #define GENERATE_PREDICTOR_1(X, IN)                                           \
+ static void PredictorSub##X##_SSE2(const uint32_t* in, const uint32_t* upper, \
+                                    int num_pixels, uint32_t* out) {           \
+   int i;                                                                      \
+   for (i = 0; i + 4 <= num_pixels; i += 4) {                                  \
+diff --git a/src/dsp/lossless_enc_sse41.c b/src/dsp/lossless_enc_sse41.c
+index 2e12a71..719d8ed 100644
+--- a/src/dsp/lossless_enc_sse41.c
++++ b/src/dsp/lossless_enc_sse41.c
+@@ -47,17 +47,17 @@ static void SubtractGreenFromBlueAndRed_SSE41(uint32_t* argb_data,
+ #define SPAN 8
+ static void CollectColorBlueTransforms_SSE41(const uint32_t* argb, int stride,
+                                              int tile_width, int tile_height,
+                                              int green_to_blue, int red_to_blue,
+                                              int histo[]) {
+   const __m128i mults_r = _mm_set1_epi16(CST_5b(red_to_blue));
+   const __m128i mults_g = _mm_set1_epi16(CST_5b(green_to_blue));
+-  const __m128i mask_g = _mm_set1_epi16(0xff00);   // green mask
+-  const __m128i mask_gb = _mm_set1_epi32(0xffff);  // green/blue mask
+-  const __m128i mask_b = _mm_set1_epi16(0x00ff);   // blue mask
++  const __m128i mask_g = _mm_set1_epi16((short)0xff00);   // green mask
++  const __m128i mask_gb = _mm_set1_epi32(0xffff);         // green/blue mask
++  const __m128i mask_b = _mm_set1_epi16(0x00ff);          // blue mask
+   const __m128i shuffler_lo = _mm_setr_epi8(-1, 2, -1, 6, -1, 10, -1, 14, -1,
+                                             -1, -1, -1, -1, -1, -1, -1);
+   const __m128i shuffler_hi = _mm_setr_epi8(-1, -1, -1, -1, -1, -1, -1, -1, -1,
+                                             2, -1, 6, -1, 10, -1, 14);
+   int y;
+   for (y = 0; y < tile_height; ++y) {
+     const uint32_t* const src = argb + y * stride;
+diff --git a/src/dsp/lossless_sse2.c b/src/dsp/lossless_sse2.c
+index 17d7576..aef0cee 100644
+--- a/src/dsp/lossless_sse2.c
++++ b/src/dsp/lossless_sse2.c
+@@ -187,16 +187,17 @@ static void PredictorAdd0_SSE2(const uint32_t* in, const uint32_t* upper,
+   const __m128i black = _mm_set1_epi32(ARGB_BLACK);
+   for (i = 0; i + 4 <= num_pixels; i += 4) {
+     const __m128i src = _mm_loadu_si128((const __m128i*)&in[i]);
+     const __m128i res = _mm_add_epi8(src, black);
+     _mm_storeu_si128((__m128i*)&out[i], res);
+   }
+   if (i != num_pixels) {
+-    VP8LPredictorsAdd_C[0](in + i, upper + i, num_pixels - i, out + i);
++    VP8LPredictorsAdd_C[0](in + i, NULL, num_pixels - i, out + i);
+   }
++  (void)upper;
+ }
+ 
+ // Predictor1: left.
+ static void PredictorAdd1_SSE2(const uint32_t* in, const uint32_t* upper,
+                                int num_pixels, uint32_t* out) {
+   int i;
+   __m128i prev = _mm_set1_epi32(out[-1]);
+diff --git a/src/dsp/quant.h b/src/dsp/quant.h
+index 5ba6f9c..5e8dba8 100644
+--- a/src/dsp/quant.h
++++ b/src/dsp/quant.h
+@@ -6,14 +6,16 @@
+ // in the file PATENTS. All contributing project authors may
+ // be found in the AUTHORS file in the root of the source tree.
+ // -----------------------------------------------------------------------------
+ 
+ #ifndef WEBP_DSP_QUANT_H_
+ #define WEBP_DSP_QUANT_H_
+ 
++#include <string.h>
++
+ #include "src/dsp/dsp.h"
+ #include "src/webp/types.h"
+ 
+ #if defined(WEBP_USE_NEON) && !defined(WEBP_ANDROID_NEON) && \
+     !defined(WEBP_HAVE_NEON_RTCD)
+ #include <arm_neon.h>
+ 
+@@ -63,8 +65,21 @@ static WEBP_INLINE int IsFlat(const int16_t* levels, int num_blocks,
+   }
+   return 1;
+ }
+ 
+ #endif  // defined(WEBP_USE_NEON) && !defined(WEBP_ANDROID_NEON) &&
+         // !defined(WEBP_HAVE_NEON_RTCD)
+ 
++static WEBP_INLINE int IsFlatSource16(const uint8_t* src) {
++  const uint32_t v = src[0] * 0x01010101u;
++  int i;
++  for (i = 0; i < 16; ++i) {
++    if (memcmp(src + 0, &v, 4) || memcmp(src +  4, &v, 4) ||
++        memcmp(src + 8, &v, 4) || memcmp(src + 12, &v, 4)) {
++      return 0;
++    }
++    src += BPS;
++  }
++  return 1;
++}
++
+ #endif  // WEBP_DSP_QUANT_H_
+diff --git a/src/dsp/upsampling_msa.c b/src/dsp/upsampling_msa.c
+index 99eea70..f2e03e8 100644
+--- a/src/dsp/upsampling_msa.c
++++ b/src/dsp/upsampling_msa.c
+@@ -572,17 +572,17 @@ static void FUNC_NAME(const uint8_t* top_y, const uint8_t* bot_y,        \
+   int size = (len - 1) >> 1;                                             \
+   uint8_t temp_u[64];                                                    \
+   uint8_t temp_v[64];                                                    \
+   const uint32_t tl_uv = ((top_u[0]) | ((top_v[0]) << 16));              \
+   const uint32_t l_uv = ((cur_u[0]) | ((cur_v[0]) << 16));               \
+   const uint32_t uv0 = (3 * tl_uv + l_uv + 0x00020002u) >> 2;            \
+   const uint8_t* ptop_y = &top_y[1];                                     \
+-  uint8_t *ptop_dst = top_dst + XSTEP;                                   \
++  uint8_t* ptop_dst = top_dst + XSTEP;                                   \
+   const uint8_t* pbot_y = &bot_y[1];                                     \
+-  uint8_t *pbot_dst = bot_dst + XSTEP;                                   \
++  uint8_t* pbot_dst = bot_dst + XSTEP;                                   \
+                                                                          \
+   FUNC(top_y[0], uv0 & 0xff, (uv0 >> 16), top_dst);                      \
+   if (bot_y != NULL) {                                                   \
+     const uint32_t uv1 = (3 * l_uv + tl_uv + 0x00020002u) >> 2;          \
+     FUNC(bot_y[0], uv1 & 0xff, (uv1 >> 16), bot_dst);                    \
+   }                                                                      \
+   while (size >= 16) {                                                   \
+diff --git a/src/dsp/upsampling_neon.c b/src/dsp/upsampling_neon.c
+index 17cbc9f..6ba71a7 100644
+--- a/src/dsp/upsampling_neon.c
++++ b/src/dsp/upsampling_neon.c
+@@ -54,16 +54,16 @@
+   INIT_VECTOR2(A_B, A, B);                                              \
+   INIT_VECTOR2(C_D, C, D);                                              \
+   vst2_u8(out +  0, A_B);                                               \
+   vst2_u8(out + 32, C_D);                                               \
+ } while (0)
+ 
+ // Turn the macro into a function for reducing code-size when non-critical
+-static void Upsample16Pixels_NEON(const uint8_t *r1, const uint8_t *r2,
+-                                  uint8_t *out) {
++static void Upsample16Pixels_NEON(const uint8_t* r1, const uint8_t* r2,
++                                  uint8_t* out) {
+   UPSAMPLE_16PIXELS(r1, r2, out);
+ }
+ 
+ #define UPSAMPLE_LAST_BLOCK(tb, bb, num_pixels, out) {                  \
+   uint8_t r1[9], r2[9];                                                 \
+   memcpy(r1, (tb), (num_pixels));                                       \
+   memcpy(r2, (bb), (num_pixels));                                       \
+@@ -186,22 +186,22 @@ static const int16_t kCoeffs1[4] = { 19077, 26149, 6419, 13320 };
+   CONVERT1(FUNC, XSTEP, len, top_y, uv, top_dst, cur_x);                \
+   if (bottom_y != NULL) {                                               \
+     CONVERT1(FUNC, XSTEP, len, bottom_y, (uv) + 32, bottom_dst, cur_x); \
+   }                                                                     \
+ }
+ 
+ #define NEON_UPSAMPLE_FUNC(FUNC_NAME, FMT, XSTEP)                       \
+-static void FUNC_NAME(const uint8_t *top_y, const uint8_t *bottom_y,    \
+-                      const uint8_t *top_u, const uint8_t *top_v,       \
+-                      const uint8_t *cur_u, const uint8_t *cur_v,       \
+-                      uint8_t *top_dst, uint8_t *bottom_dst, int len) { \
++static void FUNC_NAME(const uint8_t* top_y, const uint8_t* bottom_y,    \
++                      const uint8_t* top_u, const uint8_t* top_v,       \
++                      const uint8_t* cur_u, const uint8_t* cur_v,       \
++                      uint8_t* top_dst, uint8_t* bottom_dst, int len) { \
+   int block;                                                            \
+   /* 16 byte aligned array to cache reconstructed u and v */            \
+   uint8_t uv_buf[2 * 32 + 15];                                          \
+-  uint8_t *const r_uv = (uint8_t*)((uintptr_t)(uv_buf + 15) & ~15);     \
++  uint8_t* const r_uv = (uint8_t*)((uintptr_t)(uv_buf + 15) & ~15);     \
+   const int uv_len = (len + 1) >> 1;                                    \
+   /* 9 pixels must be read-able for each block */                       \
+   const int num_blocks = (uv_len - 1) >> 3;                             \
+   const int leftover = uv_len - num_blocks * 8;                         \
+   const int last_pos = 1 + 16 * num_blocks;                             \
+                                                                         \
+   const int u_diag = ((top_u[0] + cur_u[0]) >> 1) + 1;                  \
+diff --git a/src/enc/backward_references_enc.c b/src/enc/backward_references_enc.c
+index 3ab7b0a..d445b40 100644
+--- a/src/enc/backward_references_enc.c
++++ b/src/enc/backward_references_enc.c
+@@ -187,21 +187,22 @@ void VP8LHashChainClear(VP8LHashChain* const p) {
+ 
+   p->size_ = 0;
+   p->offset_length_ = NULL;
+ }
+ 
+ // -----------------------------------------------------------------------------
+ 
+-#define HASH_MULTIPLIER_HI (0xc6a4a793ULL)
+-#define HASH_MULTIPLIER_LO (0x5bd1e996ULL)
++static const uint32_t kHashMultiplierHi = 0xc6a4a793u;
++static const uint32_t kHashMultiplierLo = 0x5bd1e996u;
+ 
+-static WEBP_INLINE uint32_t GetPixPairHash64(const uint32_t* const argb) {
++static WEBP_UBSAN_IGNORE_UNSIGNED_OVERFLOW WEBP_INLINE
++uint32_t GetPixPairHash64(const uint32_t* const argb) {
+   uint32_t key;
+-  key  = (argb[1] * HASH_MULTIPLIER_HI) & 0xffffffffu;
+-  key += (argb[0] * HASH_MULTIPLIER_LO) & 0xffffffffu;
++  key  = argb[1] * kHashMultiplierHi;
++  key += argb[0] * kHashMultiplierLo;
+   key = key >> (32 - HASH_BITS);
+   return key;
+ }
+ 
+ // Returns the maximum number of hash chain lookups to do for a
+ // given compression quality. Return value in range [8, 86].
+ static int GetMaxItersForQuality(int quality) {
+diff --git a/src/enc/histogram_enc.c b/src/enc/histogram_enc.c
+index d89b985..a4e6bf3 100644
+--- a/src/enc/histogram_enc.c
++++ b/src/enc/histogram_enc.c
+@@ -637,15 +637,15 @@ static void HistogramAnalyzeEntropyBin(VP8LHistogramSet* const image_histo,
+     bin_map[i] = GetHistoBinIndex(histograms[i], &cost_range, low_effort);
+   }
+ }
+ 
+ // Merges some histograms with same bin_id together if it's advantageous.
+ // Sets the remaining histograms to NULL.
+ static void HistogramCombineEntropyBin(VP8LHistogramSet* const image_histo,
+-                                       int *num_used,
++                                       int* num_used,
+                                        const uint16_t* const clusters,
+                                        uint16_t* const cluster_mappings,
+                                        VP8LHistogram* cur_combo,
+                                        const uint16_t* const bin_map,
+                                        int num_bins,
+                                        double combine_cost_factor,
+                                        int low_effort) {
+diff --git a/src/enc/picture_csp_enc.c b/src/enc/picture_csp_enc.c
+index 02d9df7..718e014 100644
+--- a/src/enc/picture_csp_enc.c
++++ b/src/enc/picture_csp_enc.c
+@@ -25,19 +25,23 @@
+ // Uncomment to disable gamma-compression during RGB->U/V averaging
+ #define USE_GAMMA_COMPRESSION
+ 
+ // If defined, use table to compute x / alpha.
+ #define USE_INVERSE_ALPHA_TABLE
+ 
+ #ifdef WORDS_BIGENDIAN
+-#define ALPHA_OFFSET 0   // uint32_t 0xff000000 is 0xff,00,00,00 in memory
++// uint32_t 0xff000000 is 0xff,00,00,00 in memory
++#define CHANNEL_OFFSET(i) (i)
+ #else
+-#define ALPHA_OFFSET 3   // uint32_t 0xff000000 is 0x00,00,00,ff in memory
++// uint32_t 0xff000000 is 0x00,00,00,ff in memory
++#define CHANNEL_OFFSET(i) (3-(i))
+ #endif
+ 
++#define ALPHA_OFFSET CHANNEL_OFFSET(0)
++
+ //------------------------------------------------------------------------------
+ // Detection of non-trivial transparency
+ 
+ // Returns true if alpha[] has non-0xff values.
+ static int CheckNonOpaque(const uint8_t* alpha, int width, int height,
+                           int x_step, int y_step) {
+   if (alpha == NULL) return 0;
+@@ -993,18 +997,18 @@ static int PictureARGBToYUVA(WebPPicture* picture, WebPEncCSP colorspace,
+   if (picture == NULL) return 0;
+   if (picture->argb == NULL) {
+     return WebPEncodingSetError(picture, VP8_ENC_ERROR_NULL_PARAMETER);
+   } else if ((colorspace & WEBP_CSP_UV_MASK) != WEBP_YUV420) {
+     return WebPEncodingSetError(picture, VP8_ENC_ERROR_INVALID_CONFIGURATION);
+   } else {
+     const uint8_t* const argb = (const uint8_t*)picture->argb;
+-    const uint8_t* const a = argb + (0 ^ ALPHA_OFFSET);
+-    const uint8_t* const r = argb + (1 ^ ALPHA_OFFSET);
+-    const uint8_t* const g = argb + (2 ^ ALPHA_OFFSET);
+-    const uint8_t* const b = argb + (3 ^ ALPHA_OFFSET);
++    const uint8_t* const a = argb + CHANNEL_OFFSET(0);
++    const uint8_t* const r = argb + CHANNEL_OFFSET(1);
++    const uint8_t* const g = argb + CHANNEL_OFFSET(2);
++    const uint8_t* const b = argb + CHANNEL_OFFSET(3);
+ 
+     picture->colorspace = WEBP_YUV420;
+     return ImportYUVAFromRGBA(r, g, b, a, 4, 4 * picture->argb_stride,
+                               dithering, use_iterative_conversion, picture);
+   }
+ }
+ 
+@@ -1046,15 +1050,15 @@ int WebPPictureYUVAToARGB(WebPPicture* picture) {
+   // Convert
+   {
+     int y;
+     const int width = picture->width;
+     const int height = picture->height;
+     const int argb_stride = 4 * picture->argb_stride;
+     uint8_t* dst = (uint8_t*)picture->argb;
+-    const uint8_t *cur_u = picture->u, *cur_v = picture->v, *cur_y = picture->y;
++    const uint8_t* cur_u = picture->u, *cur_v = picture->v, *cur_y = picture->y;
+     WebPUpsampleLinePairFunc upsample =
+         WebPGetLinePairConverter(ALPHA_OFFSET > 0);
+ 
+     // First row, with replicated top samples.
+     upsample(cur_y, NULL, cur_u, cur_v, cur_u, cur_v, dst, NULL, width);
+     cur_y += picture->y_stride;
+     dst += argb_stride;
+diff --git a/src/enc/predictor_enc.c b/src/enc/predictor_enc.c
+index 802e896..2e6762e 100644
+--- a/src/enc/predictor_enc.c
++++ b/src/enc/predictor_enc.c
+@@ -198,33 +198,33 @@ static uint32_t NearLossless(uint32_t value, uint32_t predict,
+   }
+   quantization = max_quantization;
+   while (quantization >= max_diff) {
+     quantization >>= 1;
+   }
+   if ((value >> 24) == 0 || (value >> 24) == 0xff) {
+     // Preserve transparency of fully transparent or fully opaque pixels.
+-    a = NearLosslessDiff(value >> 24, predict >> 24);
++    a = NearLosslessDiff((value >> 24) & 0xff, (predict >> 24) & 0xff);
+   } else {
+     a = NearLosslessComponent(value >> 24, predict >> 24, 0xff, quantization);
+   }
+   g = NearLosslessComponent((value >> 8) & 0xff, (predict >> 8) & 0xff, 0xff,
+                             quantization);
+   if (used_subtract_green) {
+     // The green offset will be added to red and blue components during decoding
+     // to obtain the actual red and blue values.
+     new_green = ((predict >> 8) + g) & 0xff;
+     // The amount by which green has been adjusted during quantization. It is
+     // subtracted from red and blue for compensation, to avoid accumulating two
+     // quantization errors in them.
+-    green_diff = NearLosslessDiff(new_green, value >> 8);
++    green_diff = NearLosslessDiff(new_green, (value >> 8) & 0xff);
+   }
+-  r = NearLosslessComponent(NearLosslessDiff(value >> 16, green_diff),
++  r = NearLosslessComponent(NearLosslessDiff((value >> 16) & 0xff, green_diff),
+                             (predict >> 16) & 0xff, 0xff - new_green,
+                             quantization);
+-  b = NearLosslessComponent(NearLosslessDiff(value, green_diff),
++  b = NearLosslessComponent(NearLosslessDiff(value & 0xff, green_diff),
+                             predict & 0xff, 0xff - new_green, quantization);
+   return ((uint32_t)a << 24) | ((uint32_t)r << 16) | ((uint32_t)g << 8) | b;
+ }
+ #endif  // (WEBP_NEAR_LOSSLESS == 1)
+ 
+ // Stores the difference between the pixel and its prediction in "out".
+ // In case of a lossy encoding, updates the source image to avoid propagating
+@@ -583,15 +583,15 @@ static void GetBestGreenToRed(
+           green_to_red_cur, accumulated_red_histo);
+       if (cur_diff < best_diff) {
+         best_diff = cur_diff;
+         green_to_red_best = green_to_red_cur;
+       }
+     }
+   }
+-  best_tx->green_to_red_ = green_to_red_best;
++  best_tx->green_to_red_ = (green_to_red_best & 0xff);
+ }
+ 
+ static float GetPredictionCostCrossColorBlue(
+     const uint32_t* argb, int stride, int tile_width, int tile_height,
+     VP8LMultipliers prev_x, VP8LMultipliers prev_y,
+     int green_to_blue, int red_to_blue, const int accumulated_blue_histo[256]) {
+   int histo[256] = { 0 };
+@@ -662,16 +662,16 @@ static void GetBestGreenRedToBlue(
+       }
+     }
+     if (delta == 2 && green_to_blue_best == 0 && red_to_blue_best == 0) {
+       // Further iterations would not help.
+       break;  // out of iter-loop.
+     }
+   }
+-  best_tx->green_to_blue_ = green_to_blue_best;
+-  best_tx->red_to_blue_ = red_to_blue_best;
++  best_tx->green_to_blue_ = green_to_blue_best & 0xff;
++  best_tx->red_to_blue_ = red_to_blue_best & 0xff;
+ }
+ #undef kGreenRedToBlueMaxIters
+ #undef kGreenRedToBlueNumAxis
+ 
+ static VP8LMultipliers GetBestColorTransformForTile(
+     int tile_x, int tile_y, int bits,
+     VP8LMultipliers prev_x,
+diff --git a/src/enc/quant_enc.c b/src/enc/quant_enc.c
+index 03c682e..01eb565 100644
+--- a/src/enc/quant_enc.c
++++ b/src/enc/quant_enc.c
+@@ -29,15 +29,15 @@
+ #define MAX_ALPHA 100     // higher meaningful value for susceptibility
+ 
+ #define SNS_TO_DQ 0.9     // Scaling constant between the sns value and the QP
+                           // power-law modulation. Must be strictly less than 1.
+ 
+ // number of non-zero coeffs below which we consider the block very flat
+ // (and apply a penalty to complex predictions)
+-#define FLATNESS_LIMIT_I16 10      // I16 mode
++#define FLATNESS_LIMIT_I16 0       // I16 mode (special case)
+ #define FLATNESS_LIMIT_I4  3       // I4 mode
+ #define FLATNESS_LIMIT_UV  2       // UV mode
+ #define FLATNESS_PENALTY   140     // roughly ~1bit per block
+ 
+ #define MULT_8B(a, b) (((a) * (b) + 128) >> 8)
+ 
+ #define RD_DISTO_MULT      256  // distortion multiplier (equivalent of lambda)
+@@ -984,14 +984,15 @@ static void PickBestIntra16(VP8EncIterator* const it, VP8ModeScore* rd) {
+   const int lambda = dqm->lambda_i16_;
+   const int tlambda = dqm->tlambda_;
+   const uint8_t* const src = it->yuv_in_ + Y_OFF_ENC;
+   VP8ModeScore rd_tmp;
+   VP8ModeScore* rd_cur = &rd_tmp;
+   VP8ModeScore* rd_best = rd;
+   int mode;
++  int is_flat = IsFlatSource16(it->yuv_in_ + Y_OFF_ENC);
+ 
+   rd->mode_i16 = -1;
+   for (mode = 0; mode < NUM_PRED_MODES; ++mode) {
+     uint8_t* const tmp_dst = it->yuv_out2_ + Y_OFF_ENC;  // scratch buffer
+     rd_cur->mode_i16 = mode;
+ 
+     // Reconstruct
+@@ -999,18 +1000,22 @@ static void PickBestIntra16(VP8EncIterator* const it, VP8ModeScore* rd) {
+ 
+     // Measure RD-score
+     rd_cur->D = VP8SSE16x16(src, tmp_dst);
+     rd_cur->SD =
+         tlambda ? MULT_8B(tlambda, VP8TDisto16x16(src, tmp_dst, kWeightY)) : 0;
+     rd_cur->H = VP8FixedCostsI16[mode];
+     rd_cur->R = VP8GetCostLuma16(it, rd_cur);
+-    if (mode > 0 &&
+-        IsFlat(rd_cur->y_ac_levels[0], kNumBlocks, FLATNESS_LIMIT_I16)) {
+-      // penalty to avoid flat area to be mispredicted by complex mode
+-      rd_cur->R += FLATNESS_PENALTY * kNumBlocks;
++    if (is_flat) {
++      // refine the first impression (which was in pixel space)
++      is_flat = IsFlat(rd_cur->y_ac_levels[0], kNumBlocks, FLATNESS_LIMIT_I16);
++      if (is_flat) {
++        // Block is very flat. We put emphasis on the distortion being very low!
++        rd_cur->D *= 2;
++        rd_cur->SD *= 2;
++      }
+     }
+ 
+     // Since we always examine Intra16 first, we can overwrite *rd directly.
+     SetRDScore(lambda, rd_cur);
+     if (mode == 0 || rd_cur->score < rd_best->score) {
+       SwapModeScore(&rd_cur, &rd_best);
+       SwapOut(it);
+@@ -1083,15 +1088,16 @@ static int PickBestIntra4(VP8EncIterator* const it, VP8ModeScore* const rd) {
+       // Compute RD-score
+       rd_tmp.D = VP8SSE4x4(src, tmp_dst);
+       rd_tmp.SD =
+           tlambda ? MULT_8B(tlambda, VP8TDisto4x4(src, tmp_dst, kWeightY))
+                   : 0;
+       rd_tmp.H = mode_costs[mode];
+ 
+-      // Add flatness penalty
++      // Add flatness penalty, to avoid flat area to be mispredicted
++      // by a complex mode.
+       if (mode > 0 && IsFlat(tmp_levels, kNumBlocks, FLATNESS_LIMIT_I4)) {
+         rd_tmp.R = FLATNESS_PENALTY * kNumBlocks;
+       } else {
+         rd_tmp.R = 0;
+       }
+ 
+       // early-out check
+@@ -1238,19 +1244,27 @@ static void RefineUsingDistortion(VP8EncIterator* const it,
+     for (mode = 0; mode < NUM_PRED_MODES; ++mode) {
+       const uint8_t* const ref = it->yuv_p_ + VP8I16ModeOffsets[mode];
+       const score_t score = (score_t)VP8SSE16x16(src, ref) * RD_DISTO_MULT
+                           + VP8FixedCostsI16[mode] * lambda_d_i16;
+       if (mode > 0 && VP8FixedCostsI16[mode] > bit_limit) {
+         continue;
+       }
++
+       if (score < best_score) {
+         best_mode = mode;
+         best_score = score;
+       }
+     }
++    if (it->x_ == 0 || it->y_ == 0) {
++      // avoid starting a checkerboard resonance from the border. See bug #432.
++      if (IsFlatSource16(src)) {
++        best_mode = (it->x_ == 0) ? 0 : 2;
++        try_both_modes = 0;  // stick to i16
++      }
++    }
+     VP8SetIntra16Mode(it, best_mode);
+     // we'll reconstruct later, if i16 mode actually gets selected
+   }
+ 
+   // Next, evaluate Intra4
+   if (try_both_modes || !is_i16) {
+     // We don't evaluate the rate here, but just account for it through a
+diff --git a/src/enc/vp8i_enc.h b/src/enc/vp8i_enc.h
+index 3a1967d..fedcaee 100644
+--- a/src/enc/vp8i_enc.h
++++ b/src/enc/vp8i_enc.h
+@@ -27,16 +27,16 @@ extern "C" {
+ #endif
+ 
+ //------------------------------------------------------------------------------
+ // Various defines and enums
+ 
+ // version numbers
+ #define ENC_MAJ_VERSION 1
+-#define ENC_MIN_VERSION 0
+-#define ENC_REV_VERSION 2
++#define ENC_MIN_VERSION 1
++#define ENC_REV_VERSION 0
+ 
+ enum { MAX_LF_LEVELS = 64,       // Maximum loop filter level
+        MAX_VARIABLE_LEVEL = 67,  // last (inclusive) level with variable cost
+        MAX_LEVEL = 2047          // max level (note: max codable is 2047 + 67)
+      };
+ 
+ typedef enum {   // Rate-distortion optimization levels
+@@ -245,15 +245,15 @@ typedef struct {
+   LFStats*      lf_stats_;         // filter stats (borrowed from enc_)
+   int           do_trellis_;       // if true, perform extra level optimisation
+   int           count_down_;       // number of mb still to be processed
+   int           count_down0_;      // starting counter value (for progress)
+   int           percent0_;         // saved initial progress percent
+ 
+   DError        left_derr_;        // left error diffusion (u/v)
+-  DError       *top_derr_;         // top diffusion error - NULL if disabled
++  DError*       top_derr_;         // top diffusion error - NULL if disabled
+ 
+   uint8_t* y_left_;    // left luma samples (addressable from index -1 to 15).
+   uint8_t* u_left_;    // left u samples (addressable from index -1 to 7)
+   uint8_t* v_left_;    // left v samples (addressable from index -1 to 7)
+ 
+   uint8_t* y_top_;     // top luma samples at position 'x_'
+   uint8_t* uv_top_;    // top u/v samples at position 'x_', packed as 16 bytes
+diff --git a/src/mux/muxi.h b/src/mux/muxi.h
+index 3e9d8c4..ad3e1bd 100644
+--- a/src/mux/muxi.h
++++ b/src/mux/muxi.h
+@@ -24,16 +24,16 @@
+ extern "C" {
+ #endif
+ 
+ //------------------------------------------------------------------------------
+ // Defines and constants.
+ 
+ #define MUX_MAJ_VERSION 1
+-#define MUX_MIN_VERSION 0
+-#define MUX_REV_VERSION 2
++#define MUX_MIN_VERSION 1
++#define MUX_REV_VERSION 0
+ 
+ // Chunk object.
+ typedef struct WebPChunk WebPChunk;
+ struct WebPChunk {
+   uint32_t        tag_;
+   int             owner_;  // True if *data_ memory is owned internally.
+                            // VP8X, ANIM, and other internally created chunks
+diff --git a/src/mux/muxread.c b/src/mux/muxread.c
+index 268f6ac..ae3b876 100644
+--- a/src/mux/muxread.c
++++ b/src/mux/muxread.c
+@@ -96,15 +96,15 @@ int MuxImageFinalize(WebPMuxImage* const wpi) {
+   return ok;
+ }
+ 
+ static int MuxImageParse(const WebPChunk* const chunk, int copy_data,
+                          WebPMuxImage* const wpi) {
+   const uint8_t* bytes = chunk->data_.bytes;
+   size_t size = chunk->data_.size;
+-  const uint8_t* const last = bytes + size;
++  const uint8_t* const last = (bytes == NULL) ? NULL : bytes + size;
+   WebPChunk subchunk;
+   size_t subchunk_size;
+   WebPChunk** unknown_chunk_list = &wpi->unknown_;
+   ChunkInit(&subchunk);
+ 
+   assert(chunk->tag_ == kChunks[IDX_ANMF].tag);
+   assert(!wpi->is_partial_);
+diff --git a/src/utils/bit_reader_inl_utils.h b/src/utils/bit_reader_inl_utils.h
+index 7e607f3..46b3880 100644
+--- a/src/utils/bit_reader_inl_utils.h
++++ b/src/utils/bit_reader_inl_utils.h
+@@ -100,15 +100,16 @@ void VP8LoadNewBytes(VP8BitReader* const br) {
+     br->bits_ += BITS;
+   } else {
+     VP8LoadFinalBytes(br);    // no need to be inlined
+   }
+ }
+ 
+ // Read a bit with proba 'prob'. Speed-critical function!
+-static WEBP_INLINE int VP8GetBit(VP8BitReader* const br, int prob) {
++static WEBP_INLINE int VP8GetBit(VP8BitReader* const br,
++                                 int prob, const char label[]) {
+   // Don't move this declaration! It makes a big speed difference to store
+   // 'range' *before* calling VP8LoadNewBytes(), even if this function doesn't
+   // alter br->range_ value.
+   range_t range = br->range_;
+   if (br->bits_ < 0) {
+     VP8LoadNewBytes(br);
+   }
+@@ -125,38 +126,41 @@ static WEBP_INLINE int VP8GetBit(VP8BitReader* const br, int prob) {
+     }
+     {
+       const int shift = 7 ^ BitsLog2Floor(range);
+       range <<= shift;
+       br->bits_ -= shift;
+     }
+     br->range_ = range - 1;
++    BT_TRACK(br);
+     return bit;
+   }
+ }
+ 
+ // simplified version of VP8GetBit() for prob=0x80 (note shift is always 1 here)
+ static WEBP_UBSAN_IGNORE_UNSIGNED_OVERFLOW WEBP_INLINE
+-int VP8GetSigned(VP8BitReader* const br, int v) {
++int VP8GetSigned(VP8BitReader* const br, int v, const char label[]) {
+   if (br->bits_ < 0) {
+     VP8LoadNewBytes(br);
+   }
+   {
+     const int pos = br->bits_;
+     const range_t split = br->range_ >> 1;
+     const range_t value = (range_t)(br->value_ >> pos);
+     const int32_t mask = (int32_t)(split - value) >> 31;  // -1 or 0
+     br->bits_ -= 1;
+     br->range_ += mask;
+     br->range_ |= 1;
+     br->value_ -= (bit_t)((split + 1) & mask) << pos;
++    BT_TRACK(br);
+     return (v ^ mask) - mask;
+   }
+ }
+ 
+-static WEBP_INLINE int VP8GetBitAlt(VP8BitReader* const br, int prob) {
++static WEBP_INLINE int VP8GetBitAlt(VP8BitReader* const br,
++                                    int prob, const char label[]) {
+   // Don't move this declaration! It makes a big speed difference to store
+   // 'range' *before* calling VP8LoadNewBytes(), even if this function doesn't
+   // alter br->range_ value.
+   range_t range = br->range_;
+   if (br->bits_ < 0) {
+     VP8LoadNewBytes(br);
+   }
+@@ -175,14 +179,15 @@ static WEBP_INLINE int VP8GetBitAlt(VP8BitReader* const br, int prob) {
+     }
+     if (range <= (range_t)0x7e) {
+       const int shift = kVP8Log2Range[range];
+       range = kVP8NewRange[range];
+       br->bits_ -= shift;
+     }
+     br->range_ = range;
++    BT_TRACK(br);
+     return bit;
+   }
+ }
+ 
+ #ifdef __cplusplus
+ }    // extern "C"
+ #endif
+diff --git a/src/utils/bit_reader_utils.c b/src/utils/bit_reader_utils.c
+index 1500354..857cd60 100644
+--- a/src/utils/bit_reader_utils.c
++++ b/src/utils/bit_reader_utils.c
+@@ -98,25 +98,26 @@ void VP8LoadFinalBytes(VP8BitReader* const br) {
+     br->bits_ = 0;  // This is to avoid undefined behaviour with shifts.
+   }
+ }
+ 
+ //------------------------------------------------------------------------------
+ // Higher-level calls
+ 
+-uint32_t VP8GetValue(VP8BitReader* const br, int bits) {
++uint32_t VP8GetValue(VP8BitReader* const br, int bits, const char label[]) {
+   uint32_t v = 0;
+   while (bits-- > 0) {
+-    v |= VP8GetBit(br, 0x80) << bits;
++    v |= VP8GetBit(br, 0x80, label) << bits;
+   }
+   return v;
+ }
+ 
+-int32_t VP8GetSignedValue(VP8BitReader* const br, int bits) {
+-  const int value = VP8GetValue(br, bits);
+-  return VP8Get(br) ? -value : value;
++int32_t VP8GetSignedValue(VP8BitReader* const br, int bits,
++                          const char label[]) {
++  const int value = VP8GetValue(br, bits, label);
++  return VP8Get(br, label) ? -value : value;
+ }
+ 
+ //------------------------------------------------------------------------------
+ // VP8LBitReader
+ 
+ #define VP8L_LOG8_WBITS 4  // Number of bytes needed to store VP8L_WBITS bits.
+ 
+@@ -216,7 +217,82 @@ uint32_t VP8LReadBits(VP8LBitReader* const br, int n_bits) {
+   } else {
+     VP8LSetEndOfStream(br);
+     return 0;
+   }
+ }
+ 
+ //------------------------------------------------------------------------------
++// Bit-tracing tool
++
++#if (BITTRACE > 0)
++
++#include <stdlib.h>   // for atexit()
++#include <stdio.h>
++#include <string.h>
++
++#define MAX_NUM_LABELS 32
++static struct {
++  const char* label;
++  int size;
++  int count;
++} kLabels[MAX_NUM_LABELS];
++
++static int last_label = 0;
++static int last_pos = 0;
++static const uint8_t* buf_start = NULL;
++static int init_done = 0;
++
++static void PrintBitTraces(void) {
++  int i;
++  int scale = 1;
++  int total = 0;
++  const char* units = "bits";
++#if (BITTRACE == 2)
++  scale = 8;
++  units = "bytes";
++#endif
++  for (i = 0; i < last_label; ++i) total += kLabels[i].size;
++  if (total < 1) total = 1;   // avoid rounding errors
++  printf("=== Bit traces ===\n");
++  for (i = 0; i < last_label; ++i) {
++    const int skip = 16 - (int)strlen(kLabels[i].label);
++    const int value = (kLabels[i].size + scale - 1) / scale;
++    assert(skip > 0);
++    printf("%s \%*s: %6d %s   \t[%5.2f%%] [count: %7d]\n",
++           kLabels[i].label, skip, "", value, units,
++           100.f * kLabels[i].size / total,
++           kLabels[i].count);
++  }
++  total = (total + scale - 1) / scale;
++  printf("Total: %d %s\n", total, units);
++}
++
++void BitTrace(const struct VP8BitReader* const br, const char label[]) {
++  int i, pos;
++  if (!init_done) {
++    memset(kLabels, 0, sizeof(kLabels));
++    atexit(PrintBitTraces);
++    buf_start = br->buf_;
++    init_done = 1;
++  }
++  pos = (int)(br->buf_ - buf_start) * 8 - br->bits_;
++  // if there's a too large jump, we've changed partition -> reset counter
++  if (abs(pos - last_pos) > 32) {
++    buf_start = br->buf_;
++    pos = 0;
++    last_pos = 0;
++  }
++  if (br->range_ >= 0x7f) pos += kVP8Log2Range[br->range_ - 0x7f];
++  for (i = 0; i < last_label; ++i) {
++    if (!strcmp(label, kLabels[i].label)) break;
++  }
++  if (i == MAX_NUM_LABELS) abort();   // overflow!
++  kLabels[i].label = label;
++  kLabels[i].size += pos - last_pos;
++  kLabels[i].count += 1;
++  if (i == last_label) ++last_label;
++  last_pos = pos;
++}
++
++#endif  // BITTRACE > 0
++
++//------------------------------------------------------------------------------
+diff --git a/src/utils/bit_reader_utils.h b/src/utils/bit_reader_utils.h
+index 0f8db2c..e64156e 100644
+--- a/src/utils/bit_reader_utils.h
++++ b/src/utils/bit_reader_utils.h
+@@ -17,14 +17,35 @@
+ 
+ #include <assert.h>
+ #ifdef _MSC_VER
+ #include <stdlib.h>  // _byteswap_ulong
+ #endif
+ #include "src/webp/types.h"
+ 
++// Warning! This macro triggers quite some MACRO wizardry around func signature!
++#if !defined(BITTRACE)
++#define BITTRACE 0    // 0 = off, 1 = print bits, 2 = print bytes
++#endif
++
++#if (BITTRACE > 0)
++struct VP8BitReader;
++extern void BitTrace(const struct VP8BitReader* const br, const char label[]);
++#define BT_TRACK(br) BitTrace(br, label)
++#define VP8Get(BR, L) VP8GetValue(BR, 1, L)
++#else
++#define BT_TRACK(br)
++// We'll REMOVE the 'const char label[]' from all signatures and calls (!!):
++#define VP8GetValue(BR, N, L) VP8GetValue(BR, N)
++#define VP8Get(BR, L) VP8GetValue(BR, 1, L)
++#define VP8GetSignedValue(BR, N, L) VP8GetSignedValue(BR, N)
++#define VP8GetBit(BR, P, L) VP8GetBit(BR, P)
++#define VP8GetBitAlt(BR, P, L) VP8GetBitAlt(BR, P)
++#define VP8GetSigned(BR, V, L) VP8GetSigned(BR, V)
++#endif
++
+ #ifdef __cplusplus
+ extern "C" {
+ #endif
+ 
+ // The Boolean decoder needs to maintain infinite precision on the value_ field.
+ // However, since range_ is only 8bit, we only need an active window of 8 bits
+ // for value_. Left bits (MSB) gets zeroed and shifted away when value_ falls
+@@ -88,25 +109,23 @@ void VP8BitReaderSetBuffer(VP8BitReader* const br,
+                            const uint8_t* const start, size_t size);
+ 
+ // Update internal pointers to displace the byte buffer by the
+ // relative offset 'offset'.
+ void VP8RemapBitReader(VP8BitReader* const br, ptrdiff_t offset);
+ 
+ // return the next value made of 'num_bits' bits
+-uint32_t VP8GetValue(VP8BitReader* const br, int num_bits);
+-static WEBP_INLINE uint32_t VP8Get(VP8BitReader* const br) {
+-  return VP8GetValue(br, 1);
+-}
++uint32_t VP8GetValue(VP8BitReader* const br, int num_bits, const char label[]);
+ 
+ // return the next value with sign-extension.
+-int32_t VP8GetSignedValue(VP8BitReader* const br, int num_bits);
++int32_t VP8GetSignedValue(VP8BitReader* const br, int num_bits,
++                          const char label[]);
+ 
+ // bit_reader_inl.h will implement the following methods:
+-//   static WEBP_INLINE int VP8GetBit(VP8BitReader* const br, int prob)
+-//   static WEBP_INLINE int VP8GetSigned(VP8BitReader* const br, int v)
++//   static WEBP_INLINE int VP8GetBit(VP8BitReader* const br, int prob, ...)
++//   static WEBP_INLINE int VP8GetSigned(VP8BitReader* const br, int v, ...)
+ // and should be included by the .c files that actually need them.
+ // This is to avoid recompiling the whole library whenever this file is touched,
+ // and also allowing platform-specific ad-hoc hacks.
+ 
+ // -----------------------------------------------------------------------------
+ // Bitreader for lossless format
+ 
+diff --git a/src/utils/bit_writer_utils.c b/src/utils/bit_writer_utils.c
+index 7f83b4c..bef0e31 100644
+--- a/src/utils/bit_writer_utils.c
++++ b/src/utils/bit_writer_utils.c
+@@ -66,15 +66,15 @@ static void Flush(VP8BitWriter* const bw) {
+     if (bits & 0x100) {  // overflow -> propagate carry over pending 0xff's
+       if (pos > 0) bw->buf_[pos - 1]++;
+     }
+     if (bw->run_ > 0) {
+       const int value = (bits & 0x100) ? 0x00 : 0xff;
+       for (; bw->run_ > 0; --bw->run_) bw->buf_[pos++] = value;
+     }
+-    bw->buf_[pos++] = bits;
++    bw->buf_[pos++] = bits & 0xff;
+     bw->pos_ = pos;
+   } else {
+     bw->run_++;   // delay writing of bytes 0xff, pending eventual carry.
+   }
+ }
+ 
+ //------------------------------------------------------------------------------
+diff --git a/src/utils/color_cache_utils.h b/src/utils/color_cache_utils.h
+index 20b7be1..b45d47c 100644
+--- a/src/utils/color_cache_utils.h
++++ b/src/utils/color_cache_utils.h
+@@ -13,31 +13,33 @@
+ //          Urvang Joshi (urvang@google.com)
+ 
+ #ifndef WEBP_UTILS_COLOR_CACHE_UTILS_H_
+ #define WEBP_UTILS_COLOR_CACHE_UTILS_H_
+ 
+ #include <assert.h>
+ 
++#include "src/dsp/dsp.h"
+ #include "src/webp/types.h"
+ 
+ #ifdef __cplusplus
+ extern "C" {
+ #endif
+ 
+ // Main color cache struct.
+ typedef struct {
+-  uint32_t *colors_;  // color entries
++  uint32_t* colors_;  // color entries
+   int hash_shift_;    // Hash shift: 32 - hash_bits_.
+   int hash_bits_;
+ } VP8LColorCache;
+ 
+-static const uint64_t kHashMul = 0x1e35a7bdull;
++static const uint32_t kHashMul = 0x1e35a7bdu;
+ 
+-static WEBP_INLINE int VP8LHashPix(uint32_t argb, int shift) {
+-  return (int)(((argb * kHashMul) & 0xffffffffu) >> shift);
++static WEBP_UBSAN_IGNORE_UNSIGNED_OVERFLOW WEBP_INLINE
++int VP8LHashPix(uint32_t argb, int shift) {
++  return (int)((argb * kHashMul) >> shift);
+ }
+ 
+ static WEBP_INLINE uint32_t VP8LColorCacheLookup(
+     const VP8LColorCache* const cc, uint32_t key) {
+   assert((key >> cc->hash_bits_) == 0u);
+   return cc->colors_[key];
+ }
+diff --git a/src/utils/huffman_utils.c b/src/utils/huffman_utils.c
+index 7a69963..9efd628 100644
+--- a/src/utils/huffman_utils.c
++++ b/src/utils/huffman_utils.c
+@@ -87,15 +87,16 @@ static int BuildHuffmanTable(HuffmanCode* const root_table, int root_bits,
+   // number of codes of each length:
+   int count[MAX_ALLOWED_CODE_LENGTH + 1] = { 0 };
+   // offsets in sorted table for each length:
+   int offset[MAX_ALLOWED_CODE_LENGTH + 1];
+ 
+   assert(code_lengths_size != 0);
+   assert(code_lengths != NULL);
+-  assert(root_table != NULL);
++  assert((root_table != NULL && sorted != NULL) ||
++         (root_table == NULL && sorted == NULL));
+   assert(root_bits > 0);
+ 
+   // Build histogram of code lengths.
+   for (symbol = 0; symbol < code_lengths_size; ++symbol) {
+     if (code_lengths[symbol] > MAX_ALLOWED_CODE_LENGTH) {
+       return 0;
+     }
+@@ -116,24 +117,30 @@ static int BuildHuffmanTable(HuffmanCode* const root_table, int root_bits,
+     offset[len + 1] = offset[len] + count[len];
+   }
+ 
+   // Sort symbols by length, by symbol order within each length.
+   for (symbol = 0; symbol < code_lengths_size; ++symbol) {
+     const int symbol_code_length = code_lengths[symbol];
+     if (code_lengths[symbol] > 0) {
+-      sorted[offset[symbol_code_length]++] = symbol;
++      if (sorted != NULL) {
++        sorted[offset[symbol_code_length]++] = symbol;
++      } else {
++        offset[symbol_code_length]++;
++      }
+     }
+   }
+ 
+   // Special case code with only one value.
+   if (offset[MAX_ALLOWED_CODE_LENGTH] == 1) {
+-    HuffmanCode code;
+-    code.bits = 0;
+-    code.value = (uint16_t)sorted[0];
+-    ReplicateValue(table, 1, total_size, code);
++    if (sorted != NULL) {
++      HuffmanCode code;
++      code.bits = 0;
++      code.value = (uint16_t)sorted[0];
++      ReplicateValue(table, 1, total_size, code);
++    }
+     return total_size;
+   }
+ 
+   {
+     int step;              // step size to replicate values in current table
+     uint32_t low = -1;     // low bits for current root entry
+     uint32_t mask = total_size - 1;    // mask for low bits
+@@ -147,14 +154,15 @@ static int BuildHuffmanTable(HuffmanCode* const root_table, int root_bits,
+     for (len = 1, step = 2; len <= root_bits; ++len, step <<= 1) {
+       num_open <<= 1;
+       num_nodes += num_open;
+       num_open -= count[len];
+       if (num_open < 0) {
+         return 0;
+       }
++      if (root_table == NULL) continue;
+       for (; count[len] > 0; --count[len]) {
+         HuffmanCode code;
+         code.bits = (uint8_t)len;
+         code.value = (uint16_t)sorted[symbol++];
+         ReplicateValue(&table[key], step, table_size, code);
+         key = GetNextKey(key, len);
+       }
+@@ -168,25 +176,29 @@ static int BuildHuffmanTable(HuffmanCode* const root_table, int root_bits,
+       num_open -= count[len];
+       if (num_open < 0) {
+         return 0;
+       }
+       for (; count[len] > 0; --count[len]) {
+         HuffmanCode code;
+         if ((key & mask) != low) {
+-          table += table_size;
++          if (root_table != NULL) table += table_size;
+           table_bits = NextTableBitSize(count, len, root_bits);
+           table_size = 1 << table_bits;
+           total_size += table_size;
+           low = key & mask;
+-          root_table[low].bits = (uint8_t)(table_bits + root_bits);
+-          root_table[low].value = (uint16_t)((table - root_table) - low);
++          if (root_table != NULL) {
++            root_table[low].bits = (uint8_t)(table_bits + root_bits);
++            root_table[low].value = (uint16_t)((table - root_table) - low);
++          }
++        }
++        if (root_table != NULL) {
++          code.bits = (uint8_t)(len - root_bits);
++          code.value = (uint16_t)sorted[symbol++];
++          ReplicateValue(&table[key >> root_bits], step, table_size, code);
+         }
+-        code.bits = (uint8_t)(len - root_bits);
+-        code.value = (uint16_t)sorted[symbol++];
+-        ReplicateValue(&table[key >> root_bits], step, table_size, code);
+         key = GetNextKey(key, len);
+       }
+     }
+ 
+     // Check if tree is full.
+     if (num_nodes != 2 * offset[MAX_ALLOWED_CODE_LENGTH] - 1) {
+       return 0;
+@@ -198,26 +210,87 @@ static int BuildHuffmanTable(HuffmanCode* const root_table, int root_bits,
+ 
+ // Maximum code_lengths_size is 2328 (reached for 11-bit color_cache_bits).
+ // More commonly, the value is around ~280.
+ #define MAX_CODE_LENGTHS_SIZE \
+   ((1 << MAX_CACHE_BITS) + NUM_LITERAL_CODES + NUM_LENGTH_CODES)
+ // Cut-off value for switching between heap and stack allocation.
+ #define SORTED_SIZE_CUTOFF 512
+-int VP8LBuildHuffmanTable(HuffmanCode* const root_table, int root_bits,
++int VP8LBuildHuffmanTable(HuffmanTables* const root_table, int root_bits,
+                           const int code_lengths[], int code_lengths_size) {
+-  int total_size;
++  const int total_size =
++      BuildHuffmanTable(NULL, root_bits, code_lengths, code_lengths_size, NULL);
+   assert(code_lengths_size <= MAX_CODE_LENGTHS_SIZE);
++  if (total_size == 0 || root_table == NULL) return total_size;
++
++  if (root_table->curr_segment->curr_table + total_size >=
++      root_table->curr_segment->start + root_table->curr_segment->size) {
++    // If 'root_table' does not have enough memory, allocate a new segment.
++    // The available part of root_table->curr_segment is left unused because we
++    // need a contiguous buffer.
++    const int segment_size = root_table->curr_segment->size;
++    struct HuffmanTablesSegment* next =
++        (HuffmanTablesSegment*)WebPSafeMalloc(1, sizeof(*next));
++    if (next == NULL) return 0;
++    // Fill the new segment.
++    // We need at least 'total_size' but if that value is small, it is better to
++    // allocate a big chunk to prevent more allocations later. 'segment_size' is
++    // therefore chosen (any other arbitrary value could be chosen).
++    next->size = total_size > segment_size ? total_size : segment_size;
++    next->start =
++        (HuffmanCode*)WebPSafeMalloc(next->size, sizeof(*next->start));
++    if (next->start == NULL) {
++      WebPSafeFree(next);
++      return 0;
++    }
++    next->curr_table = next->start;
++    next->next = NULL;
++    // Point to the new segment.
++    root_table->curr_segment->next = next;
++    root_table->curr_segment = next;
++  }
+   if (code_lengths_size <= SORTED_SIZE_CUTOFF) {
+     // use local stack-allocated array.
+     uint16_t sorted[SORTED_SIZE_CUTOFF];
+-    total_size = BuildHuffmanTable(root_table, root_bits,
+-                                   code_lengths, code_lengths_size, sorted);
+-  } else {   // rare case. Use heap allocation.
++    BuildHuffmanTable(root_table->curr_segment->curr_table, root_bits,
++                      code_lengths, code_lengths_size, sorted);
++  } else {  // rare case. Use heap allocation.
+     uint16_t* const sorted =
+         (uint16_t*)WebPSafeMalloc(code_lengths_size, sizeof(*sorted));
+     if (sorted == NULL) return 0;
+-    total_size = BuildHuffmanTable(root_table, root_bits,
+-                                   code_lengths, code_lengths_size, sorted);
++    BuildHuffmanTable(root_table->curr_segment->curr_table, root_bits,
++                      code_lengths, code_lengths_size, sorted);
+     WebPSafeFree(sorted);
+   }
+   return total_size;
+ }
++
++int VP8LHuffmanTablesAllocate(int size, HuffmanTables* huffman_tables) {
++  // Have 'segment' point to the first segment for now, 'root'.
++  HuffmanTablesSegment* const root = &huffman_tables->root;
++  huffman_tables->curr_segment = root;
++  // Allocate root.
++  root->start = (HuffmanCode*)WebPSafeMalloc(size, sizeof(*root->start));
++  if (root->start == NULL) return 0;
++  root->curr_table = root->start;
++  root->next = NULL;
++  root->size = size;
++  return 1;
++}
++
++void VP8LHuffmanTablesDeallocate(HuffmanTables* const huffman_tables) {
++  HuffmanTablesSegment *current, *next;
++  if (huffman_tables == NULL) return;
++  // Free the root node.
++  current = &huffman_tables->root;
++  next = current->next;
++  WebPSafeFree(current->start);
++  current->start = NULL;
++  current->next = NULL;
++  current = next;
++  // Free the following nodes.
++  while (current != NULL) {
++    next = current->next;
++    WebPSafeFree(current->start);
++    WebPSafeFree(current);
++    current = next;
++  }
++}
+diff --git a/src/utils/huffman_utils.h b/src/utils/huffman_utils.h
+index ff7ef17..98415c5 100644
+--- a/src/utils/huffman_utils.h
++++ b/src/utils/huffman_utils.h
+@@ -39,14 +39,37 @@ typedef struct {
+ typedef struct {
+   int bits;         // number of bits used for this symbol,
+                     // or an impossible value if not a literal code.
+   uint32_t value;   // 32b packed ARGB value if literal,
+                     // or non-literal symbol otherwise
+ } HuffmanCode32;
+ 
++// Contiguous memory segment of HuffmanCodes.
++typedef struct HuffmanTablesSegment {
++  HuffmanCode* start;
++  // Pointer to where we are writing into the segment. Starts at 'start' and
++  // cannot go beyond 'start' + 'size'.
++  HuffmanCode* curr_table;
++  // Pointer to the next segment in the chain.
++  struct HuffmanTablesSegment* next;
++  int size;
++} HuffmanTablesSegment;
++
++// Chained memory segments of HuffmanCodes.
++typedef struct HuffmanTables {
++  HuffmanTablesSegment root;
++  // Currently processed segment. At first, this is 'root'.
++  HuffmanTablesSegment* curr_segment;
++} HuffmanTables;
++
++// Allocates a HuffmanTables with 'size' contiguous HuffmanCodes. Returns 0 on
++// memory allocation error, 1 otherwise.
++int VP8LHuffmanTablesAllocate(int size, HuffmanTables* huffman_tables);
++void VP8LHuffmanTablesDeallocate(HuffmanTables* const huffman_tables);
++
+ #define HUFFMAN_PACKED_BITS 6
+ #define HUFFMAN_PACKED_TABLE_SIZE (1u << HUFFMAN_PACKED_BITS)
+ 
+ // Huffman table group.
+ // Includes special handling for the following cases:
+ //  - is_trivial_literal: one common literal base for RED/BLUE/ALPHA (not GREEN)
+ //  - is_trivial_code: only 1 code (no bit is read from bitstream)
+@@ -74,15 +97,15 @@ HTreeGroup* VP8LHtreeGroupsNew(int num_htree_groups);
+ void VP8LHtreeGroupsFree(HTreeGroup* const htree_groups);
+ 
+ // Builds Huffman lookup table assuming code lengths are in symbol order.
+ // The 'code_lengths' is pre-allocated temporary memory buffer used for creating
+ // the huffman table.
+ // Returns built table size or 0 in case of error (invalid tree or
+ // memory error).
+-int VP8LBuildHuffmanTable(HuffmanCode* const root_table, int root_bits,
++int VP8LBuildHuffmanTable(HuffmanTables* const root_table, int root_bits,
+                           const int code_lengths[], int code_lengths_size);
+ 
+ #ifdef __cplusplus
+ }    // extern "C"
+ #endif
+ 
+ #endif  // WEBP_UTILS_HUFFMAN_UTILS_H_
+diff --git a/src/utils/rescaler_utils.c b/src/utils/rescaler_utils.c
+index 90e2ea7..4bcae24 100644
+--- a/src/utils/rescaler_utils.c
++++ b/src/utils/rescaler_utils.c
+@@ -80,22 +80,22 @@ int WebPRescalerGetScaledDimensions(int src_width, int src_height,
+   assert(scaled_width != NULL);
+   assert(scaled_height != NULL);
+   {
+     int width = *scaled_width;
+     int height = *scaled_height;
+ 
+     // if width is unspecified, scale original proportionally to height ratio.
+-    if (width == 0) {
++    if (width == 0 && src_height > 0) {
+       width =
+-          (int)(((uint64_t)src_width * height + src_height / 2) / src_height);
++          (int)(((uint64_t)src_width * height + src_height - 1) / src_height);
+     }
+     // if height is unspecified, scale original proportionally to width ratio.
+-    if (height == 0) {
++    if (height == 0 && src_width > 0) {
+       height =
+-          (int)(((uint64_t)src_height * width + src_width / 2) / src_width);
++          (int)(((uint64_t)src_height * width + src_width - 1) / src_width);
+     }
+     // Check if the overall dimensions still make sense.
+     if (width <= 0 || height <= 0) {
+       return 0;
+     }
+ 
+     *scaled_width = width;
+diff --git a/src/utils/thread_utils.c b/src/utils/thread_utils.c
+index 2052b6b..4e470e1 100644
+--- a/src/utils/thread_utils.c
++++ b/src/utils/thread_utils.c
+@@ -69,15 +69,15 @@ typedef struct {
+ 
+ #if _WIN32_WINNT >= 0x0501  // Windows XP or greater
+ #define WaitForSingleObject(obj, timeout) \
+   WaitForSingleObjectEx(obj, timeout, FALSE /*bAlertable*/)
+ #endif
+ 
+ static int pthread_create(pthread_t* const thread, const void* attr,
+-                          unsigned int (__stdcall *start)(void*), void* arg) {
++                          unsigned int (__stdcall* start)(void*), void* arg) {
+   (void)attr;
+ #ifdef USE_CREATE_THREAD
+   *thread = CreateThread(NULL,   /* lpThreadAttributes */
+                          0,      /* dwStackSize */
+                          start,
+                          arg,
+                          0,      /* dwStackSize */
+@@ -213,16 +213,20 @@ static THREADFN ThreadLoop(void* ptr) {
+     if (worker->status_ == WORK) {
+       WebPGetWorkerInterface()->Execute(worker);
+       worker->status_ = OK;
+     } else if (worker->status_ == NOT_OK) {   // finish the worker
+       done = 1;
+     }
+     // signal to the main thread that we're done (for Sync())
+-    pthread_cond_signal(&impl->condition_);
++    // Note the associated mutex does not need to be held when signaling the
++    // condition. Unlocking the mutex first may improve performance in some
++    // implementations, avoiding the case where the waiting thread can't
++    // reacquire the mutex when woken.
+     pthread_mutex_unlock(&impl->mutex_);
++    pthread_cond_signal(&impl->condition_);
+   }
+   return THREAD_RETURN(NULL);    // Thread is finished
+ }
+ 
+ // main thread state control
+ static void ChangeState(WebPWorker* const worker, WebPWorkerStatus new_status) {
+   // No-op when attempting to change state on a thread that didn't come up.
+@@ -236,15 +240,21 @@ static void ChangeState(WebPWorker* const worker, WebPWorkerStatus new_status) {
+     // wait for the worker to finish
+     while (worker->status_ != OK) {
+       pthread_cond_wait(&impl->condition_, &impl->mutex_);
+     }
+     // assign new status and release the working thread if needed
+     if (new_status != OK) {
+       worker->status_ = new_status;
++      // Note the associated mutex does not need to be held when signaling the
++      // condition. Unlocking the mutex first may improve performance in some
++      // implementations, avoiding the case where the waiting thread can't
++      // reacquire the mutex when woken.
++      pthread_mutex_unlock(&impl->mutex_);
+       pthread_cond_signal(&impl->condition_);
++      return;
+     }
+   }
+   pthread_mutex_unlock(&impl->mutex_);
+ }
+ 
+ #endif  // WEBP_USE_THREAD
+ 
+diff --git a/src/utils/utils.c b/src/utils/utils.c
+index 44d5c14..764f752 100644
+--- a/src/utils/utils.c
++++ b/src/utils/utils.c
+@@ -212,17 +212,22 @@ void WebPSafeFree(void* const ptr) {
+   if (ptr != NULL) {
+     Increment(&num_free_calls);
+     SubMem(ptr);
+   }
+   free(ptr);
+ }
+ 
+-// Public API function.
++// Public API functions.
++
++void* WebPMalloc(size_t size) {
++  return WebPSafeMalloc(1, size);
++}
++
+ void WebPFree(void* ptr) {
+-  free(ptr);
++  WebPSafeFree(ptr);
+ }
+ 
+ //------------------------------------------------------------------------------
+ 
+ void WebPCopyPlane(const uint8_t* src, int src_stride,
+                    uint8_t* dst, int dst_stride, int width, int height) {
+   assert(src != NULL && dst != NULL);
+diff --git a/src/utils/utils.h b/src/utils/utils.h
+index c7620f9..2a3ec92 100644
+--- a/src/utils/utils.h
++++ b/src/utils/utils.h
+@@ -88,22 +88,22 @@ static WEBP_INLINE int GetLE24(const uint8_t* const data) {
+ static WEBP_INLINE uint32_t GetLE32(const uint8_t* const data) {
+   return GetLE16(data) | ((uint32_t)GetLE16(data + 2) << 16);
+ }
+ 
+ // Store 16, 24 or 32 bits in little-endian order.
+ static WEBP_INLINE void PutLE16(uint8_t* const data, int val) {
+   assert(val < (1 << 16));
+-  data[0] = (val >> 0);
+-  data[1] = (val >> 8);
++  data[0] = (val >> 0) & 0xff;
++  data[1] = (val >> 8) & 0xff;
+ }
+ 
+ static WEBP_INLINE void PutLE24(uint8_t* const data, int val) {
+   assert(val < (1 << 24));
+   PutLE16(data, val & 0xffff);
+-  data[2] = (val >> 16);
++  data[2] = (val >> 16) & 0xff;
+ }
+ 
+ static WEBP_INLINE void PutLE32(uint8_t* const data, uint32_t val) {
+   PutLE16(data, (int)(val & 0xffff));
+   PutLE16(data + 2, (int)(val >> 16));
+ }
+ 
+diff --git a/src/webp/decode.h b/src/webp/decode.h
+index ae8bfe8..80dd0ef 100644
+--- a/src/webp/decode.h
++++ b/src/webp/decode.h
+@@ -16,15 +16,15 @@
+ 
+ #include "./types.h"
+ 
+ #ifdef __cplusplus
+ extern "C" {
+ #endif
+ 
+-#define WEBP_DECODER_ABI_VERSION 0x0208    // MAJOR(8b) + MINOR(8b)
++#define WEBP_DECODER_ABI_VERSION 0x0209    // MAJOR(8b) + MINOR(8b)
+ 
+ // Note: forward declaring enumerations is not allowed in (strict) C and C++,
+ // the types are left here for reference.
+ // typedef enum VP8StatusCode VP8StatusCode;
+ // typedef enum WEBP_CSP_MODE WEBP_CSP_MODE;
+ typedef struct WebPRGBABuffer WebPRGBABuffer;
+ typedef struct WebPYUVABuffer WebPYUVABuffer;
+@@ -87,17 +87,14 @@ WEBP_EXTERN uint8_t* WebPDecodeBGR(const uint8_t* data, size_t data_size,
+ // Return NULL in case of error.
+ // (*) Also named Y'CbCr. See: http://en.wikipedia.org/wiki/YCbCr
+ WEBP_EXTERN uint8_t* WebPDecodeYUV(const uint8_t* data, size_t data_size,
+                                    int* width, int* height,
+                                    uint8_t** u, uint8_t** v,
+                                    int* stride, int* uv_stride);
+ 
+-// Releases memory returned by the WebPDecode*() functions above.
+-WEBP_EXTERN void WebPFree(void* ptr);
+-
+ // These five functions are variants of the above ones, that decode the image
+ // directly into a pre-allocated buffer 'output_buffer'. The maximum storage
+ // available in this buffer is indicated by 'output_buffer_size'. If this
+ // storage is not sufficient (or an error occurred), NULL is returned.
+ // Otherwise, output_buffer is returned, for convenience.
+ // The parameter 'output_stride' specifies the distance (in bytes)
+ // between scanlines. Hence, output_buffer_size is expected to be at least
+diff --git a/src/webp/encode.h b/src/webp/encode.h
+index 549cf07..655166e 100644
+--- a/src/webp/encode.h
++++ b/src/webp/encode.h
+@@ -16,15 +16,15 @@
+ 
+ #include "./types.h"
+ 
+ #ifdef __cplusplus
+ extern "C" {
+ #endif
+ 
+-#define WEBP_ENCODER_ABI_VERSION 0x020e    // MAJOR(8b) + MINOR(8b)
++#define WEBP_ENCODER_ABI_VERSION 0x020f    // MAJOR(8b) + MINOR(8b)
+ 
+ // Note: forward declaring enumerations is not allowed in (strict) C and C++,
+ // the types are left here for reference.
+ // typedef enum WebPImageHint WebPImageHint;
+ // typedef enum WebPEncCSP WebPEncCSP;
+ // typedef enum WebPPreset WebPPreset;
+ // typedef enum WebPEncodingError WebPEncodingError;
+@@ -58,30 +58,31 @@ WEBP_EXTERN size_t WebPEncodeRGBA(const uint8_t* rgba,
+ WEBP_EXTERN size_t WebPEncodeBGRA(const uint8_t* bgra,
+                                   int width, int height, int stride,
+                                   float quality_factor, uint8_t** output);
+ 
+ // These functions are the equivalent of the above, but compressing in a
+ // lossless manner. Files are usually larger than lossy format, but will
+ // not suffer any compression loss.
++// Note these functions, like the lossy versions, use the library's default
++// settings. For lossless this means 'exact' is disabled. RGB values in
++// transparent areas will be modified to improve compression. To avoid this,
++// use WebPEncode() and set WebPConfig::exact to 1.
+ WEBP_EXTERN size_t WebPEncodeLosslessRGB(const uint8_t* rgb,
+                                          int width, int height, int stride,
+                                          uint8_t** output);
+ WEBP_EXTERN size_t WebPEncodeLosslessBGR(const uint8_t* bgr,
+                                          int width, int height, int stride,
+                                          uint8_t** output);
+ WEBP_EXTERN size_t WebPEncodeLosslessRGBA(const uint8_t* rgba,
+                                           int width, int height, int stride,
+                                           uint8_t** output);
+ WEBP_EXTERN size_t WebPEncodeLosslessBGRA(const uint8_t* bgra,
+                                           int width, int height, int stride,
+                                           uint8_t** output);
+ 
+-// Releases memory returned by the WebPEncode*() functions above.
+-WEBP_EXTERN void WebPFree(void* ptr);
+-
+ //------------------------------------------------------------------------------
+ // Coding parameters
+ 
+ // Image characteristics hint for the underlying encoder.
+ typedef enum WebPImageHint {
+   WEBP_HINT_DEFAULT = 0,  // default preset.
+   WEBP_HINT_PICTURE,      // digital picture, like portrait, inner shot
+@@ -298,15 +299,15 @@ struct WebPPicture {
+   // compression, and YUV input (*y, *u, *v, etc.) for lossy compression
+   // since these are the respective native colorspace for these formats.
+   int use_argb;
+ 
+   // YUV input (mostly used for input to lossy compression)
+   WebPEncCSP colorspace;     // colorspace: should be YUV420 for now (=Y'CbCr).
+   int width, height;         // dimensions (less or equal to WEBP_MAX_DIMENSION)
+-  uint8_t *y, *u, *v;        // pointers to luma/chroma planes.
++  uint8_t* y, *u, *v;        // pointers to luma/chroma planes.
+   int y_stride, uv_stride;   // luma/chroma strides.
+   uint8_t* a;                // pointer to the alpha plane
+   int a_stride;              // stride of the alpha plane
+   uint32_t pad1[2];          // padding for later use
+ 
+   // ARGB input (mostly used for input to lossless compression)
+   uint32_t* argb;            // Pointer to argb (32 bit) plane.
+@@ -342,15 +343,15 @@ struct WebPPicture {
+ 
+   void* user_data;        // this field is free to be set to any value and
+                           // used during callbacks (like progress-report e.g.).
+ 
+   uint32_t pad3[3];       // padding for later use
+ 
+   // Unused for now
+-  uint8_t *pad4, *pad5;
++  uint8_t* pad4, *pad5;
+   uint32_t pad6[8];       // padding for later use
+ 
+   // PRIVATE FIELDS
+   ////////////////////
+   void* memory_;          // row chunk of memory for yuva planes
+   void* memory_argb_;     // and for argb too.
+   void* pad7[2];          // padding for later use
+diff --git a/src/webp/mux.h b/src/webp/mux.h
+index 66096a9..7d27489 100644
+--- a/src/webp/mux.h
++++ b/src/webp/mux.h
+@@ -53,15 +53,15 @@ extern "C" {
+   // ... (Read data from file).
+   WebPMux* mux = WebPMuxCreate(&data, copy_data);
+   WebPMuxGetFrame(mux, 1, &image);
+   // ... (Consume image; e.g. call WebPDecode() to decode the data).
+   WebPMuxGetChunk(mux, "ICCP", &icc_profile);
+   // ... (Consume icc_data).
+   WebPMuxDelete(mux);
+-  free(data);
++  WebPFree(data);
+ */
+ 
+ // Note: forward declaring enumerations is not allowed in (strict) C and C++,
+ // the types are left here for reference.
+ // typedef enum WebPMuxError WebPMuxError;
+ // typedef enum WebPChunkId WebPChunkId;
+ typedef struct WebPMux WebPMux;   // main opaque object.
+@@ -241,15 +241,15 @@ WEBP_EXTERN WebPMuxError WebPMuxSetImage(
+ //                               or if content of 'frame' is invalid.
+ //   WEBP_MUX_MEMORY_ERROR - on memory allocation error.
+ //   WEBP_MUX_OK - on success.
+ WEBP_EXTERN WebPMuxError WebPMuxPushFrame(
+     WebPMux* mux, const WebPMuxFrameInfo* frame, int copy_data);
+ 
+ // Gets the nth frame from the mux object.
+-// The content of 'frame->bitstream' is allocated using malloc(), and NOT
++// The content of 'frame->bitstream' is allocated using WebPMalloc(), and NOT
+ // owned by the 'mux' object. It MUST be deallocated by the caller by calling
+ // WebPDataClear().
+ // nth=0 has a special meaning - last position.
+ // Parameters:
+ //   mux - (in) object from which the info is to be fetched
+ //   nth - (in) index of the frame in the mux object
+ //   frame - (out) data of the returned frame
+@@ -372,18 +372,18 @@ WEBP_EXTERN WebPMuxError WebPMuxGetFeatures(const WebPMux* mux,
+ //   WEBP_MUX_OK - on success.
+ WEBP_EXTERN WebPMuxError WebPMuxNumChunks(const WebPMux* mux,
+                                           WebPChunkId id, int* num_elements);
+ 
+ // Assembles all chunks in WebP RIFF format and returns in 'assembled_data'.
+ // This function also validates the mux object.
+ // Note: The content of 'assembled_data' will be ignored and overwritten.
+-// Also, the content of 'assembled_data' is allocated using malloc(), and NOT
+-// owned by the 'mux' object. It MUST be deallocated by the caller by calling
+-// WebPDataClear(). It's always safe to call WebPDataClear() upon return,
+-// even in case of error.
++// Also, the content of 'assembled_data' is allocated using WebPMalloc(), and
++// NOT owned by the 'mux' object. It MUST be deallocated by the caller by
++// calling WebPDataClear(). It's always safe to call WebPDataClear() upon
++// return, even in case of error.
+ // Parameters:
+ //   mux - (in/out) object whose chunks are to be assembled
+ //   assembled_data - (out) assembled WebP data
+ // Returns:
+ //   WEBP_MUX_BAD_DATA - if mux object is invalid.
+ //   WEBP_MUX_INVALID_ARGUMENT - if mux or assembled_data is NULL.
+ //   WEBP_MUX_MEMORY_ERROR - on memory allocation error.
+diff --git a/src/webp/mux_types.h b/src/webp/mux_types.h
+index ceea77d..2fe8195 100644
+--- a/src/webp/mux_types.h
++++ b/src/webp/mux_types.h
+@@ -10,15 +10,14 @@
+ // Data-types common to the mux and demux libraries.
+ //
+ // Author: Urvang (urvang@google.com)
+ 
+ #ifndef WEBP_WEBP_MUX_TYPES_H_
+ #define WEBP_WEBP_MUX_TYPES_H_
+ 
+-#include <stdlib.h>  // free()
+ #include <string.h>  // memset()
+ #include "./types.h"
+ 
+ #ifdef __cplusplus
+ extern "C" {
+ #endif
+ 
+@@ -52,42 +51,43 @@ typedef enum WebPMuxAnimDispose {
+ typedef enum WebPMuxAnimBlend {
+   WEBP_MUX_BLEND,              // Blend.
+   WEBP_MUX_NO_BLEND            // Do not blend.
+ } WebPMuxAnimBlend;
+ 
+ // Data type used to describe 'raw' data, e.g., chunk data
+ // (ICC profile, metadata) and WebP compressed image data.
++// 'bytes' memory must be allocated using WebPMalloc() and such.
+ struct WebPData {
+   const uint8_t* bytes;
+   size_t size;
+ };
+ 
+ // Initializes the contents of the 'webp_data' object with default values.
+ static WEBP_INLINE void WebPDataInit(WebPData* webp_data) {
+   if (webp_data != NULL) {
+     memset(webp_data, 0, sizeof(*webp_data));
+   }
+ }
+ 
+-// Clears the contents of the 'webp_data' object by calling free(). Does not
+-// deallocate the object itself.
++// Clears the contents of the 'webp_data' object by calling WebPFree().
++// Does not deallocate the object itself.
+ static WEBP_INLINE void WebPDataClear(WebPData* webp_data) {
+   if (webp_data != NULL) {
+-    free((void*)webp_data->bytes);
++    WebPFree((void*)webp_data->bytes);
+     WebPDataInit(webp_data);
+   }
+ }
+ 
+ // Allocates necessary storage for 'dst' and copies the contents of 'src'.
+ // Returns true on success.
+ static WEBP_INLINE int WebPDataCopy(const WebPData* src, WebPData* dst) {
+   if (src == NULL || dst == NULL) return 0;
+   WebPDataInit(dst);
+   if (src->bytes != NULL && src->size != 0) {
+-    dst->bytes = (uint8_t*)malloc(src->size);
++    dst->bytes = (uint8_t*)WebPMalloc(src->size);
+     if (dst->bytes == NULL) return 0;
+     memcpy((void*)dst->bytes, src->bytes, src->size);
+     dst->size = src->size;
+   }
+   return 1;
+ }
+ 
+diff --git a/src/webp/types.h b/src/webp/types.h
+index 0ce2622..47f7f2b 100644
+--- a/src/webp/types.h
++++ b/src/webp/types.h
+@@ -3,15 +3,15 @@
+ // Use of this source code is governed by a BSD-style license
+ // that can be found in the COPYING file in the root of the source
+ // tree. An additional intellectual property rights grant can be found
+ // in the file PATENTS. All contributing project authors may
+ // be found in the AUTHORS file in the root of the source tree.
+ // -----------------------------------------------------------------------------
+ //
+-//  Common types
++//  Common types + memory wrappers
+ //
+ // Author: Skal (pascal.massimino@gmail.com)
+ 
+ #ifndef WEBP_WEBP_TYPES_H_
+ #define WEBP_WEBP_TYPES_H_
+ 
+ #include <stddef.h>  // for size_t
+@@ -45,8 +45,24 @@ typedef long long int int64_t;
+ #  define WEBP_EXTERN extern
+ # endif  /* __GNUC__ >= 4 */
+ #endif  /* WEBP_EXTERN */
+ 
+ // Macro to check ABI compatibility (same major revision number)
+ #define WEBP_ABI_IS_INCOMPATIBLE(a, b) (((a) >> 8) != ((b) >> 8))
+ 
++#ifdef __cplusplus
++extern "C" {
++#endif
++
++// Allocates 'size' bytes of memory. Returns NULL upon error. Memory
++// must be deallocated by calling WebPFree(). This function is made available
++// by the core 'libwebp' library.
++WEBP_EXTERN void* WebPMalloc(size_t size);
++
++// Releases memory returned by the WebPDecode*() functions (from decode.h).
++WEBP_EXTERN void WebPFree(void* ptr);
++
++#ifdef __cplusplus
++}    // extern "C"
++#endif
++
+ #endif  // WEBP_WEBP_TYPES_H_

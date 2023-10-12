@@ -1,0 +1,1722 @@
+# PWD: packages/services/Telecomm
+diff --git a/src/com/android/server/telecom/CallScreeningServiceHelper.java b/src/com/android/server/telecom/CallScreeningServiceHelper.java
+index a9341ab82..89778e43a 100644
+--- a/src/com/android/server/telecom/CallScreeningServiceHelper.java
++++ b/src/com/android/server/telecom/CallScreeningServiceHelper.java
+@@ -142,14 +142,31 @@ public class CallScreeningServiceHelper {
+                 Log.continueSession(mLoggingSession, "CSSH.oSD");
+                 try {
+                     if (!mFuture.isDone()) {
+                         Log.w(CallScreeningServiceHelper.this,
+                                 "Cancelling outgoing call screen due to service disconnect.");
+                     }
+                     mFuture.complete(null);
++                    mContext.unbindService(this);
++                } finally {
++                    Log.endSession();
++                }
++            }
++
++            @Override
++            public void onNullBinding(ComponentName name) {
++                // No locking needed -- CompletableFuture only lets one thread call complete.
++                Log.continueSession(mLoggingSession, "CSSH.oNB");
++                try {
++                    if (!mFuture.isDone()) {
++                        Log.w(CallScreeningServiceHelper.this,
++                                "Cancelling outgoing call screen due to null binding.");
++                    }
++                    mFuture.complete(null);
++                    mContext.unbindService(this);
+                 } finally {
+                     Log.endSession();
+                 }
+             }
+         };
+ 
+         if (!bindCallScreeningService(mContext, mUserHandle, mPackageName, serviceConnection)) {
+diff --git a/src/com/android/server/telecom/ConnectionServiceWrapper.java b/src/com/android/server/telecom/ConnectionServiceWrapper.java
+index 4621558d1..d06460784 100644
+--- a/src/com/android/server/telecom/ConnectionServiceWrapper.java
++++ b/src/com/android/server/telecom/ConnectionServiceWrapper.java
+@@ -15,14 +15,15 @@
+  */
+ 
+ package com.android.server.telecom;
+ 
+ import android.app.AppOpsManager;
+ import android.content.ComponentName;
+ import android.content.Context;
++import android.graphics.drawable.Icon;
+ import android.net.Uri;
+ import android.os.Binder;
+ import android.os.Bundle;
+ import android.os.IBinder;
+ import android.os.ParcelFileDescriptor;
+ import android.os.RemoteException;
+ import android.os.UserHandle;
+@@ -69,18 +70,25 @@ public class ConnectionServiceWrapper extends ServiceBinder implements
+ 
+     private final class Adapter extends IConnectionServiceAdapter.Stub {
+ 
+         @Override
+         public void handleCreateConnectionComplete(String callId, ConnectionRequest request,
+                 ParcelableConnection connection, Session.Info sessionInfo) {
+             Log.startSession(sessionInfo, LogUtils.Sessions.CSW_HANDLE_CREATE_CONNECTION_COMPLETE);
++            UserHandle callingUserHandle = Binder.getCallingUserHandle();
+             long token = Binder.clearCallingIdentity();
+             try {
+                 synchronized (mLock) {
+                     logIncoming("handleCreateConnectionComplete %s", callId);
++                    // Check status hints image for cross user access
++                    if (connection.getStatusHints() != null) {
++                        Icon icon = connection.getStatusHints().getIcon();
++                        connection.getStatusHints().setIcon(StatusHints.
++                                validateAccountIconUserBoundary(icon, callingUserHandle));
++                    }
+                     ConnectionServiceWrapper.this
+                             .handleCreateConnectionComplete(callId, request, connection);
+ 
+                     if (mServiceInterface != null) {
+                         logOutgoing("createConnectionComplete %s", callId);
+                         try {
+                             mServiceInterface.createConnectionComplete(callId,
+@@ -431,14 +439,23 @@ public class ConnectionServiceWrapper extends ServiceBinder implements
+             }
+         }
+ 
+         @Override
+         public void addConferenceCall(String callId, ParcelableConference parcelableConference,
+                 Session.Info sessionInfo) {
+             Log.startSession(sessionInfo, LogUtils.Sessions.CSW_ADD_CONFERENCE_CALL);
++
++            UserHandle callingUserHandle = Binder.getCallingUserHandle();
++            // Check status hints image for cross user access
++            if (parcelableConference.getStatusHints() != null) {
++                Icon icon = parcelableConference.getStatusHints().getIcon();
++                parcelableConference.getStatusHints().setIcon(StatusHints.
++                        validateAccountIconUserBoundary(icon, callingUserHandle));
++            }
++
+             long token = Binder.clearCallingIdentity();
+             try {
+                 synchronized (mLock) {
+                     if (mCallIdMapper.getCall(callId) != null) {
+                         Log.w(this, "Attempting to add a conference call using an existing " +
+                                 "call id %s", callId);
+                         return;
+@@ -654,18 +671,25 @@ public class ConnectionServiceWrapper extends ServiceBinder implements
+             }
+         }
+ 
+         @Override
+         public void setStatusHints(String callId, StatusHints statusHints,
+                 Session.Info sessionInfo) {
+             Log.startSession(sessionInfo, "CSW.sSH");
++            UserHandle callingUserHandle = Binder.getCallingUserHandle();
+             long token = Binder.clearCallingIdentity();
+             try {
+                 synchronized (mLock) {
+                     logIncoming("setStatusHints %s %s", callId, statusHints);
++                    // Check status hints image for cross user access
++                    if (statusHints != null) {
++                        Icon icon = statusHints.getIcon();
++                        statusHints.setIcon(StatusHints.validateAccountIconUserBoundary(
++                                icon, callingUserHandle));
++                    }
+                     Call call = mCallIdMapper.getCall(callId);
+                     if (call != null) {
+                         call.setStatusHints(statusHints);
+                     }
+                 }
+             } catch (Throwable t) {
+                 Log.e(ConnectionServiceWrapper.this, t, "");
+@@ -845,14 +869,22 @@ public class ConnectionServiceWrapper extends ServiceBinder implements
+                         if (connectionExtras != null && connectionExtras
+                                 .containsKey(Connection.EXTRA_ORIGINAL_CONNECTION_ID)) {
+                             connectIdToCheck = connectionExtras
+                                     .getString(Connection.EXTRA_ORIGINAL_CONNECTION_ID);
+                         } else {
+                             connectIdToCheck = callId;
+                         }
++
++                        // Check status hints image for cross user access
++                        if (connection.getStatusHints() != null) {
++                            Icon icon = connection.getStatusHints().getIcon();
++                            connection.getStatusHints().setIcon(StatusHints.
++                                    validateAccountIconUserBoundary(icon, userHandle));
++                        }
++
+                         // Check to see if this Connection has already been added.
+                         Call alreadyAddedConnection = mCallsManager
+                                 .getAlreadyAddedConnection(connectIdToCheck);
+ 
+                         if (alreadyAddedConnection != null
+                                 && mCallIdMapper.getCall(callId) == null) {
+                             mCallIdMapper.addCall(alreadyAddedConnection, callId);
+diff --git a/src/com/android/server/telecom/NewOutgoingCallIntentBroadcaster.java b/src/com/android/server/telecom/NewOutgoingCallIntentBroadcaster.java
+index 7a641af3c..960be80a3 100644
+--- a/src/com/android/server/telecom/NewOutgoingCallIntentBroadcaster.java
++++ b/src/com/android/server/telecom/NewOutgoingCallIntentBroadcaster.java
+@@ -309,16 +309,26 @@ public class NewOutgoingCallIntentBroadcaster {
+         String scheme = mPhoneNumberUtilsAdapter.isUriNumber(number)
+                 ? PhoneAccount.SCHEME_SIP : PhoneAccount.SCHEME_TEL;
+         result.callingAddress = Uri.fromParts(scheme, number, null);
+         return result;
+     }
+ 
+     private String getNumberFromCallIntent(Intent intent) {
+-        String number;
+-        number = mPhoneNumberUtilsAdapter.getNumberFromIntent(intent, mContext);
++        String number = null;
++
++        Uri uri = intent.getData();
++        if (uri != null) {
++            String scheme = uri.getScheme();
++            if (scheme != null) {
++                if (scheme.equals("tel") || scheme.equals("sip")) {
++                    number = uri.getSchemeSpecificPart();
++                }
++            }
++        }
++
+         if (TextUtils.isEmpty(number)) {
+             Log.w(this, "Empty number obtained from the call intent.");
+             return null;
+         }
+ 
+         boolean isUriNumber = mPhoneNumberUtilsAdapter.isUriNumber(number);
+         if (!isUriNumber) {
+diff --git a/src/com/android/server/telecom/PhoneAccountRegistrar.java b/src/com/android/server/telecom/PhoneAccountRegistrar.java
+index 13b176c25..219de7d03 100644
+--- a/src/com/android/server/telecom/PhoneAccountRegistrar.java
++++ b/src/com/android/server/telecom/PhoneAccountRegistrar.java
+@@ -25,14 +25,15 @@ import android.content.pm.PackageManager;
+ import android.content.pm.ResolveInfo;
+ import android.content.pm.ServiceInfo;
+ import android.content.pm.UserInfo;
+ import android.graphics.Bitmap;
+ import android.graphics.BitmapFactory;
+ import android.graphics.drawable.Icon;
+ import android.net.Uri;
++import android.os.Binder;
+ import android.os.Bundle;
+ import android.os.AsyncTask;
+ import android.os.PersistableBundle;
+ import android.os.Process;
+ import android.os.UserHandle;
+ import android.os.UserManager;
+ import android.provider.Settings;
+@@ -136,17 +137,22 @@ public class PhoneAccountRegistrar {
+      * app.
+      */
+     public interface AppLabelProxy {
+         CharSequence getAppLabel(String packageName);
+     }
+ 
+     public static final String FILE_NAME = "phone-account-registrar-state.xml";
++    public static final String ICON_ERROR_MSG =
++            "Icon cannot be written to memory. Try compressing or downsizing";
+     @VisibleForTesting
+     public static final int EXPECTED_STATE_VERSION = 9;
+     public static final int MAX_PHONE_ACCOUNT_REGISTRATIONS = 10;
++    public static final int MAX_PHONE_ACCOUNT_EXTRAS_KEY_PAIR_LIMIT = 100;
++    public static final int MAX_PHONE_ACCOUNT_FIELD_CHAR_LIMIT = 256;
++    public static final int MAX_SCHEMES_PER_ACCOUNT = 10;
+ 
+     /** Keep in sync with the same in SipSettings.java */
+     private static final String SIP_SHARED_PREFERENCES = "SIP_PREFERENCES";
+ 
+     private final List<Listener> mListeners = new CopyOnWriteArrayList<>();
+     private final AtomicFile mAtomicFile;
+     private final Context mContext;
+@@ -718,14 +724,23 @@ public class PhoneAccountRegistrar {
+          * @return The phone account handles.
+          */
+     public List<PhoneAccountHandle> getPhoneAccountsForPackage(String packageName,
+             UserHandle userHandle) {
+         return getPhoneAccountHandles(0, null, packageName, false, userHandle);
+     }
+ 
++
++    /**
++     * includes disabled, includes crossUserAccess
++     */
++    public List<PhoneAccountHandle> getAllPhoneAccountHandlesForPackage(UserHandle userHandle,
++            String packageName) {
++        return getPhoneAccountHandles(0, null, packageName, true /* includeDisabled */, userHandle);
++    }
++
+     /**
+      * Determines if a {@link PhoneAccountHandle} is for a self-managed {@link ConnectionService}.
+      * @param handle The handle.
+      * @return {@code true} if for a self-managed {@link ConnectionService}, {@code false}
+      * otherwise.
+      */
+     public boolean isSelfManagedPhoneAccount(@NonNull PhoneAccountHandle handle) {
+@@ -737,42 +752,179 @@ public class PhoneAccountRegistrar {
+         return account.isSelfManaged();
+     }
+ 
+     /**
+      * Performs checks before calling addOrReplacePhoneAccount(PhoneAccount)
+      *
+      * @param account The {@code PhoneAccount} to add or replace.
+-     * @throws SecurityException if package does not have BIND_TELECOM_CONNECTION_SERVICE permission
++     * @throws SecurityException        if package does not have BIND_TELECOM_CONNECTION_SERVICE
++     *                                  permission
+      * @throws IllegalArgumentException if MAX_PHONE_ACCOUNT_REGISTRATIONS are reached
++     * @throws IllegalArgumentException if MAX_PHONE_ACCOUNT_FIELD_CHAR_LIMIT is reached
++     * @throws IllegalArgumentException if writing the Icon to memory will cause an Exception
+      */
+     public void registerPhoneAccount(PhoneAccount account) {
+         // Enforce the requirement that a connection service for a phone account has the correct
+         // permission.
+         if (!phoneAccountRequiresBindPermission(account.getAccountHandle())) {
+             Log.w(this,
+                     "Phone account %s does not have BIND_TELECOM_CONNECTION_SERVICE permission.",
+                     account.getAccountHandle());
+             throw new SecurityException("PhoneAccount connection service requires "
+                     + "BIND_TELECOM_CONNECTION_SERVICE permission.");
+         }
+-        //Enforce an upper bound on the number of PhoneAccount's a package can register.
+-        // Most apps should only require 1-2.
+-        if (getPhoneAccountsForPackage(
+-                account.getAccountHandle().getComponentName().getPackageName(),
+-                account.getAccountHandle().getUserHandle()).size()
++        enforceCharacterLimit(account);
++        enforceIconSizeLimit(account);
++        enforceMaxPhoneAccountLimit(account);
++        addOrReplacePhoneAccount(account);
++    }
++
++    /**
++     * Enforce an upper bound on the number of PhoneAccount's a package can register.
++     * Most apps should only require 1-2.  * Include disabled accounts.
++     *
++     * @param account to enforce check on
++     * @throws IllegalArgumentException if MAX_PHONE_ACCOUNT_REGISTRATIONS are reached
++     */
++    private void enforceMaxPhoneAccountLimit(@NonNull PhoneAccount account) {
++        final PhoneAccountHandle accountHandle = account.getAccountHandle();
++        final UserHandle user = accountHandle.getUserHandle();
++        final ComponentName componentName = accountHandle.getComponentName();
++
++        if (getPhoneAccountHandles(0, null, componentName.getPackageName(),
++                true /* includeDisabled */, user).size()
+                 >= MAX_PHONE_ACCOUNT_REGISTRATIONS) {
+-            Log.w(this, "Phone account %s reached max registration limit for package",
+-                    account.getAccountHandle());
++            EventLog.writeEvent(0x534e4554, "259064622", Binder.getCallingUid(),
++                    "enforceMaxPhoneAccountLimit");
+             throw new IllegalArgumentException(
+                     "Error, cannot register phone account " + account.getAccountHandle()
+                             + " because the limit, " + MAX_PHONE_ACCOUNT_REGISTRATIONS
+                             + ", has been reached");
+         }
++    }
++    /**
++     * determine if there will be an issue writing the icon to memory
++     *
++     * @param account to enforce check on
++     * @throws IllegalArgumentException if writing the Icon to memory will cause an Exception
++     */
++    @VisibleForTesting
++    public void enforceIconSizeLimit(PhoneAccount account) {
++        if (account.getIcon() == null) {
++            return;
++        }
++        String text = "";
++        // convert the icon into a Base64 String
++        try {
++            text = XmlSerialization.writeIconToBase64String(account.getIcon());
++        } catch (IOException e) {
++            EventLog.writeEvent(0x534e4554, "259064622", Binder.getCallingUid(),
++                    "enforceIconSizeLimit");
++            throw new IllegalArgumentException(ICON_ERROR_MSG);
++        }
++    }
+ 
+-        addOrReplacePhoneAccount(account);
++    /**
++     * All {@link PhoneAccount} and{@link PhoneAccountHandle} String and Char-Sequence fields
++     * should be restricted to character limit of MAX_PHONE_ACCOUNT_CHAR_LIMIT to prevent exceptions
++     * when writing large character streams to XML-Serializer.
++     *
++     * @param account to enforce character limit checks on
++     * @throws IllegalArgumentException if MAX_PHONE_ACCOUNT_FIELD_CHAR_LIMIT reached
++     */
++    public void enforceCharacterLimit(PhoneAccount account) {
++        if (account == null) {
++            return;
++        }
++        PhoneAccountHandle handle = account.getAccountHandle();
++
++        String[] fields =
++                {"Package Name", "Class Name", "PhoneAccountHandle Id", "Label", "ShortDescription",
++                        "GroupId", "Address", "SubscriptionAddress"};
++        CharSequence[] args = {handle.getComponentName().getPackageName(),
++                handle.getComponentName().getClassName(), handle.getId(), account.getLabel(),
++                account.getShortDescription(), account.getGroupId(),
++                (account.getAddress() != null ? account.getAddress().toString() : ""),
++                (account.getSubscriptionAddress() != null ?
++                        account.getSubscriptionAddress().toString() : "")};
++
++        for (int i = 0; i < fields.length; i++) {
++            if (args[i] != null && args[i].length() > MAX_PHONE_ACCOUNT_FIELD_CHAR_LIMIT) {
++                EventLog.writeEvent(0x534e4554, "259064622", Binder.getCallingUid(),
++                        "enforceCharacterLimit");
++                throw new IllegalArgumentException("The PhoneAccount or PhoneAccountHandle"
++                        + fields[i] + " field has an invalid character count. PhoneAccount and "
++                        + "PhoneAccountHandle String and Char-Sequence fields are limited to "
++                        + MAX_PHONE_ACCOUNT_FIELD_CHAR_LIMIT + " characters.");
++            }
++        }
++
++        // Enforce limits on the URI Schemes provided
++        enforceLimitsOnSchemes(account);
++
++        // Enforce limit on the PhoneAccount#mExtras
++        Bundle extras = account.getExtras();
++        if (extras != null) {
++            if (extras.keySet().size() > MAX_PHONE_ACCOUNT_EXTRAS_KEY_PAIR_LIMIT) {
++                EventLog.writeEvent(0x534e4554, "259064622", Binder.getCallingUid(),
++                        "enforceCharacterLimit");
++                throw new IllegalArgumentException("The PhoneAccount#mExtras is limited to " +
++                        MAX_PHONE_ACCOUNT_EXTRAS_KEY_PAIR_LIMIT + " (key,value) pairs.");
++            }
++
++            for (String key : extras.keySet()) {
++                Object value = extras.get(key);
++
++                if ((key != null && key.length() > MAX_PHONE_ACCOUNT_FIELD_CHAR_LIMIT) ||
++                        (value instanceof String &&
++                                ((String) value).length() > MAX_PHONE_ACCOUNT_FIELD_CHAR_LIMIT)) {
++                    EventLog.writeEvent(0x534e4554, "259064622", Binder.getCallingUid(),
++                            "enforceCharacterLimit");
++                    throw new IllegalArgumentException("The PhoneAccount#mExtras contains a String"
++                            + " key or value that has an invalid character count. PhoneAccount and "
++                            + "PhoneAccountHandle String and Char-Sequence fields are limited to "
++                            + MAX_PHONE_ACCOUNT_FIELD_CHAR_LIMIT + " characters.");
++                }
++            }
++        }
++    }
++
++    /**
++     * Enforce a character limit on all PA and PAH string or char-sequence fields.
++     *
++     * @param account to enforce check on
++     * @throws IllegalArgumentException if MAX_PHONE_ACCOUNT_FIELD_CHAR_LIMIT reached
++     */
++    @VisibleForTesting
++    public void enforceLimitsOnSchemes(@NonNull PhoneAccount account) {
++        List<String> schemes = account.getSupportedUriSchemes();
++
++        if (schemes == null) {
++            return;
++        }
++
++        if (schemes.size() > MAX_SCHEMES_PER_ACCOUNT) {
++            EventLog.writeEvent(0x534e4554, "259064622", Binder.getCallingUid(),
++                    "enforceLimitsOnSchemes");
++            throw new IllegalArgumentException(
++                    "Error, cannot register phone account " + account.getAccountHandle()
++                            + " because the URI scheme limit of "
++                            + MAX_SCHEMES_PER_ACCOUNT + " has been reached");
++        }
++
++        for (String scheme : schemes) {
++            if (scheme.length() > MAX_PHONE_ACCOUNT_FIELD_CHAR_LIMIT) {
++                EventLog.writeEvent(0x534e4554, "259064622", Binder.getCallingUid(),
++                        "enforceLimitsOnSchemes");
++                throw new IllegalArgumentException(
++                        "Error, cannot register phone account " + account.getAccountHandle()
++                                + " because the max scheme limit of "
++                                + MAX_PHONE_ACCOUNT_FIELD_CHAR_LIMIT + " has been reached");
++            }
++        }
+     }
+ 
+     /**
+      * Adds a {@code PhoneAccount}, replacing an existing one if found.
+      *
+      * @param account The {@code PhoneAccount} to add or replace.
+      */
+@@ -1485,25 +1637,28 @@ public class PhoneAccountRegistrar {
+             }
+             serializer.endTag(null, tagName);
+         }
+ 
+         protected void writeIconIfNonNull(String tagName, Icon value, XmlSerializer serializer)
+                 throws IOException {
+             if (value != null) {
+-                ByteArrayOutputStream stream = new ByteArrayOutputStream();
+-                value.writeToStream(stream);
+-                byte[] iconByteArray = stream.toByteArray();
+-                String text = Base64.encodeToString(iconByteArray, 0, iconByteArray.length, 0);
+-
++                String text = writeIconToBase64String(value);
+                 serializer.startTag(null, tagName);
+                 serializer.text(text);
+                 serializer.endTag(null, tagName);
+             }
+         }
+ 
++        public static String writeIconToBase64String(Icon icon) throws IOException {
++            ByteArrayOutputStream stream = new ByteArrayOutputStream();
++            icon.writeToStream(stream);
++            byte[] iconByteArray = stream.toByteArray();
++            return Base64.encodeToString(iconByteArray, 0, iconByteArray.length, 0);
++        }
++
+         protected void writeLong(String tagName, long value, XmlSerializer serializer)
+                 throws IOException {
+             serializer.startTag(null, tagName);
+             serializer.text(Long.valueOf(value).toString());
+             serializer.endTag(null, tagName);
+         }
+ 
+diff --git a/src/com/android/server/telecom/TelecomServiceImpl.java b/src/com/android/server/telecom/TelecomServiceImpl.java
+index d3bbab232..8c498fc55 100644
+--- a/src/com/android/server/telecom/TelecomServiceImpl.java
++++ b/src/com/android/server/telecom/TelecomServiceImpl.java
+@@ -59,15 +59,17 @@ import com.android.internal.telecom.ITelecomService;
+ import com.android.internal.util.IndentingPrintWriter;
+ import com.android.server.telecom.components.UserCallIntentProcessorFactory;
+ import com.android.server.telecom.settings.BlockedNumbersActivity;
+ 
+ import java.io.FileDescriptor;
+ import java.io.PrintWriter;
+ import java.util.Collections;
++import java.util.HashSet;
+ import java.util.List;
++import java.util.Set;
+ 
+ // TODO: Needed for move to system service: import com.android.internal.R;
+ 
+ /**
+  * Implementation of the ITelecom interface.
+  */
+ public class TelecomServiceImpl {
+@@ -288,15 +290,15 @@ public class TelecomServiceImpl {
+ 
+             synchronized (mLock) {
+                 final UserHandle callingUserHandle = Binder.getCallingUserHandle();
+                 long token = Binder.clearCallingIdentity();
+                 try {
+                     Log.startSession("TSI.gPAFP");
+                     return new ParceledListSlice<>(mPhoneAccountRegistrar
+-                            .getPhoneAccountsForPackage(packageName, callingUserHandle));
++                            .getAllPhoneAccountHandlesForPackage(callingUserHandle, packageName));
+                 } catch (Exception e) {
+                     Log.e(this, e, "getPhoneAccountsForPackage %s", packageName);
+                     throw e;
+                 } finally {
+                     Binder.restoreCallingIdentity(token);
+                     Log.endSession();
+                 }
+diff --git a/src/com/android/server/telecom/callredirection/CallRedirectionProcessor.java b/src/com/android/server/telecom/callredirection/CallRedirectionProcessor.java
+index 7a54118f8..b7c719689 100644
+--- a/src/com/android/server/telecom/callredirection/CallRedirectionProcessor.java
++++ b/src/com/android/server/telecom/callredirection/CallRedirectionProcessor.java
+@@ -136,25 +136,52 @@ public class CallRedirectionProcessor implements CallRedirectionCallback {
+                         onServiceBound(ICallRedirectionService.Stub.asInterface(service));
+                     }
+                 } finally {
+                     Log.endSession();
+                 }
+             }
+ 
++            @Override
++            public void onNullBinding(ComponentName componentName) {
++                // Make sure we unbind the service if onBind returns null
++                Log.startSession("CRSC.oNB");
++                try {
++                    synchronized (mTelecomLock) {
++                        finishCallRedirection();
++                    }
++                } finally {
++                    Log.endSession();
++                }
++            }
++
+             @Override
+             public void onServiceDisconnected(ComponentName componentName) {
+                 Log.startSession("CRSC.oSD");
+                 try {
+                     synchronized (mTelecomLock) {
+                         finishCallRedirection();
+                     }
+                 } finally {
+                     Log.endSession();
+                 }
+             }
++
++            @Override
++            public void onBindingDied(ComponentName componentName) {
++                // Make sure we unbind the service if binding died to avoid background stating
++                // activity leaks
++                Log.startSession("CRSC.oBD");
++                try {
++                    synchronized (mTelecomLock) {
++                        finishCallRedirection();
++                    }
++                } finally {
++                    Log.endSession();
++                }
++            }
+         }
+ 
+         private class CallRedirectionAdapter extends ICallRedirectionAdapter.Stub {
+             @Override
+             public void cancelCall() {
+                 Log.startSession("CRA.cC");
+                 long token = Binder.clearCallingIdentity();
+diff --git a/tests/src/com/android/server/telecom/tests/BasicCallTests.java b/tests/src/com/android/server/telecom/tests/BasicCallTests.java
+index 95ca3f3be..7889d0487 100644
+--- a/tests/src/com/android/server/telecom/tests/BasicCallTests.java
++++ b/tests/src/com/android/server/telecom/tests/BasicCallTests.java
+@@ -12,16 +12,19 @@
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  * See the License for the specific language governing permissions and
+  * limitations under the License
+  */
+ 
+ package com.android.server.telecom.tests;
+ 
++import static com.android.server.telecom.tests.ConnectionServiceFixture.STATUS_HINTS_EXTRA;
++
+ import static org.junit.Assert.assertEquals;
+ import static org.junit.Assert.assertFalse;
++import static org.junit.Assert.assertNotNull;
+ import static org.junit.Assert.assertNull;
+ import static org.junit.Assert.assertTrue;
+ import static org.mockito.ArgumentMatchers.nullable;
+ import static org.mockito.Matchers.any;
+ import static org.mockito.Matchers.anyInt;
+ import static org.mockito.Matchers.anyString;
+ import static org.mockito.Matchers.eq;
+@@ -31,14 +34,16 @@ import static org.mockito.Mockito.timeout;
+ import static org.mockito.Mockito.times;
+ import static org.mockito.Mockito.verify;
+ import static org.mockito.Mockito.verifyZeroInteractions;
+ import static org.mockito.Mockito.when;
+ 
+ import android.content.Context;
+ import android.content.IContentProvider;
++import android.content.Intent;
++import android.graphics.drawable.Icon;
+ import android.media.AudioManager;
+ import android.net.Uri;
+ import android.os.Bundle;
+ import android.os.Handler;
+ import android.os.Looper;
+ import android.os.Process;
+ import android.provider.BlockedNumberContract;
+@@ -47,20 +52,22 @@ import android.telecom.CallAudioState;
+ import android.telecom.Connection;
+ import android.telecom.ConnectionRequest;
+ import android.telecom.DisconnectCause;
+ import android.telecom.Log;
+ import android.telecom.ParcelableCall;
+ import android.telecom.PhoneAccount;
+ import android.telecom.PhoneAccountHandle;
++import android.telecom.StatusHints;
+ import android.telecom.TelecomManager;
+ import android.telecom.VideoProfile;
+ import android.test.suitebuilder.annotation.LargeTest;
+ import android.test.suitebuilder.annotation.MediumTest;
+ 
+ import androidx.test.filters.FlakyTest;
++import androidx.test.filters.SmallTest;
+ 
+ import com.android.internal.telecom.IInCallAdapter;
+ import com.android.internal.telephony.CallerInfo;
+ 
+ import com.google.common.base.Predicate;
+ 
+ import org.junit.After;
+@@ -176,15 +183,15 @@ public class BasicCallTests extends TelecomSystemTest {
+      *
+      * @throws Exception
+      */
+     @LargeTest
+     @Test
+     public void testTelecomManagerAcceptRingingVideoCall() throws Exception {
+         IdPair ids = startIncomingPhoneCall("650-555-1212", mPhoneAccountA0.getAccountHandle(),
+-                VideoProfile.STATE_BIDIRECTIONAL, mConnectionServiceFixtureA);
++                VideoProfile.STATE_BIDIRECTIONAL, mConnectionServiceFixtureA, null);
+ 
+         assertEquals(Call.STATE_RINGING, mInCallServiceFixtureX.getCall(ids.mCallId).getState());
+         assertEquals(Call.STATE_RINGING, mInCallServiceFixtureY.getCall(ids.mCallId).getState());
+ 
+         // Use TelecomManager API to answer the ringing call; the default expected behavior is to
+         // answer using whatever video state the ringing call requests.
+         TelecomManager telecomManager = (TelecomManager) mComponentContextFixture.getTestDouble()
+@@ -205,15 +212,15 @@ public class BasicCallTests extends TelecomSystemTest {
+      *
+      * @throws Exception
+      */
+     @LargeTest
+     @Test
+     public void testTelecomManagerAcceptRingingVideoCallAsAudio() throws Exception {
+         IdPair ids = startIncomingPhoneCall("650-555-1212", mPhoneAccountA0.getAccountHandle(),
+-                VideoProfile.STATE_BIDIRECTIONAL, mConnectionServiceFixtureA);
++                VideoProfile.STATE_BIDIRECTIONAL, mConnectionServiceFixtureA, null);
+ 
+         assertEquals(Call.STATE_RINGING, mInCallServiceFixtureX.getCall(ids.mCallId).getState());
+         assertEquals(Call.STATE_RINGING, mInCallServiceFixtureY.getCall(ids.mCallId).getState());
+ 
+         // Use TelecomManager API to answer the ringing call.
+         TelecomManager telecomManager = (TelecomManager) mComponentContextFixture.getTestDouble()
+                 .getApplicationContext().getSystemService(Context.TELECOM_SERVICE);
+@@ -233,15 +240,15 @@ public class BasicCallTests extends TelecomSystemTest {
+      *
+      * @throws Exception
+      */
+     @LargeTest
+     @Test
+     public void testTelecomManagerAcceptRingingInvalidVideoState() throws Exception {
+         IdPair ids = startIncomingPhoneCall("650-555-1212", mPhoneAccountA0.getAccountHandle(),
+-                VideoProfile.STATE_BIDIRECTIONAL, mConnectionServiceFixtureA);
++                VideoProfile.STATE_BIDIRECTIONAL, mConnectionServiceFixtureA, null);
+ 
+         assertEquals(Call.STATE_RINGING, mInCallServiceFixtureX.getCall(ids.mCallId).getState());
+         assertEquals(Call.STATE_RINGING, mInCallServiceFixtureY.getCall(ids.mCallId).getState());
+ 
+         // Use TelecomManager API to answer the ringing call; the default expected behavior is to
+         // answer using whatever video state the ringing call requests.
+         TelecomManager telecomManager = (TelecomManager) mComponentContextFixture.getTestDouble()
+@@ -638,21 +645,21 @@ public class BasicCallTests extends TelecomSystemTest {
+             Log.e(BasicCallTests.this, e, "Unexpectedly interrupted");
+         }
+     }
+ 
+     @MediumTest
+     @Test
+     public void testBasicConferenceCall() throws Exception {
+-        makeConferenceCall();
++        makeConferenceCall(null, null);
+     }
+ 
+     @MediumTest
+     @Test
+     public void testAddCallToConference1() throws Exception {
+-        ParcelableCall conferenceCall = makeConferenceCall();
++        ParcelableCall conferenceCall = makeConferenceCall(null, null);
+         IdPair callId3 = startAndMakeActiveOutgoingCall("650-555-1214",
+                 mPhoneAccountA0.getAccountHandle(), mConnectionServiceFixtureA);
+         // testAddCallToConference{1,2} differ in the order of arguments to InCallAdapter#conference
+         mInCallServiceFixtureX.getInCallAdapter().conference(
+                 conferenceCall.getId(), callId3.mCallId);
+         Thread.sleep(200);
+ 
+@@ -662,15 +669,15 @@ public class BasicCallTests extends TelecomSystemTest {
+         assertEquals(3, updatedConference.getChildCallIds().size());
+         assertTrue(updatedConference.getChildCallIds().contains(callId3.mCallId));
+     }
+ 
+     @MediumTest
+     @Test
+     public void testAddCallToConference2() throws Exception {
+-        ParcelableCall conferenceCall = makeConferenceCall();
++        ParcelableCall conferenceCall = makeConferenceCall(null, null);
+         IdPair callId3 = startAndMakeActiveOutgoingCall("650-555-1214",
+                 mPhoneAccountA0.getAccountHandle(), mConnectionServiceFixtureA);
+         mInCallServiceFixtureX.getInCallAdapter()
+                 .conference(callId3.mCallId, conferenceCall.getId());
+         Thread.sleep(200);
+ 
+         ParcelableCall call3 = mInCallServiceFixtureX.getCall(callId3.mCallId);
+@@ -918,15 +925,15 @@ public class BasicCallTests extends TelecomSystemTest {
+      * @throws Exception
+      */
+     @LargeTest
+     @Test
+     public void testOutgoingCallSelectPhoneAccountVideo() throws Exception {
+         startOutgoingPhoneCallPendingCreateConnection("650-555-1212",
+                 null, mConnectionServiceFixtureA,
+-                Process.myUserHandle(), VideoProfile.STATE_BIDIRECTIONAL);
++                Process.myUserHandle(), VideoProfile.STATE_BIDIRECTIONAL, null);
+         com.android.server.telecom.Call call = mTelecomSystem.getCallsManager().getCalls()
+                 .iterator().next();
+         assert(call.isVideoCallingSupportedByPhoneAccount());
+         assertEquals(VideoProfile.STATE_BIDIRECTIONAL, call.getVideoState());
+ 
+         // Change the phone account to one which supports video calling.
+         call.setTargetPhoneAccount(mPhoneAccountA1.getAccountHandle());
+@@ -941,15 +948,15 @@ public class BasicCallTests extends TelecomSystemTest {
+      */
+     @FlakyTest
+     @LargeTest
+     @Test
+     public void testOutgoingCallSelectPhoneAccountNoVideo() throws Exception {
+         startOutgoingPhoneCallPendingCreateConnection("650-555-1212",
+                 null, mConnectionServiceFixtureA,
+-                Process.myUserHandle(), VideoProfile.STATE_BIDIRECTIONAL);
++                Process.myUserHandle(), VideoProfile.STATE_BIDIRECTIONAL, null);
+         com.android.server.telecom.Call call = mTelecomSystem.getCallsManager().getCalls()
+                 .iterator().next();
+         assert(call.isVideoCallingSupportedByPhoneAccount());
+         assertEquals(VideoProfile.STATE_BIDIRECTIONAL, call.getVideoState());
+ 
+         // Change the phone account to one which does not support video calling.
+         call.setTargetPhoneAccount(mPhoneAccountA2.getAccountHandle());
+@@ -1149,8 +1156,149 @@ public class BasicCallTests extends TelecomSystemTest {
+         verify(mAudioService, times(2)).setMicrophoneMute(muteValueCaptor.capture(),
+                 any(String.class), any(Integer.class));
+         List<Boolean> muteValues = muteValueCaptor.getAllValues();
+         // Check mute status was changed twice with true and false.
+         assertTrue(muteValues.get(0));
+         assertFalse(muteValues.get(1));
+     }
++
++    /**
++     * Verifies that StatusHints image is validated in ConnectionServiceWrapper#addConferenceCall
++     * when the image doesn't belong to the calling user. Simulates a scenario where an app
++     * could manipulate the contents of the bundle and send it via the binder to upload an image
++     * from another user.
++     *
++     * @throws Exception
++     */
++    @SmallTest
++    @Test
++    public void testValidateStatusHintsImage_addConferenceCall() throws Exception {
++        Intent callIntent1 = new Intent();
++        // Stub intent for call2
++        Intent callIntent2 = new Intent();
++        Bundle callExtras1 = new Bundle();
++        Icon icon = Icon.createWithContentUri("content://10@media/external/images/media/");
++        // Load StatusHints extra into TelecomManager.EXTRA_OUTGOING_CALL_EXTRAS to be processed
++        // as the call extras. This will be leveraged in ConnectionServiceFixture to set the
++        // StatusHints for the given connection.
++        StatusHints statusHints = new StatusHints(icon);
++        assertNotNull(statusHints.getIcon());
++        callExtras1.putParcelable(STATUS_HINTS_EXTRA, statusHints);
++        callIntent1.putExtra(TelecomManager.EXTRA_OUTGOING_CALL_EXTRAS, callExtras1);
++
++        // Start conference call to invoke ConnectionServiceWrapper#addConferenceCall.
++        // Note that the calling user would be User 0.
++        ParcelableCall conferenceCall = makeConferenceCall(callIntent1, callIntent2);
++
++        // Ensure that StatusHints was set.
++        assertNotNull(mInCallServiceFixtureX.getCall(mInCallServiceFixtureX.mLatestCallId)
++                .getStatusHints());
++        // Ensure that the StatusHints image icon was disregarded.
++        assertNull(mInCallServiceFixtureX.getCall(mInCallServiceFixtureX.mLatestCallId)
++                .getStatusHints().getIcon());
++    }
++
++    /**
++     * Verifies that StatusHints image is validated in
++     * ConnectionServiceWrapper#handleCreateConnectionComplete when the image doesn't belong to the
++     * calling user. Simulates a scenario where an app could manipulate the contents of the
++     * bundle and send it via the binder to upload an image from another user.
++     *
++     * @throws Exception
++     */
++    @SmallTest
++    @Test
++    public void testValidateStatusHintsImage_handleCreateConnectionComplete() throws Exception {
++        Bundle extras = new Bundle();
++        Icon icon = Icon.createWithContentUri("content://10@media/external/images/media/");
++        // Load the bundle with the test extra in order to simulate an app directly invoking the
++        // binder on ConnectionServiceWrapper#handleCreateConnectionComplete.
++        StatusHints statusHints = new StatusHints(icon);
++        assertNotNull(statusHints.getIcon());
++        extras.putParcelable(STATUS_HINTS_EXTRA, statusHints);
++
++        // Start incoming call with StatusHints extras
++        // Note that the calling user in ConnectionServiceWrapper#handleCreateConnectionComplete
++        // would be User 0.
++        IdPair ids = startIncomingPhoneCallWithExtras("650-555-1212",
++                mPhoneAccountA0.getAccountHandle(), mConnectionServiceFixtureA, extras);
++
++        // Ensure that StatusHints was set.
++        assertNotNull(mInCallServiceFixtureX.getCall(ids.mCallId).getStatusHints());
++        // Ensure that the StatusHints image icon was disregarded.
++        assertNull(mInCallServiceFixtureX.getCall(ids.mCallId).getStatusHints().getIcon());
++    }
++
++    /**
++     * Verifies that StatusHints image is validated in ConnectionServiceWrapper#setStatusHints
++     * when the image doesn't belong to the calling user. Simulates a scenario where an app
++     * could manipulate the contents of the bundle and send it via the binder to upload an image
++     * from another user.
++     *
++     * @throws Exception
++     */
++    @SmallTest
++    @Test
++    public void testValidateStatusHintsImage_setStatusHints() throws Exception {
++        IdPair outgoing = startAndMakeActiveOutgoingCall("650-555-1214",
++                mPhoneAccountA0.getAccountHandle(), mConnectionServiceFixtureA);
++
++        // Modify existing connection with StatusHints image exploit
++        Icon icon = Icon.createWithContentUri("content://10@media/external/images/media/");
++        StatusHints statusHints = new StatusHints(icon);
++        assertNotNull(statusHints.getIcon());
++        ConnectionServiceFixture.ConnectionInfo connectionInfo = mConnectionServiceFixtureA
++                .mConnectionById.get(outgoing.mConnectionId);
++        connectionInfo.statusHints = statusHints;
++
++        // Invoke ConnectionServiceWrapper#setStatusHints.
++        // Note that the calling user would be User 0.
++        mConnectionServiceFixtureA.sendSetStatusHints(outgoing.mConnectionId);
++        waitForHandlerAction(mConnectionServiceFixtureA.mConnectionServiceDelegate.getHandler(),
++                TEST_TIMEOUT);
++
++        // Ensure that StatusHints was set.
++        assertNotNull(mInCallServiceFixtureX.getCall(outgoing.mCallId).getStatusHints());
++        // Ensure that the StatusHints image icon was disregarded.
++        assertNull(mInCallServiceFixtureX.getCall(outgoing.mCallId)
++                .getStatusHints().getIcon());
++    }
++
++    /**
++     * Verifies that StatusHints image is validated in
++     * ConnectionServiceWrapper#addExistingConnection when the image doesn't belong to the calling
++     * user. Simulates a scenario where an app could manipulate the contents of the bundle and
++     * send it via the binder to upload an image from another user.
++     *
++     * @throws Exception
++     */
++    @SmallTest
++    @Test
++    public void testValidateStatusHintsImage_addExistingConnection() throws Exception {
++        IdPair outgoing = startAndMakeActiveOutgoingCall("650-555-1214",
++                mPhoneAccountA0.getAccountHandle(), mConnectionServiceFixtureA);
++        Connection existingConnection = mConnectionServiceFixtureA.mLatestConnection;
++
++        // Modify existing connection with StatusHints image exploit
++        Icon icon = Icon.createWithContentUri("content://10@media/external/images/media/");
++        StatusHints modifiedStatusHints = new StatusHints(icon);
++        assertNotNull(modifiedStatusHints.getIcon());
++        ConnectionServiceFixture.ConnectionInfo connectionInfo = mConnectionServiceFixtureA
++                .mConnectionById.get(outgoing.mConnectionId);
++        connectionInfo.statusHints = modifiedStatusHints;
++
++        // Invoke ConnectionServiceWrapper#addExistingConnection.
++        // Note that the calling user would be User 0.
++        mConnectionServiceFixtureA.sendAddExistingConnection(outgoing.mConnectionId);
++        waitForHandlerAction(mConnectionServiceFixtureA.mConnectionServiceDelegate.getHandler(),
++                TEST_TIMEOUT);
++
++        // Ensure that StatusHints was set. Due to test setup, the ParcelableConnection object that
++        // is passed into sendAddExistingConnection is instantiated on invocation. The call's
++        // StatusHints are not updated at the time of completion, so instead, we can verify that
++        // the ParcelableConnection object was modified.
++        assertNotNull(mConnectionServiceFixtureA.mLatestParcelableConnection.getStatusHints());
++        // Ensure that the StatusHints image icon was disregarded.
++        assertNull(mConnectionServiceFixtureA.mLatestParcelableConnection
++                .getStatusHints().getIcon());
++    }
+ }
+diff --git a/tests/src/com/android/server/telecom/tests/CallExtrasTest.java b/tests/src/com/android/server/telecom/tests/CallExtrasTest.java
+index b97f819e1..28986c374 100644
+--- a/tests/src/com/android/server/telecom/tests/CallExtrasTest.java
++++ b/tests/src/com/android/server/telecom/tests/CallExtrasTest.java
+@@ -355,15 +355,15 @@ public class CallExtrasTest extends TelecomSystemTest {
+      * is maintained.
+      *
+      * @throws Exception
+      */
+     @LargeTest
+     @Test
+     public void testConferenceSetExtras() throws Exception {
+-        ParcelableCall call = makeConferenceCall();
++        ParcelableCall call = makeConferenceCall(null, null);
+         String conferenceId = call.getId();
+ 
+         Conference conference = mConnectionServiceFixtureA.mLatestConference;
+         assertNotNull(conference);
+ 
+         Bundle someExtras = new Bundle();
+         someExtras.putString(EXTRA_KEY_STR, EXTRA_VALUE_STR);
+@@ -399,15 +399,15 @@ public class CallExtrasTest extends TelecomSystemTest {
+      *
+      * @throws Exception
+      */
+     @LargeTest
+     @FlakyTest(bugId = 117751305)
+     @Test
+     public void testConferenceExtraOperations() throws Exception {
+-        ParcelableCall call = makeConferenceCall();
++        ParcelableCall call = makeConferenceCall(null, null);
+         String conferenceId = call.getId();
+         Conference conference = mConnectionServiceFixtureA.mLatestConference;
+         assertNotNull(conference);
+ 
+         conference.putExtra(EXTRA_KEY_STR, EXTRA_VALUE_STR);
+         conference.putExtra(EXTRA_KEY_INT, EXTRA_VALUE_INT);
+         conference.putExtra(EXTRA_KEY_BOOL, true);
+@@ -435,15 +435,15 @@ public class CallExtrasTest extends TelecomSystemTest {
+      * Tests communication of extras from an InCallService to a Conference.
+      *
+      * @throws Exception
+      */
+     @LargeTest
+     @Test
+     public void testConferenceICS() throws Exception {
+-        ParcelableCall call = makeConferenceCall();
++        ParcelableCall call = makeConferenceCall(null, null);
+         String conferenceId = call.getId();
+         Conference conference = mConnectionServiceFixtureA.mLatestConference;
+ 
+         Bundle someExtras = new Bundle();
+         someExtras.putString(EXTRA_KEY_STR, EXTRA_VALUE_STR);
+         mInCallServiceFixtureX.mInCallAdapter.putExtras(conferenceId, someExtras);
+         mConnectionServiceFixtureA.waitForExtras();
+diff --git a/tests/src/com/android/server/telecom/tests/CallRedirectionProcessorTest.java b/tests/src/com/android/server/telecom/tests/CallRedirectionProcessorTest.java
+index 169c56acf..82e32b24b 100644
+--- a/tests/src/com/android/server/telecom/tests/CallRedirectionProcessorTest.java
++++ b/tests/src/com/android/server/telecom/tests/CallRedirectionProcessorTest.java
+@@ -276,8 +276,32 @@ public class CallRedirectionProcessorTest extends TelecomTestCase {
+                 eq(false), eq(CallRedirectionProcessor.UI_TYPE_NO_ACTION));
+         waitForHandlerActionDelayed(mProcessor.getHandler(), HANDLER_TIMEOUT_DELAY,
+                 CARRIER_SHORT_TIMEOUT_MS + CODE_EXECUTION_DELAY);
+         verify(mCallsManager, times(1)).onCallRedirectionComplete(eq(mCall), eq(mHandle),
+                 eq(mPhoneAccountHandle), eq(mGatewayInfo), eq(SPEAKER_PHONE_ON), eq(VIDEO_STATE),
+                 eq(false), eq(CallRedirectionProcessor.UI_TYPE_NO_ACTION));
+     }
++
++    @Test
++    public void testUnbindOnNullBind() throws Exception {
++        startProcessWithNoGateWayInfo();
++        // To make sure tests are not flaky, clean all the previous handler messages
++        waitForHandlerAction(mProcessor.getHandler(), HANDLER_TIMEOUT_DELAY);
++        enableUserDefinedCallRedirectionService();
++        disableCarrierCallRedirectionService();
++
++        mProcessor.performCallRedirection();
++
++        // Capture the binder
++        ArgumentCaptor<ServiceConnection> serviceConnectionCaptor = ArgumentCaptor.forClass(
++                ServiceConnection.class);
++        // Verify binding occurred
++        verify(mContext, times(1)).bindServiceAsUser(any(Intent.class),
++                serviceConnectionCaptor.capture(), anyInt(), eq(UserHandle.CURRENT));
++        // Simulate null return from onBind
++        serviceConnectionCaptor.getValue().onNullBinding(USER_DEFINED_SERVICE_TEST_COMPONENT_NAME);
++
++        // Verify service was unbound
++        verify(mContext, times(1)).
++                unbindService(any(ServiceConnection.class));
++    }
+ }
+diff --git a/tests/src/com/android/server/telecom/tests/ConnectionServiceFixture.java b/tests/src/com/android/server/telecom/tests/ConnectionServiceFixture.java
+index 9655476b4..c3561b64e 100644
+--- a/tests/src/com/android/server/telecom/tests/ConnectionServiceFixture.java
++++ b/tests/src/com/android/server/telecom/tests/ConnectionServiceFixture.java
+@@ -63,14 +63,15 @@ import java.util.concurrent.TimeUnit;
+  * Controls a test {@link IConnectionService} as would be provided by a source of connectivity
+  * to the Telecom framework.
+  */
+ public class ConnectionServiceFixture implements TestFixture<IConnectionService> {
+     static int INVALID_VIDEO_STATE = -1;
+     public CountDownLatch mExtrasLock = new CountDownLatch(1);
+     static int NOT_SPECIFIED = 0;
++    public static final String STATUS_HINTS_EXTRA = "updateStatusHints";
+ 
+     /**
+      * Implementation of ConnectionService that performs no-ops for tasks normally meant for
+      * Telephony and reports success back to Telecom
+      */
+     public class FakeConnectionServiceDelegate extends ConnectionService {
+         int mVideoState = INVALID_VIDEO_STATE;
+@@ -97,14 +98,19 @@ public class ConnectionServiceFixture implements TestFixture<IConnectionService>
+             mLatestConnection = fakeConnection;
+             if (mCapabilities != NOT_SPECIFIED) {
+                 fakeConnection.setConnectionCapabilities(mCapabilities);
+             }
+             if (mProperties != NOT_SPECIFIED) {
+                 fakeConnection.setConnectionProperties(mProperties);
+             }
++            // Testing for StatusHints image icon cross user access
++            if (request.getExtras() != null) {
++                fakeConnection.setStatusHints(
++                        request.getExtras().getParcelable(STATUS_HINTS_EXTRA));
++            }
+ 
+             return fakeConnection;
+         }
+ 
+         @Override
+         public Connection onCreateOutgoingConnection(
+                 PhoneAccountHandle connectionManagerPhoneAccount, ConnectionRequest request) {
+@@ -113,14 +119,19 @@ public class ConnectionServiceFixture implements TestFixture<IConnectionService>
+             mLatestConnection = fakeConnection;
+             if (mCapabilities != NOT_SPECIFIED) {
+                 fakeConnection.setConnectionCapabilities(mCapabilities);
+             }
+             if (mProperties != NOT_SPECIFIED) {
+                 fakeConnection.setConnectionProperties(mProperties);
+             }
++            // Testing for StatusHints image icon cross user access
++            if (request.getExtras() != null) {
++                fakeConnection.setStatusHints(
++                        request.getExtras().getParcelable(STATUS_HINTS_EXTRA));
++            }
+             return fakeConnection;
+         }
+ 
+         @Override
+         public void onCreateConnectionComplete(Connection connection) {
+         }
+ 
+@@ -129,14 +140,20 @@ public class ConnectionServiceFixture implements TestFixture<IConnectionService>
+             if (((FakeConnection) cxn1).getIsConferenceCreated()) {
+                 // Usually, this is implemented by something in Telephony, which does a bunch of
+                 // radio work to conference the two connections together. Here we just short-cut
+                 // that and declare them conferenced.
+                 Conference fakeConference = new FakeConference();
+                 fakeConference.addConnection(cxn1);
+                 fakeConference.addConnection(cxn2);
++                if (cxn1.getStatusHints() != null || cxn2.getStatusHints() != null) {
++                    // For testing purposes, pick one of the status hints that isn't null.
++                    StatusHints statusHints = cxn1.getStatusHints() != null
++                            ? cxn1.getStatusHints() : cxn2.getStatusHints();
++                    fakeConference.setStatusHints(statusHints);
++                }
+                 mLatestConference = fakeConference;
+                 addConference(fakeConference);
+             } else {
+                 try {
+                     sendSetConferenceMergeFailed(cxn1.getTelecomCallId());
+                 } catch (Exception e) {
+                     Log.w(this, "Exception on sendSetConferenceMergeFailed: " + e.getMessage());
+@@ -436,14 +453,15 @@ public class ConnectionServiceFixture implements TestFixture<IConnectionService>
+         long connectElapsedTimeMillis;
+         StatusHints statusHints;
+         Bundle extras;
+     }
+ 
+     public String mLatestConnectionId;
+     public Connection mLatestConnection;
++    public ParcelableConnection mLatestParcelableConnection;
+     public Conference mLatestConference;
+     public final Set<IConnectionServiceAdapter> mConnectionServiceAdapters = new HashSet<>();
+     public final Map<String, ConnectionInfo> mConnectionById = new HashMap<>();
+     public final Map<String, ConferenceInfo> mConferenceById = new HashMap<>();
+     public final List<ComponentName> mRemoteConnectionServiceNames = new ArrayList<>();
+     public final List<IBinder> mRemoteConnectionServices = new ArrayList<>();
+ 
+@@ -674,15 +692,15 @@ public class ConnectionServiceFixture implements TestFixture<IConnectionService>
+                 null,
+                 0,
+                 null,
+                 0);
+     }
+ 
+     private ParcelableConnection parcelable(ConnectionInfo c) {
+-        return new ParcelableConnection(
++        mLatestParcelableConnection = new ParcelableConnection(
+                 c.request.getAccountHandle(),
+                 c.state,
+                 c.capabilities,
+                 c.properties,
+                 c.supportedAudioRoutes,
+                 c.request.getAddress(),
+                 c.addressPresentation,
+@@ -694,9 +712,10 @@ public class ConnectionServiceFixture implements TestFixture<IConnectionService>
+                 false, /* voip audio mode */
+                 0, /* Connect Time for conf call on this connection */
+                 0, /* Connect Real Time comes from conference call */
+                 c.statusHints,
+                 c.disconnectCause,
+                 c.conferenceableConnectionIds,
+                 c.extras);
++        return mLatestParcelableConnection;
+     }
+ }
+diff --git a/tests/src/com/android/server/telecom/tests/NewOutgoingCallIntentBroadcasterTest.java b/tests/src/com/android/server/telecom/tests/NewOutgoingCallIntentBroadcasterTest.java
+index 81b43265f..b618bba1e 100644
+--- a/tests/src/com/android/server/telecom/tests/NewOutgoingCallIntentBroadcasterTest.java
++++ b/tests/src/com/android/server/telecom/tests/NewOutgoingCallIntentBroadcasterTest.java
+@@ -182,14 +182,27 @@ public class NewOutgoingCallIntentBroadcasterTest extends TelecomTestCase {
+         int result = processIntent(intent, true).disconnectCause;
+ 
+         assertEquals(DisconnectCause.NO_PHONE_NUMBER_SUPPLIED, result);
+         verifyNoBroadcastSent();
+         verifyNoCallPlaced();
+     }
+ 
++    @Test
++    public void testNoCallsPlacedWithContentUri() {
++        Uri handle = Uri.parse("content://com.android.contacts/data/1");
++        Intent intent = new Intent(Intent.ACTION_CALL, handle);
++
++        int result = processIntent(intent, true).disconnectCause;
++
++        assertEquals(DisconnectCause.NO_PHONE_NUMBER_SUPPLIED, result);
++        verify(mContext, never()).getContentResolver();
++        verifyNoBroadcastSent();
++        verifyNoCallPlaced();
++    }
++
+     @SmallTest
+     @Test
+     public void testEmergencyCallWithNonDefaultDialer() {
+         Uri handle = Uri.parse("tel:6505551911");
+         doReturn(true).when(mPhoneNumberUtilsAdapterSpy).isPotentialLocalEmergencyNumber(
+                 any(Context.class), eq(handle.getSchemeSpecificPart()));
+         Intent intent = new Intent(Intent.ACTION_CALL, handle);
+diff --git a/tests/src/com/android/server/telecom/tests/PhoneAccountRegistrarTest.java b/tests/src/com/android/server/telecom/tests/PhoneAccountRegistrarTest.java
+index a978cfd24..f14a3f74e 100644
+--- a/tests/src/com/android/server/telecom/tests/PhoneAccountRegistrarTest.java
++++ b/tests/src/com/android/server/telecom/tests/PhoneAccountRegistrarTest.java
+@@ -18,16 +18,26 @@ package com.android.server.telecom.tests;
+ 
+ import static org.junit.Assert.assertEquals;
+ import static org.junit.Assert.assertFalse;
+ import static org.junit.Assert.assertNotNull;
+ import static org.junit.Assert.assertNull;
+ import static org.junit.Assert.assertTrue;
+ import static org.junit.Assert.fail;
++import static org.mockito.ArgumentMatchers.any;
++import static org.mockito.ArgumentMatchers.anyObject;
++import static org.mockito.ArgumentMatchers.isA;
+ import static org.mockito.Matchers.anyInt;
+ import static org.mockito.Matchers.anyString;
++import static org.mockito.Mockito.clearInvocations;
++import static org.mockito.Mockito.doThrow;
++import static org.mockito.Mockito.mock;
++import static org.mockito.Mockito.never;
++import static org.mockito.Mockito.spy;
++import static org.mockito.Mockito.times;
++import static org.mockito.Mockito.verify;
+ import static org.mockito.Mockito.when;
+ 
+ import android.content.ComponentName;
+ import android.content.Context;
+ import android.graphics.BitmapFactory;
+ import android.graphics.Rect;
+ import android.graphics.drawable.Icon;
+@@ -65,25 +75,30 @@ import org.xmlpull.v1.XmlPullParser;
+ import org.xmlpull.v1.XmlSerializer;
+ 
+ import java.io.BufferedInputStream;
+ import java.io.BufferedOutputStream;
+ import java.io.ByteArrayInputStream;
+ import java.io.ByteArrayOutputStream;
+ import java.io.File;
++import java.io.IOException;
++import java.io.OutputStream;
+ import java.util.Arrays;
+ import java.util.List;
+ import java.util.Map;
+ import java.util.Set;
+ 
+ @RunWith(JUnit4.class)
+ public class PhoneAccountRegistrarTest extends TelecomTestCase {
+ 
+     private static final int MAX_VERSION = Integer.MAX_VALUE;
+     private static final String FILE_NAME = "phone-account-registrar-test-1223.xml";
+     private static final String TEST_LABEL = "right";
++    private static final String TEST_ID = "123";
++    private final String PACKAGE_1 = "PACKAGE_1";
++    private final String PACKAGE_2 = "PACKAGE_2";
+     private PhoneAccountRegistrar mRegistrar;
+     @Mock private TelecomManager mTelecomManager;
+     @Mock private DefaultDialerCache mDefaultDialerCache;
+     @Mock private PhoneAccountRegistrar.AppLabelProxy mAppLabelProxy;
+ 
+     @Override
+     @Before
+@@ -938,14 +953,100 @@ public class PhoneAccountRegistrarTest extends TelecomTestCase {
+         assertFalse(PhoneAccountHandle.areFromSamePackage(b, null));
+         assertFalse(PhoneAccountHandle.areFromSamePackage(c, null));
+         assertFalse(PhoneAccountHandle.areFromSamePackage(null, d));
+         assertFalse(PhoneAccountHandle.areFromSamePackage(null, d));
+         assertFalse(PhoneAccountHandle.areFromSamePackage(null, d));
+     }
+ 
++    /**
++     * Ensure an IllegalArgumentException is thrown when adding more than 10 schemes for a single
++     * account
++     */
++    @Test
++    public void testLimitOnSchemeCount() {
++        PhoneAccountHandle handle = makeQuickAccountHandle(TEST_ID);
++        PhoneAccount.Builder builder = new PhoneAccount.Builder(handle, TEST_LABEL);
++        for (int i = 0; i < PhoneAccountRegistrar.MAX_PHONE_ACCOUNT_REGISTRATIONS + 1; i++) {
++            builder.addSupportedUriScheme(Integer.toString(i));
++        }
++        try {
++            mRegistrar.enforceLimitsOnSchemes(builder.build());
++            fail("should have hit exception in enforceLimitOnSchemes");
++        } catch (IllegalArgumentException e) {
++            // pass test
++        }
++    }
++
++    /**
++     * Ensure an IllegalArgumentException is thrown when adding more 256 chars for a single
++     * account
++     */
++    @Test
++    public void testLimitOnSchemeLength() {
++        PhoneAccountHandle handle = makeQuickAccountHandle(TEST_ID);
++        PhoneAccount.Builder builder = new PhoneAccount.Builder(handle, TEST_LABEL);
++        builder.addSupportedUriScheme(generateStringOfLen(257));
++        try {
++            mRegistrar.enforceLimitsOnSchemes(builder.build());
++            fail("should have hit exception in enforceLimitOnSchemes");
++        } catch (IllegalArgumentException e) {
++            // pass test
++        }
++    }
++
++    /**
++     * Ensure an IllegalArgumentException is thrown when adding an address over the limit
++     */
++    @Test
++    public void testLimitOnAddress() {
++        String text = generateStringOfLen(100);
++        PhoneAccountHandle handle = makeQuickAccountHandle(TEST_ID);
++        PhoneAccount.Builder builder = new PhoneAccount.Builder(handle,TEST_LABEL)
++                .setAddress(Uri.fromParts(text, text, text));
++        try {
++            mRegistrar.enforceCharacterLimit(builder.build());
++            fail("failed to throw IllegalArgumentException");
++        } catch (IllegalArgumentException e) {
++            // pass test
++        }
++        finally {
++            mRegistrar.unregisterPhoneAccount(handle);
++        }
++    }
++
++    /**
++     * Ensure an IllegalArgumentException is thrown when an Icon that throws an IOException is given
++     */
++    @Test
++    public void testLimitOnIcon() throws Exception {
++        Icon mockIcon = mock(Icon.class);
++        // GIVEN
++        PhoneAccount.Builder builder = new PhoneAccount.Builder(
++                makeQuickAccountHandle(TEST_ID), TEST_LABEL).setIcon(mockIcon);
++        try {
++            // WHEN
++            Mockito.doThrow(new IOException())
++                    .when(mockIcon).writeToStream(any(OutputStream.class));
++            //THEN
++            mRegistrar.enforceIconSizeLimit(builder.build());
++            fail("failed to throw IllegalArgumentException");
++        } catch (IllegalArgumentException e) {
++            // pass test
++            assertTrue(e.getMessage().contains(PhoneAccountRegistrar.ICON_ERROR_MSG));
++        }
++    }
++
++   private String generateStringOfLen(int len){
++       StringBuilder sb = new StringBuilder();
++       for(int i=0; i < len; i++){
++           sb.append("a");
++       }
++       return sb.toString();
++   }
++
+     private static ComponentName makeQuickConnectionServiceComponentName() {
+         return new ComponentName(
+                 "com.android.server.telecom.tests",
+                 "com.android.server.telecom.tests.MockConnectionService");
+     }
+ 
+     private static PhoneAccountHandle makeQuickAccountHandle(String id) {
+diff --git a/tests/src/com/android/server/telecom/tests/TelecomServiceImplTest.java b/tests/src/com/android/server/telecom/tests/TelecomServiceImplTest.java
+index 2130121ac..00d8000e4 100644
+--- a/tests/src/com/android/server/telecom/tests/TelecomServiceImplTest.java
++++ b/tests/src/com/android/server/telecom/tests/TelecomServiceImplTest.java
+@@ -388,15 +388,15 @@ public class TelecomServiceImplTest extends TelecomTestCase {
+     @Test
+     public void testGetPhoneAccountsForPackage() throws RemoteException {
+         List<PhoneAccountHandle> phoneAccountHandleList = new ArrayList<PhoneAccountHandle>() {{
+             add(TEL_PA_HANDLE_16);
+             add(SIP_PA_HANDLE_17);
+         }};
+         when(mFakePhoneAccountRegistrar
+-                .getPhoneAccountsForPackage(anyString(), any(UserHandle.class)))
++                .getAllPhoneAccountHandlesForPackage(any(UserHandle.class), anyString()))
+                 .thenReturn(phoneAccountHandleList);
+         makeAccountsVisibleToAllUsers(TEL_PA_HANDLE_16, SIP_PA_HANDLE_17);
+         assertEquals(phoneAccountHandleList,
+                 mTSIBinder.getPhoneAccountsForPackage(
+                         TEL_PA_HANDLE_16.getComponentName().getPackageName()).getList());
+     }
+ 
+diff --git a/tests/src/com/android/server/telecom/tests/TelecomSystemTest.java b/tests/src/com/android/server/telecom/tests/TelecomSystemTest.java
+index 82b17be42..717579046 100644
+--- a/tests/src/com/android/server/telecom/tests/TelecomSystemTest.java
++++ b/tests/src/com/android/server/telecom/tests/TelecomSystemTest.java
+@@ -378,20 +378,21 @@ public class TelecomSystemTest extends TelecomTestCase {
+                 .getCallAudioRouteStateMachine().quitNow();
+         mTelecomSystem.getCallsManager().getCallAudioManager()
+                 .getCallAudioModeStateMachine().quitNow();
+         mTelecomSystem = null;
+         super.tearDown();
+     }
+ 
+-    protected ParcelableCall makeConferenceCall() throws Exception {
+-        IdPair callId1 = startAndMakeActiveOutgoingCall("650-555-1212",
+-                mPhoneAccountA0.getAccountHandle(), mConnectionServiceFixtureA);
++    protected ParcelableCall makeConferenceCall(
++            Intent callIntentExtras1, Intent callIntentExtras2) throws Exception {
++        IdPair callId1 = startAndMakeActiveOutgoingCallWithExtras("650-555-1212",
++                mPhoneAccountA0.getAccountHandle(), mConnectionServiceFixtureA, callIntentExtras1);
+ 
+-        IdPair callId2 = startAndMakeActiveOutgoingCall("650-555-1213",
+-                mPhoneAccountA0.getAccountHandle(), mConnectionServiceFixtureA);
++        IdPair callId2 = startAndMakeActiveOutgoingCallWithExtras("650-555-1213",
++                mPhoneAccountA0.getAccountHandle(), mConnectionServiceFixtureA, callIntentExtras2);
+ 
+         IInCallAdapter inCallAdapter = mInCallServiceFixtureX.getInCallAdapter();
+         inCallAdapter.conference(callId1.mCallId, callId2.mCallId);
+         // Wait for the handler in ConnectionService
+         waitForHandlerAction(new Handler(Looper.getMainLooper()), TEST_TIMEOUT);
+         ParcelableCall call1 = mInCallServiceFixtureX.getCall(callId1.mCallId);
+         ParcelableCall call2 = mInCallServiceFixtureX.getCall(callId2.mCallId);
+@@ -566,15 +567,15 @@ public class TelecomSystemTest extends TelecomTestCase {
+ 
+     protected String startOutgoingPhoneCallWithNoPhoneAccount(String number,
+             ConnectionServiceFixture connectionServiceFixture)
+             throws Exception {
+ 
+         startOutgoingPhoneCallWaitForBroadcaster(number, null,
+                 connectionServiceFixture, Process.myUserHandle(), VideoProfile.STATE_AUDIO_ONLY,
+-                false /*isEmergency*/);
++                false /*isEmergency*/, null);
+ 
+         return mInCallServiceFixtureX.mLatestCallId;
+     }
+ 
+     protected IdPair outgoingCallPhoneAccountSelected(PhoneAccountHandle phoneAccountHandle,
+             int startingNumConnections, int startingNumCalls,
+             ConnectionServiceFixture connectionServiceFixture) throws Exception {
+@@ -596,25 +597,25 @@ public class TelecomSystemTest extends TelecomTestCase {
+     }
+ 
+     protected IdPair startOutgoingPhoneCall(String number, PhoneAccountHandle phoneAccountHandle,
+             ConnectionServiceFixture connectionServiceFixture, UserHandle initiatingUser)
+             throws Exception {
+ 
+         return startOutgoingPhoneCall(number, phoneAccountHandle, connectionServiceFixture,
+-                initiatingUser, VideoProfile.STATE_AUDIO_ONLY);
++                initiatingUser, VideoProfile.STATE_AUDIO_ONLY, null);
+     }
+ 
+     protected IdPair startOutgoingPhoneCall(String number, PhoneAccountHandle phoneAccountHandle,
+             ConnectionServiceFixture connectionServiceFixture, UserHandle initiatingUser,
+-            int videoState) throws Exception {
++            int videoState, Intent callIntentExtras) throws Exception {
+         int startingNumConnections = connectionServiceFixture.mConnectionById.size();
+         int startingNumCalls = mInCallServiceFixtureX.mCallById.size();
+ 
+         startOutgoingPhoneCallPendingCreateConnection(number, phoneAccountHandle,
+-                connectionServiceFixture, initiatingUser, videoState);
++                connectionServiceFixture, initiatingUser, videoState, callIntentExtras);
+ 
+         verify(connectionServiceFixture.getTestDouble(), timeout(TEST_TIMEOUT))
+                 .createConnectionComplete(anyString(), any());
+ 
+         return outgoingCallCreateConnectionComplete(startingNumConnections, startingNumCalls,
+                 phoneAccountHandle, connectionServiceFixture);
+     }
+@@ -645,37 +646,39 @@ public class TelecomSystemTest extends TelecomTestCase {
+             int videoState) throws Exception {
+         int startingNumConnections = connectionServiceFixture.mConnectionById.size();
+         int startingNumCalls = mInCallServiceFixtureX.mCallById.size();
+ 
+         mIsEmergencyCall = true;
+         // Call will not use the ordered broadcaster, since it is an Emergency Call
+         startOutgoingPhoneCallWaitForBroadcaster(number, phoneAccountHandle,
+-                connectionServiceFixture, initiatingUser, videoState, true /*isEmergency*/);
++                connectionServiceFixture, initiatingUser, videoState, true /*isEmergency*/, null);
+ 
+         return outgoingCallCreateConnectionComplete(startingNumConnections, startingNumCalls,
+                 phoneAccountHandle, connectionServiceFixture);
+     }
+ 
+     protected void startOutgoingPhoneCallWaitForBroadcaster(String number,
+             PhoneAccountHandle phoneAccountHandle,
+             ConnectionServiceFixture connectionServiceFixture, UserHandle initiatingUser,
+-            int videoState, boolean isEmergency) throws Exception {
++            int videoState, boolean isEmergency, Intent actionCallIntent) throws Exception {
+         reset(connectionServiceFixture.getTestDouble(), mInCallServiceFixtureX.getTestDouble(),
+                 mInCallServiceFixtureY.getTestDouble());
+ 
+         assertEquals(mInCallServiceFixtureX.mCallById.size(),
+                 mInCallServiceFixtureY.mCallById.size());
+         assertEquals((mInCallServiceFixtureX.mInCallAdapter != null),
+                 (mInCallServiceFixtureY.mInCallAdapter != null));
+ 
+         mNumOutgoingCallsMade++;
+ 
+         boolean hasInCallAdapter = mInCallServiceFixtureX.mInCallAdapter != null;
+ 
+-        Intent actionCallIntent = new Intent();
++        if (actionCallIntent == null) {
++            actionCallIntent = new Intent();
++        }
+         actionCallIntent.setData(Uri.parse("tel:" + number));
+         actionCallIntent.putExtra(Intent.EXTRA_PHONE_NUMBER, number);
+         if(isEmergency) {
+             actionCallIntent.setAction(Intent.ACTION_CALL_EMERGENCY);
+         } else {
+             actionCallIntent.setAction(Intent.ACTION_CALL);
+         }
+@@ -712,17 +715,18 @@ public class TelecomSystemTest extends TelecomTestCase {
+                             any(IInCallAdapter.class));
+         }
+     }
+ 
+     protected String startOutgoingPhoneCallPendingCreateConnection(String number,
+             PhoneAccountHandle phoneAccountHandle,
+             ConnectionServiceFixture connectionServiceFixture, UserHandle initiatingUser,
+-            int videoState) throws Exception {
++            int videoState, Intent callIntentExtras) throws Exception {
+         startOutgoingPhoneCallWaitForBroadcaster(number,phoneAccountHandle,
+-                connectionServiceFixture, initiatingUser, videoState, false /*isEmergency*/);
++                connectionServiceFixture, initiatingUser,
++                videoState, false /*isEmergency*/, callIntentExtras);
+         waitForHandlerAction(new Handler(Looper.getMainLooper()), TEST_TIMEOUT);
+ 
+         verifyAndProcessOutgoingCallBroadcast(phoneAccountHandle);
+         return mInCallServiceFixtureX.mLatestCallId;
+     }
+ 
+     protected void verifyAndProcessOutgoingCallBroadcast(PhoneAccountHandle phoneAccountHandle) {
+@@ -819,22 +823,32 @@ public class TelecomSystemTest extends TelecomTestCase {
+     }
+ 
+     protected IdPair startIncomingPhoneCall(
+             String number,
+             PhoneAccountHandle phoneAccountHandle,
+             final ConnectionServiceFixture connectionServiceFixture) throws Exception {
+         return startIncomingPhoneCall(number, phoneAccountHandle, VideoProfile.STATE_AUDIO_ONLY,
+-                connectionServiceFixture);
++                connectionServiceFixture, null);
++    }
++
++    protected IdPair startIncomingPhoneCallWithExtras(
++            String number,
++            PhoneAccountHandle phoneAccountHandle,
++            final ConnectionServiceFixture connectionServiceFixture,
++            Bundle extras) throws Exception {
++        return startIncomingPhoneCall(number, phoneAccountHandle, VideoProfile.STATE_AUDIO_ONLY,
++                connectionServiceFixture, extras);
+     }
+ 
+     protected IdPair startIncomingPhoneCall(
+             String number,
+             PhoneAccountHandle phoneAccountHandle,
+             int videoState,
+-            final ConnectionServiceFixture connectionServiceFixture) throws Exception {
++            final ConnectionServiceFixture connectionServiceFixture,
++            Bundle extras) throws Exception {
+         reset(connectionServiceFixture.getTestDouble(), mInCallServiceFixtureX.getTestDouble(),
+                 mInCallServiceFixtureY.getTestDouble());
+ 
+         assertEquals(mInCallServiceFixtureX.mCallById.size(),
+                 mInCallServiceFixtureY.mCallById.size());
+         assertEquals((mInCallServiceFixtureX.mInCallAdapter != null),
+                 (mInCallServiceFixtureY.mInCallAdapter != null));
+@@ -843,15 +857,17 @@ public class TelecomSystemTest extends TelecomTestCase {
+         boolean hasInCallAdapter = mInCallServiceFixtureX.mInCallAdapter != null;
+         connectionServiceFixture.mConnectionServiceDelegate.mVideoState = videoState;
+         CountDownLatch incomingCallAddedLatch = new CountDownLatch(1);
+         IncomingCallAddedListener callAddedListener =
+                 new IncomingCallAddedListener(incomingCallAddedLatch);
+         mTelecomSystem.getCallsManager().addListener(callAddedListener);
+ 
+-        Bundle extras = new Bundle();
++        if (extras == null) {
++            extras = new Bundle();
++        }
+         extras.putParcelable(
+                 TelecomManager.EXTRA_INCOMING_CALL_ADDRESS,
+                 Uri.fromParts(PhoneAccount.SCHEME_TEL, number, null));
+         mTelecomSystem.getTelecomServiceImpl().getBinder()
+                 .addNewIncomingCall(phoneAccountHandle, extras);
+ 
+         verify(connectionServiceFixture.getTestDouble())
+@@ -929,25 +945,35 @@ public class TelecomSystemTest extends TelecomTestCase {
+     }
+ 
+     protected IdPair startAndMakeActiveOutgoingCall(
+             String number,
+             PhoneAccountHandle phoneAccountHandle,
+             ConnectionServiceFixture connectionServiceFixture) throws Exception {
+         return startAndMakeActiveOutgoingCall(number, phoneAccountHandle, connectionServiceFixture,
+-                VideoProfile.STATE_AUDIO_ONLY);
++                VideoProfile.STATE_AUDIO_ONLY, null);
++    }
++
++    protected IdPair startAndMakeActiveOutgoingCallWithExtras(
++            String number,
++            PhoneAccountHandle phoneAccountHandle,
++            ConnectionServiceFixture connectionServiceFixture,
++            Intent callIntentExtras) throws Exception {
++        return startAndMakeActiveOutgoingCall(number, phoneAccountHandle, connectionServiceFixture,
++                VideoProfile.STATE_AUDIO_ONLY, callIntentExtras);
+     }
+ 
+     // A simple outgoing call, verifying that the appropriate connection service is contacted,
+     // the proper lifecycle is followed, and both In-Call Services are updated correctly.
+     protected IdPair startAndMakeActiveOutgoingCall(
+             String number,
+             PhoneAccountHandle phoneAccountHandle,
+-            ConnectionServiceFixture connectionServiceFixture, int videoState) throws Exception {
++            ConnectionServiceFixture connectionServiceFixture, int videoState,
++            Intent callIntentExtras) throws Exception {
+         IdPair ids = startOutgoingPhoneCall(number, phoneAccountHandle, connectionServiceFixture,
+-                Process.myUserHandle(), videoState);
++                Process.myUserHandle(), videoState, callIntentExtras);
+ 
+         connectionServiceFixture.sendSetDialing(ids.mConnectionId);
+         if (phoneAccountHandle != mPhoneAccountSelfManaged.getAccountHandle()) {
+             assertEquals(Call.STATE_DIALING,
+                     mInCallServiceFixtureX.getCall(ids.mCallId).getState());
+             assertEquals(Call.STATE_DIALING,
+                     mInCallServiceFixtureY.getCall(ids.mCallId).getState());
+diff --git a/tests/src/com/android/server/telecom/tests/VideoCallTests.java b/tests/src/com/android/server/telecom/tests/VideoCallTests.java
+index 97e71d18b..84beedc0f 100644
+--- a/tests/src/com/android/server/telecom/tests/VideoCallTests.java
++++ b/tests/src/com/android/server/telecom/tests/VideoCallTests.java
+@@ -101,15 +101,15 @@ public class VideoCallTests extends TelecomSystemTest {
+      */
+     @MediumTest
+     @Test
+     public void testAutoSpeakerphoneOutgoingBidirectional() throws Exception {
+         // Start an incoming video call.
+         IdPair ids = startAndMakeActiveOutgoingCall("650-555-1212",
+                 mPhoneAccountA0.getAccountHandle(), mConnectionServiceFixtureA,
+-                VideoProfile.STATE_BIDIRECTIONAL);
++                VideoProfile.STATE_BIDIRECTIONAL, null);
+ 
+         verifyAudioRoute(CallAudioState.ROUTE_SPEAKER);
+     }
+ 
+     /**
+      * Tests audio routing for an outgoing video call made with transmit only video.  Expect to be
+      * in speaker mode.  Note: The default UI does not support making one-way video calls, but the
+@@ -117,15 +117,15 @@ public class VideoCallTests extends TelecomSystemTest {
+      */
+     @MediumTest
+     @Test
+     public void testAutoSpeakerphoneOutgoingTransmitOnly() throws Exception {
+         // Start an incoming video call.
+         IdPair ids = startAndMakeActiveOutgoingCall("650-555-1212",
+                 mPhoneAccountA0.getAccountHandle(), mConnectionServiceFixtureA,
+-                VideoProfile.STATE_TX_ENABLED);
++                VideoProfile.STATE_TX_ENABLED, null);
+ 
+         verifyAudioRoute(CallAudioState.ROUTE_SPEAKER);
+     }
+ 
+     /**
+      * Tests audio routing for an outgoing video call made with transmit only video.  Expect to be
+      * in speaker mode.  Note: The default UI does not support making one-way video calls, but the
+@@ -133,15 +133,15 @@ public class VideoCallTests extends TelecomSystemTest {
+      */
+     @MediumTest
+     @Test
+     public void testNoAutoSpeakerphoneOnOutgoing() throws Exception {
+         // Start an incoming video call.
+         IdPair ids = startAndMakeActiveOutgoingCall("650-555-1212",
+                 mPhoneAccountA0.getAccountHandle(), mConnectionServiceFixtureA,
+-                VideoProfile.STATE_AUDIO_ONLY);
++                VideoProfile.STATE_AUDIO_ONLY, null);
+ 
+         verifyAudioRoute(CallAudioState.ROUTE_EARPIECE);
+     }
+ 
+     /**
+      * Tests to ensure an incoming audio-only call is routed to the earpiece.
+      */
+@@ -161,15 +161,15 @@ public class VideoCallTests extends TelecomSystemTest {
+      * Ensure that when an incoming video call is missed, the video state history still includes
+      * video calling. This is important for the call log.
+      */
+     @LargeTest
+     @Test
+     public void testIncomingVideoCallMissedCheckVideoHistory() throws Exception {
+         IdPair ids = startIncomingPhoneCall("650-555-1212", mPhoneAccountA0.getAccountHandle(),
+-                VideoProfile.STATE_BIDIRECTIONAL, mConnectionServiceFixtureA);
++                VideoProfile.STATE_BIDIRECTIONAL, mConnectionServiceFixtureA, null);
+         com.android.server.telecom.Call call = mTelecomSystem.getCallsManager().getCalls()
+                 .iterator().next();
+ 
+         mConnectionServiceFixtureA.sendSetDisconnected(ids.mConnectionId, DisconnectCause.MISSED);
+ 
+         assertTrue(VideoProfile.isVideo(call.getVideoStateHistory()));
+     }
+@@ -178,15 +178,15 @@ public class VideoCallTests extends TelecomSystemTest {
+      * Ensure that when an incoming video call is rejected, the video state history still includes
+      * video calling. This is important for the call log.
+      */
+     @LargeTest
+     @Test
+     public void testIncomingVideoCallRejectedCheckVideoHistory() throws Exception {
+         IdPair ids = startIncomingPhoneCall("650-555-1212", mPhoneAccountA0.getAccountHandle(),
+-                VideoProfile.STATE_BIDIRECTIONAL, mConnectionServiceFixtureA);
++                VideoProfile.STATE_BIDIRECTIONAL, mConnectionServiceFixtureA, null);
+         com.android.server.telecom.Call call = mTelecomSystem.getCallsManager().getCalls()
+                 .iterator().next();
+ 
+         mConnectionServiceFixtureA.sendSetDisconnected(ids.mConnectionId, DisconnectCause.REJECTED);
+ 
+         assertTrue(VideoProfile.isVideo(call.getVideoStateHistory()));
+     }
+@@ -197,15 +197,15 @@ public class VideoCallTests extends TelecomSystemTest {
+      * video calling. This is important for the call log.
+      */
+     @LargeTest
+     @Test
+     public void testOutgoingVideoCallCanceledCheckVideoHistory() throws Exception {
+         IdPair ids = startOutgoingPhoneCall("650-555-1212", mPhoneAccountA0.getAccountHandle(),
+                 mConnectionServiceFixtureA, Process.myUserHandle(),
+-                VideoProfile.STATE_BIDIRECTIONAL);
++                VideoProfile.STATE_BIDIRECTIONAL, null);
+         com.android.server.telecom.Call call = mTelecomSystem.getCallsManager().getCalls()
+                 .iterator().next();
+ 
+         mConnectionServiceFixtureA.sendSetDisconnected(ids.mConnectionId, DisconnectCause.LOCAL);
+ 
+         assertTrue(VideoProfile.isVideo(call.getVideoStateHistory()));
+     }
+@@ -215,15 +215,15 @@ public class VideoCallTests extends TelecomSystemTest {
+      * video calling. This is important for the call log.
+      */
+     @LargeTest
+     @Test
+     public void testOutgoingVideoCallRejectedCheckVideoHistory() throws Exception {
+         IdPair ids = startOutgoingPhoneCall("650-555-1212", mPhoneAccountA0.getAccountHandle(),
+                 mConnectionServiceFixtureA, Process.myUserHandle(),
+-                VideoProfile.STATE_BIDIRECTIONAL);
++                VideoProfile.STATE_BIDIRECTIONAL, null);
+         com.android.server.telecom.Call call = mTelecomSystem.getCallsManager().getCalls()
+                 .iterator().next();
+ 
+         mConnectionServiceFixtureA.sendSetDisconnected(ids.mConnectionId, DisconnectCause.REMOTE);
+ 
+         assertTrue(VideoProfile.isVideo(call.getVideoStateHistory()));
+     }
+@@ -233,15 +233,15 @@ public class VideoCallTests extends TelecomSystemTest {
+      * shows that the call was audio only. This is important for the call log.
+      */
+     @LargeTest
+     @Test
+     public void testOutgoingVideoCallAnsweredAsAudio() throws Exception {
+         IdPair ids = startOutgoingPhoneCall("650-555-1212", mPhoneAccountA0.getAccountHandle(),
+                 mConnectionServiceFixtureA, Process.myUserHandle(),
+-                VideoProfile.STATE_BIDIRECTIONAL);
++                VideoProfile.STATE_BIDIRECTIONAL, null);
+         com.android.server.telecom.Call call = mTelecomSystem.getCallsManager().getCalls()
+                 .iterator().next();
+ 
+         mConnectionServiceFixtureA.mConnectionById.get(ids.mConnectionId).videoState
+                 = VideoProfile.STATE_AUDIO_ONLY;
+         mConnectionServiceFixtureA.sendSetVideoState(ids.mConnectionId);
+         mConnectionServiceFixtureA.sendSetActive(ids.mConnectionId);

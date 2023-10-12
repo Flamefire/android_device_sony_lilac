@@ -1,0 +1,177 @@
+# PWD: external/libxml2
+diff --git a/xmlregexp.c b/xmlregexp.c
+index d255fbf0..6234a879 100644
+--- a/xmlregexp.c
++++ b/xmlregexp.c
+@@ -1637,14 +1637,16 @@ xmlFAGenerateTransitions(xmlRegParserCtxtPtr ctxt, xmlRegStatePtr from,
+ 		    copy->max = 0;
+ 
+ 		    if (xmlFAGenerateTransitions(ctxt, atom->start, NULL, copy)
+ 		        < 0)
+ 			return(-1);
+ 		    inter = ctxt->state;
+ 		    counter = xmlRegGetCounter(ctxt);
++                    if (counter < 0)
++                        return(-1);
+ 		    ctxt->counters[counter].min = atom->min - 1;
+ 		    ctxt->counters[counter].max = atom->max - 1;
+ 		    /* count the number of times we see it again */
+ 		    xmlFAGenerateCountedEpsilonTransition(ctxt, inter,
+ 						   atom->stop, counter);
+ 		    /* allow a way out based on the count */
+ 		    xmlFAGenerateCountedTransition(ctxt, inter,
+@@ -1655,14 +1657,16 @@ xmlFAGenerateTransitions(xmlRegParserCtxtPtr ctxt, xmlRegStatePtr from,
+ 		} else {
+ 		    /*
+ 		     * either we need the atom at least once or there
+ 		     * is an atom->start0 allowing to easilly plug the
+ 		     * epsilon transition.
+ 		     */
+ 		    counter = xmlRegGetCounter(ctxt);
++                    if (counter < 0)
++                        return(-1);
+ 		    ctxt->counters[counter].min = atom->min - 1;
+ 		    ctxt->counters[counter].max = atom->max - 1;
+ 		    /* count the number of times we see it again */
+ 		    xmlFAGenerateCountedEpsilonTransition(ctxt, atom->stop,
+ 						   atom->start, counter);
+ 		    /* allow a way out based on the count */
+ 		    xmlFAGenerateCountedTransition(ctxt, atom->stop,
+@@ -5920,14 +5924,16 @@ xmlAutomataNewCountTrans2(xmlAutomataPtr am, xmlAutomataStatePtr from,
+ 	atom->min = min;
+     atom->max = max;
+ 
+     /*
+      * associate a counter to the transition.
+      */
+     counter = xmlRegGetCounter(am);
++    if (counter < 0)
++        goto error;
+     am->counters[counter].min = min;
+     am->counters[counter].max = max;
+ 
+     /* xmlFAGenerateTransitions(am, from, to, atom); */
+     if (to == NULL) {
+         to = xmlRegNewState(am);
+ 	xmlRegStatePush(am, to);
+@@ -5939,14 +5945,18 @@ xmlAutomataNewCountTrans2(xmlAutomataPtr am, xmlAutomataStatePtr from,
+     if (to == NULL)
+ 	to = am->state;
+     if (to == NULL)
+ 	return(NULL);
+     if (min == 0)
+ 	xmlFAGenerateEpsilonTransition(am, from, to);
+     return(to);
++
++error:
++    xmlRegFreeAtom(atom);
++    return(NULL);
+ }
+ 
+ /**
+  * xmlAutomataNewCountTrans:
+  * @am: an automata
+  * @from: the starting point of the transition
+  * @to: the target point of the transition or NULL
+@@ -5986,14 +5996,16 @@ xmlAutomataNewCountTrans(xmlAutomataPtr am, xmlAutomataStatePtr from,
+ 	atom->min = min;
+     atom->max = max;
+ 
+     /*
+      * associate a counter to the transition.
+      */
+     counter = xmlRegGetCounter(am);
++    if (counter < 0)
++        goto error;
+     am->counters[counter].min = min;
+     am->counters[counter].max = max;
+ 
+     /* xmlFAGenerateTransitions(am, from, to, atom); */
+     if (to == NULL) {
+         to = xmlRegNewState(am);
+ 	xmlRegStatePush(am, to);
+@@ -6005,14 +6017,18 @@ xmlAutomataNewCountTrans(xmlAutomataPtr am, xmlAutomataStatePtr from,
+     if (to == NULL)
+ 	to = am->state;
+     if (to == NULL)
+ 	return(NULL);
+     if (min == 0)
+ 	xmlFAGenerateEpsilonTransition(am, from, to);
+     return(to);
++
++error:
++    xmlRegFreeAtom(atom);
++    return(NULL);
+ }
+ 
+ /**
+  * xmlAutomataNewOnceTrans2:
+  * @am: an automata
+  * @from: the starting point of the transition
+  * @to: the target point of the transition or NULL
+@@ -6072,26 +6088,32 @@ xmlAutomataNewOnceTrans2(xmlAutomataPtr am, xmlAutomataStatePtr from,
+     atom->quant = XML_REGEXP_QUANT_ONCEONLY;
+     atom->min = min;
+     atom->max = max;
+     /*
+      * associate a counter to the transition.
+      */
+     counter = xmlRegGetCounter(am);
++    if (counter < 0)
++        goto error;
+     am->counters[counter].min = 1;
+     am->counters[counter].max = 1;
+ 
+     /* xmlFAGenerateTransitions(am, from, to, atom); */
+     if (to == NULL) {
+ 	to = xmlRegNewState(am);
+ 	xmlRegStatePush(am, to);
+     }
+     xmlRegStateAddTrans(am, from, atom, to, counter, -1);
+     xmlRegAtomPush(am, atom);
+     am->state = to;
+     return(to);
++
++error:
++    xmlRegFreeAtom(atom);
++    return(NULL);
+ }
+ 
+ 
+ 
+ /**
+  * xmlAutomataNewOnceTrans:
+  * @am: an automata
+@@ -6131,26 +6153,32 @@ xmlAutomataNewOnceTrans(xmlAutomataPtr am, xmlAutomataStatePtr from,
+     atom->quant = XML_REGEXP_QUANT_ONCEONLY;
+     atom->min = min;
+     atom->max = max;
+     /*
+      * associate a counter to the transition.
+      */
+     counter = xmlRegGetCounter(am);
++    if (counter < 0)
++        goto error;
+     am->counters[counter].min = 1;
+     am->counters[counter].max = 1;
+ 
+     /* xmlFAGenerateTransitions(am, from, to, atom); */
+     if (to == NULL) {
+ 	to = xmlRegNewState(am);
+ 	xmlRegStatePush(am, to);
+     }
+     xmlRegStateAddTrans(am, from, atom, to, counter, -1);
+     xmlRegAtomPush(am, atom);
+     am->state = to;
+     return(to);
++
++error:
++    xmlRegFreeAtom(atom);
++    return(NULL);
+ }
+ 
+ /**
+  * xmlAutomataNewState:
+  * @am: an automata
+  *
+  * Create a new disconnected state in the automata

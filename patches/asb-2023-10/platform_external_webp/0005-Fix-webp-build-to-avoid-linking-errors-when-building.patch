@@ -1,0 +1,66 @@
+From 274b503b5da0eb515cca12280a544d10f2e96cb6 Mon Sep 17 00:00:00 2001
+From: Jerome Gaillard <jgaillard@google.com>
+Date: Fri, 31 Jan 2020 17:21:27 +0000
+Subject: [PATCH 5/6] Fix webp build to avoid linking errors when building on
+ mac
+
+This modifies the definitions of libwebp-decode and libwebp-encode to
+match the definitions used in the upstream version of Skia. This avoids
+linking errors on mac when trying to link both libraries, as it puts the
+alpha processing files only in the decode library.
+
+Test: build and link both libraries into a third shared library on mac
+Change-Id: Ib2846f08e1ed6eed93bc67a031f49d0c41ff08b6
+---
+ Android.bp | 15 ++-------------
+ 1 file changed, 2 insertions(+), 13 deletions(-)
+
+diff --git a/Android.bp b/Android.bp
+index d7e0eb0..2221950 100644
+--- a/Android.bp
++++ b/Android.bp
+@@ -32,11 +32,6 @@ cc_library_static {
+     name: "libwebp-encode",
+     host_supported: true,
+     srcs: [
+-        "src/dsp/alpha_processing.c",
+-        "src/dsp/alpha_processing_mips_dsp_r2.c",
+-        "src/dsp/alpha_processing_neon.c",
+-        "src/dsp/alpha_processing_sse2.c",
+-        "src/dsp/alpha_processing_sse41.c",
+         "src/dsp/cost.c",
+         "src/dsp/cost_mips32.c",
+         "src/dsp/cost_mips_dsp_r2.c",
+@@ -86,17 +81,9 @@ cc_library_static {
+         "src/mux/muxedit.c",
+         "src/mux/muxinternal.c",
+         "src/mux/muxread.c",
+-        "src/utils/bit_reader_utils.c",
+         "src/utils/bit_writer_utils.c",
+-        "src/utils/color_cache_utils.c",
+-        "src/utils/filters_utils.c",
+         "src/utils/huffman_encode_utils.c",
+-        "src/utils/huffman_utils.c",
+         "src/utils/quant_levels_utils.c",
+-        "src/utils/random_utils.c",
+-        "src/utils/rescaler_utils.c",
+-        "src/utils/thread_utils.c",
+-        "src/utils/utils.c",
+     ],
+ 
+     arch: {
+@@ -143,9 +130,11 @@ cc_library_static {
+         "src/dec/vp8_dec.c",
+         "src/dec/vp8l_dec.c",
+         "src/dec/webp_dec.c",
++        "src/demux/anim_decode.c",
+         "src/demux/demux.c",
+         "src/dsp/alpha_processing.c",
+         "src/dsp/alpha_processing_mips_dsp_r2.c",
++        "src/dsp/alpha_processing_neon.c",
+         "src/dsp/alpha_processing_sse2.c",
+         "src/dsp/alpha_processing_sse41.c",
+         "src/dsp/cpu.c",
+-- 
+2.40.1
+

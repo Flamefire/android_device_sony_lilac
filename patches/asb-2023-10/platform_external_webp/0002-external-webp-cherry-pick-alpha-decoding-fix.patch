@@ -1,0 +1,87 @@
+From 184566507cb973cda503bcdd1b61bc5ca86ac3cd Mon Sep 17 00:00:00 2001
+From: James Zern <jzern@google.com>
+Date: Tue, 3 Sep 2019 23:30:46 -0700
+Subject: [PATCH 2/6] external/webp: cherry-pick alpha decoding fix
+
+this is fairly rare and tends to happen with uncommon encoder settings.
+original commit message:
+
+bugfix: last alpha rows were incorrectly decoded
+
+sometimes, the last rows of the alpha plane contain more than NUM_ARGB_CACHE_ROWS
+rows to process. But ExtractAlphaRows() was repeatedly calling ApplyInverseTransforms()
+without updating the dec->last_row_ field, which is the starting row used as starting
+point.
+
+Fix would consist of either updating correctly dec->last_row_ before calling
+ApplyInverseTransforms(). Or pass the starting row explicitly, which is simpler.
+
+BUG=crbug.com/webp/439
+Test: aosp_arm-eng aosp_arm64-eng aosp_x86-eng aosp_x86_64-eng aosp_crosshatch-userdebug build
+
+Change-Id: I02a4c701c94e2e85d7728da41ffaa5b34d1a1b26
+---
+ README.android     |  1 +
+ src/dec/vp8l_dec.c | 10 +++++-----
+ 2 files changed, 6 insertions(+), 5 deletions(-)
+
+diff --git a/README.android b/README.android
+index 0aaa221..9c49f0f 100644
+--- a/README.android
++++ b/README.android
+@@ -8,6 +8,7 @@ Local modifications:
+   (e.g. bits.h) to leak into
+ - Removed build files necessary for building via autoconf/automake tools
+   These files are not required to build via Android.bp
++- cherry-pick 0e48d889 bugfix: last alpha rows were incorrectly decoded
+ 
+ The Android.bp file creates WebP decoder and encoder static libraries which
+ can be added to any application by adding libwebp-decode and libwebp-encode to
+diff --git a/src/dec/vp8l_dec.c b/src/dec/vp8l_dec.c
+index d3e2711..93615d4 100644
+--- a/src/dec/vp8l_dec.c
++++ b/src/dec/vp8l_dec.c
+@@ -754,11 +754,11 @@ static WEBP_INLINE HTreeGroup* GetHtreeGroupForPos(VP8LMetadata* const hdr,
+ 
+ typedef void (*ProcessRowsFunc)(VP8LDecoder* const dec, int row);
+ 
+-static void ApplyInverseTransforms(VP8LDecoder* const dec, int num_rows,
++static void ApplyInverseTransforms(VP8LDecoder* const dec,
++                                   int start_row, int num_rows,
+                                    const uint32_t* const rows) {
+   int n = dec->next_transform_;
+   const int cache_pixs = dec->width_ * num_rows;
+-  const int start_row = dec->last_row_;
+   const int end_row = start_row + num_rows;
+   const uint32_t* rows_in = rows;
+   uint32_t* const rows_out = dec->argb_cache_;
+@@ -789,8 +789,7 @@ static void ProcessRows(VP8LDecoder* const dec, int row) {
+     VP8Io* const io = dec->io_;
+     uint8_t* rows_data = (uint8_t*)dec->argb_cache_;
+     const int in_stride = io->width * sizeof(uint32_t);  // in unit of RGBA
+-
+-    ApplyInverseTransforms(dec, num_rows, rows);
++    ApplyInverseTransforms(dec, dec->last_row_, num_rows, rows);
+     if (!SetCropWindow(io, dec->last_row_, row, &rows_data, in_stride)) {
+       // Nothing to output (this time).
+     } else {
+@@ -1193,6 +1192,7 @@ static int DecodeImageData(VP8LDecoder* const dec, uint32_t* const data,
+       VP8LFillBitWindow(br);
+       dist_code = GetCopyDistance(dist_symbol, br);
+       dist = PlaneCodeToDistance(width, dist_code);
++
+       if (VP8LIsEndOfStream(br)) break;
+       if (src - data < (ptrdiff_t)dist || src_end - src < (ptrdiff_t)length) {
+         goto Error;
+@@ -1553,7 +1553,7 @@ static void ExtractAlphaRows(VP8LDecoder* const dec, int last_row) {
+     const int cache_pixs = width * num_rows_to_process;
+     uint8_t* const dst = output + width * cur_row;
+     const uint32_t* const src = dec->argb_cache_;
+-    ApplyInverseTransforms(dec, num_rows_to_process, in);
++    ApplyInverseTransforms(dec, cur_row, num_rows_to_process, in);
+     WebPExtractGreen(src, dst, cache_pixs);
+     AlphaApplyFilter(alph_dec,
+                      cur_row, cur_row + num_rows_to_process, dst, width);
+-- 
+2.40.1
+

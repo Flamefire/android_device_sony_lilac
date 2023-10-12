@@ -1,0 +1,44 @@
+From ff28dd8216d888a748880911b287eb28be1663b1 Mon Sep 17 00:00:00 2001
+From: James Zern <jzern@google.com>
+Date: Fri, 26 Jul 2019 23:28:07 -0700
+Subject: [PATCH 4/6] external/webp: enable WEBP_USE_THREAD
+
+this serializes dsp function pointer initialization avoiding the
+potential for multiple initialization or code reordering in the
+non-threaded case. if the latter were to occur there would be a race
+condition where the pointers had the potential to be uninitialized,
+resulting in a crash.
+
+Test: aosp_arm-eng aosp_arm64-eng aosp_x86-eng aosp_x86_64-eng
+      aosp_crosshatch-userdebug build
+
+Bug: https://crbug.com/webp/419
+Bug: b/139274551
+Change-Id: Iaecdf4718820d304d216fc7583ef2b0130a64e9a
+---
+ Android.bp | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/Android.bp b/Android.bp
+index ec57ba7..d7e0eb0 100644
+--- a/Android.bp
++++ b/Android.bp
+@@ -109,6 +109,7 @@ cc_library_static {
+         "-O2",
+         "-DANDROID",
+         "-DWEBP_SWAP_16BIT_CSP",
++        "-DWEBP_USE_THREAD",
+         "-Wall",
+         "-Werror",
+     ],
+@@ -205,6 +206,7 @@ cc_library_static {
+         "-O2",
+         "-DANDROID",
+         "-DWEBP_SWAP_16BIT_CSP",
++        "-DWEBP_USE_THREAD",
+         "-Wall",
+         "-Werror",
+     ],
+-- 
+2.40.1
+

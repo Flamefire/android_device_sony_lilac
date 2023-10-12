@@ -1,0 +1,946 @@
+From f74488068b94bde70cabcdc88c34e1bae487bf56 Mon Sep 17 00:00:00 2001
+From: James Zern <jzern@google.com>
+Date: Thu, 26 Dec 2019 11:55:52 -0800
+Subject: [PATCH 3/6] external/webp: update to 1.1.0
+
+from the NEWS file:
+- 12/18/2019: version 1.1.0
+  * API changes:
+    - libwebp:
+      WebPMalloc (issue #442)
+    - extras:
+      WebPUnmultiplyARGB
+  * alpha decode fix (issue #439)
+  * toolchain updates and bug fixes
+    (chromium: #1026858, #1027136, #1027409, #1028620, #1028716, #995200)
+    (oss-fuzz: #19430, #19447)
+
+Bug: https://crbug.com/webp/441
+Test: aosp_arm-eng aosp_arm64-eng aosp_x86-eng aosp_x86_64-eng
+      aosp_crosshatch-userdebug build
+Change-Id: I9c705d4e365e685aa05b922dac05bab00391569b
+---
+ README                        |  2 +-
+ README.android                |  3 +--
+ README.version                |  4 ++--
+ include/webp/decode.h         |  5 +----
+ include/webp/encode.h         |  9 +++------
+ include/webp/mux.h            | 12 ++++++------
+ include/webp/mux_types.h      | 10 +++++-----
+ include/webp/types.h          | 18 +++++++++++++++++-
+ src/dec/frame_dec.c           |  2 +-
+ src/dec/idec_dec.c            | 11 ++++++++---
+ src/dec/vp8i_dec.h            |  4 ++--
+ src/dec/vp8li_dec.h           | 20 ++++++++++----------
+ src/demux/demux.c             |  4 ++--
+ src/dsp/dec_neon.c            |  9 ++++++++-
+ src/dsp/dsp.h                 |  4 ++--
+ src/dsp/lossless.c            | 11 ++++++++---
+ src/dsp/lossless_common.h     |  2 ++
+ src/dsp/lossless_enc_sse2.c   |  3 ++-
+ src/dsp/lossless_sse2.c       |  3 ++-
+ src/dsp/upsampling_msa.c      |  4 ++--
+ src/dsp/upsampling_neon.c     | 14 +++++++-------
+ src/enc/histogram_enc.c       |  2 +-
+ src/enc/picture_csp_enc.c     | 18 +++++++++++-------
+ src/enc/vp8i_enc.h            |  6 +++---
+ src/mux/muxi.h                |  4 ++--
+ src/mux/muxread.c             |  2 +-
+ src/utils/color_cache_utils.h |  2 +-
+ src/utils/thread_utils.c      |  2 +-
+ src/utils/utils.c             |  9 +++++++--
+ src/webp/decode.h             |  5 +----
+ src/webp/encode.h             |  9 +++------
+ src/webp/mux.h                | 12 ++++++------
+ src/webp/mux_types.h          | 10 +++++-----
+ src/webp/types.h              | 18 +++++++++++++++++-
+ 34 files changed, 151 insertions(+), 102 deletions(-)
+
+diff --git a/README b/README
+index 60da8a2..0592727 100644
+--- a/README
++++ b/README
+@@ -4,7 +4,7 @@
+           \__\__/\____/\_____/__/ ____  ___
+                 / _/ /    \    \ /  _ \/ _/
+                /  \_/   / /   \ \   __/  \__
+-               \____/____/\_____/_____/____/v1.0.3
++               \____/____/\_____/_____/____/v1.1.0
+ 
+ Description:
+ ============
+diff --git a/README.android b/README.android
+index 9c49f0f..94fd4d4 100644
+--- a/README.android
++++ b/README.android
+@@ -1,5 +1,5 @@
+ URL: https://chromium.googlesource.com/webm/libwebp
+-Version: v1.0.3
++Version: v1.1.0
+ License: Google BSD like
+ 
+ Local modifications:
+@@ -8,7 +8,6 @@ Local modifications:
+   (e.g. bits.h) to leak into
+ - Removed build files necessary for building via autoconf/automake tools
+   These files are not required to build via Android.bp
+-- cherry-pick 0e48d889 bugfix: last alpha rows were incorrectly decoded
+ 
+ The Android.bp file creates WebP decoder and encoder static libraries which
+ can be added to any application by adding libwebp-decode and libwebp-encode to
+diff --git a/README.version b/README.version
+index 6fe7274..f94ac05 100644
+--- a/README.version
++++ b/README.version
+@@ -1,3 +1,3 @@
+-URL: https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-1.0.3.tar.gz
+-Version: 1.0.3
++URL: https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-1.1.0.tar.gz
++Version: 1.1.0
+ BugComponent: 20174
+diff --git a/include/webp/decode.h b/include/webp/decode.h
+index ae8bfe8..80dd0ef 100644
+--- a/include/webp/decode.h
++++ b/include/webp/decode.h
+@@ -20,7 +20,7 @@
+ extern "C" {
+ #endif
+ 
+-#define WEBP_DECODER_ABI_VERSION 0x0208    // MAJOR(8b) + MINOR(8b)
++#define WEBP_DECODER_ABI_VERSION 0x0209    // MAJOR(8b) + MINOR(8b)
+ 
+ // Note: forward declaring enumerations is not allowed in (strict) C and C++,
+ // the types are left here for reference.
+@@ -91,9 +91,6 @@ WEBP_EXTERN uint8_t* WebPDecodeYUV(const uint8_t* data, size_t data_size,
+                                    uint8_t** u, uint8_t** v,
+                                    int* stride, int* uv_stride);
+ 
+-// Releases memory returned by the WebPDecode*() functions above.
+-WEBP_EXTERN void WebPFree(void* ptr);
+-
+ // These five functions are variants of the above ones, that decode the image
+ // directly into a pre-allocated buffer 'output_buffer'. The maximum storage
+ // available in this buffer is indicated by 'output_buffer_size'. If this
+diff --git a/include/webp/encode.h b/include/webp/encode.h
+index 339f881..655166e 100644
+--- a/include/webp/encode.h
++++ b/include/webp/encode.h
+@@ -20,7 +20,7 @@
+ extern "C" {
+ #endif
+ 
+-#define WEBP_ENCODER_ABI_VERSION 0x020e    // MAJOR(8b) + MINOR(8b)
++#define WEBP_ENCODER_ABI_VERSION 0x020f    // MAJOR(8b) + MINOR(8b)
+ 
+ // Note: forward declaring enumerations is not allowed in (strict) C and C++,
+ // the types are left here for reference.
+@@ -79,9 +79,6 @@ WEBP_EXTERN size_t WebPEncodeLosslessBGRA(const uint8_t* bgra,
+                                           int width, int height, int stride,
+                                           uint8_t** output);
+ 
+-// Releases memory returned by the WebPEncode*() functions above.
+-WEBP_EXTERN void WebPFree(void* ptr);
+-
+ //------------------------------------------------------------------------------
+ // Coding parameters
+ 
+@@ -306,7 +303,7 @@ struct WebPPicture {
+   // YUV input (mostly used for input to lossy compression)
+   WebPEncCSP colorspace;     // colorspace: should be YUV420 for now (=Y'CbCr).
+   int width, height;         // dimensions (less or equal to WEBP_MAX_DIMENSION)
+-  uint8_t *y, *u, *v;        // pointers to luma/chroma planes.
++  uint8_t* y, *u, *v;        // pointers to luma/chroma planes.
+   int y_stride, uv_stride;   // luma/chroma strides.
+   uint8_t* a;                // pointer to the alpha plane
+   int a_stride;              // stride of the alpha plane
+@@ -350,7 +347,7 @@ struct WebPPicture {
+   uint32_t pad3[3];       // padding for later use
+ 
+   // Unused for now
+-  uint8_t *pad4, *pad5;
++  uint8_t* pad4, *pad5;
+   uint32_t pad6[8];       // padding for later use
+ 
+   // PRIVATE FIELDS
+diff --git a/include/webp/mux.h b/include/webp/mux.h
+index 66096a9..7d27489 100644
+--- a/include/webp/mux.h
++++ b/include/webp/mux.h
+@@ -57,7 +57,7 @@ extern "C" {
+   WebPMuxGetChunk(mux, "ICCP", &icc_profile);
+   // ... (Consume icc_data).
+   WebPMuxDelete(mux);
+-  free(data);
++  WebPFree(data);
+ */
+ 
+ // Note: forward declaring enumerations is not allowed in (strict) C and C++,
+@@ -245,7 +245,7 @@ WEBP_EXTERN WebPMuxError WebPMuxPushFrame(
+     WebPMux* mux, const WebPMuxFrameInfo* frame, int copy_data);
+ 
+ // Gets the nth frame from the mux object.
+-// The content of 'frame->bitstream' is allocated using malloc(), and NOT
++// The content of 'frame->bitstream' is allocated using WebPMalloc(), and NOT
+ // owned by the 'mux' object. It MUST be deallocated by the caller by calling
+ // WebPDataClear().
+ // nth=0 has a special meaning - last position.
+@@ -376,10 +376,10 @@ WEBP_EXTERN WebPMuxError WebPMuxNumChunks(const WebPMux* mux,
+ // Assembles all chunks in WebP RIFF format and returns in 'assembled_data'.
+ // This function also validates the mux object.
+ // Note: The content of 'assembled_data' will be ignored and overwritten.
+-// Also, the content of 'assembled_data' is allocated using malloc(), and NOT
+-// owned by the 'mux' object. It MUST be deallocated by the caller by calling
+-// WebPDataClear(). It's always safe to call WebPDataClear() upon return,
+-// even in case of error.
++// Also, the content of 'assembled_data' is allocated using WebPMalloc(), and
++// NOT owned by the 'mux' object. It MUST be deallocated by the caller by
++// calling WebPDataClear(). It's always safe to call WebPDataClear() upon
++// return, even in case of error.
+ // Parameters:
+ //   mux - (in/out) object whose chunks are to be assembled
+ //   assembled_data - (out) assembled WebP data
+diff --git a/include/webp/mux_types.h b/include/webp/mux_types.h
+index ceea77d..2fe8195 100644
+--- a/include/webp/mux_types.h
++++ b/include/webp/mux_types.h
+@@ -14,7 +14,6 @@
+ #ifndef WEBP_WEBP_MUX_TYPES_H_
+ #define WEBP_WEBP_MUX_TYPES_H_
+ 
+-#include <stdlib.h>  // free()
+ #include <string.h>  // memset()
+ #include "./types.h"
+ 
+@@ -56,6 +55,7 @@ typedef enum WebPMuxAnimBlend {
+ 
+ // Data type used to describe 'raw' data, e.g., chunk data
+ // (ICC profile, metadata) and WebP compressed image data.
++// 'bytes' memory must be allocated using WebPMalloc() and such.
+ struct WebPData {
+   const uint8_t* bytes;
+   size_t size;
+@@ -68,11 +68,11 @@ static WEBP_INLINE void WebPDataInit(WebPData* webp_data) {
+   }
+ }
+ 
+-// Clears the contents of the 'webp_data' object by calling free(). Does not
+-// deallocate the object itself.
++// Clears the contents of the 'webp_data' object by calling WebPFree().
++// Does not deallocate the object itself.
+ static WEBP_INLINE void WebPDataClear(WebPData* webp_data) {
+   if (webp_data != NULL) {
+-    free((void*)webp_data->bytes);
++    WebPFree((void*)webp_data->bytes);
+     WebPDataInit(webp_data);
+   }
+ }
+@@ -83,7 +83,7 @@ static WEBP_INLINE int WebPDataCopy(const WebPData* src, WebPData* dst) {
+   if (src == NULL || dst == NULL) return 0;
+   WebPDataInit(dst);
+   if (src->bytes != NULL && src->size != 0) {
+-    dst->bytes = (uint8_t*)malloc(src->size);
++    dst->bytes = (uint8_t*)WebPMalloc(src->size);
+     if (dst->bytes == NULL) return 0;
+     memcpy((void*)dst->bytes, src->bytes, src->size);
+     dst->size = src->size;
+diff --git a/include/webp/types.h b/include/webp/types.h
+index 0ce2622..47f7f2b 100644
+--- a/include/webp/types.h
++++ b/include/webp/types.h
+@@ -7,7 +7,7 @@
+ // be found in the AUTHORS file in the root of the source tree.
+ // -----------------------------------------------------------------------------
+ //
+-//  Common types
++//  Common types + memory wrappers
+ //
+ // Author: Skal (pascal.massimino@gmail.com)
+ 
+@@ -49,4 +49,20 @@ typedef long long int int64_t;
+ // Macro to check ABI compatibility (same major revision number)
+ #define WEBP_ABI_IS_INCOMPATIBLE(a, b) (((a) >> 8) != ((b) >> 8))
+ 
++#ifdef __cplusplus
++extern "C" {
++#endif
++
++// Allocates 'size' bytes of memory. Returns NULL upon error. Memory
++// must be deallocated by calling WebPFree(). This function is made available
++// by the core 'libwebp' library.
++WEBP_EXTERN void* WebPMalloc(size_t size);
++
++// Releases memory returned by the WebPDecode*() functions (from decode.h).
++WEBP_EXTERN void WebPFree(void* ptr);
++
++#ifdef __cplusplus
++}    // extern "C"
++#endif
++
+ #endif  // WEBP_WEBP_TYPES_H_
+diff --git a/src/dec/frame_dec.c b/src/dec/frame_dec.c
+index bda9e1a..04609a8 100644
+--- a/src/dec/frame_dec.c
++++ b/src/dec/frame_dec.c
+@@ -732,7 +732,7 @@ static int AllocateMemory(VP8Decoder* const dec) {
+   mem += f_info_size;
+   dec->thread_ctx_.id_ = 0;
+   dec->thread_ctx_.f_info_ = dec->f_info_;
+-  if (dec->mt_method_ > 0) {
++  if (dec->filter_type_ > 0 && dec->mt_method_ > 0) {
+     // secondary cache line. The deblocking process need to make use of the
+     // filtering strength from previous macroblock row, while the new ones
+     // are being decoded in parallel. We'll just swap the pointers.
+diff --git a/src/dec/idec_dec.c b/src/dec/idec_dec.c
+index 9bc9166..9035df5 100644
+--- a/src/dec/idec_dec.c
++++ b/src/dec/idec_dec.c
+@@ -166,9 +166,11 @@ static int AppendToMemBuffer(WebPIDecoder* const idec,
+   VP8Decoder* const dec = (VP8Decoder*)idec->dec_;
+   MemBuffer* const mem = &idec->mem_;
+   const int need_compressed_alpha = NeedCompressedAlpha(idec);
+-  const uint8_t* const old_start = mem->buf_ + mem->start_;
++  const uint8_t* const old_start =
++      (mem->buf_ == NULL) ? NULL : mem->buf_ + mem->start_;
+   const uint8_t* const old_base =
+       need_compressed_alpha ? dec->alpha_data_ : old_start;
++  assert(mem->buf_ != NULL || mem->start_ == 0);
+   assert(mem->mode_ == MEM_MODE_APPEND);
+   if (data_size > MAX_CHUNK_PAYLOAD) {
+     // security safeguard: trying to allocate more than what the format
+@@ -184,7 +186,7 @@ static int AppendToMemBuffer(WebPIDecoder* const idec,
+     uint8_t* const new_buf =
+         (uint8_t*)WebPSafeMalloc(extra_size, sizeof(*new_buf));
+     if (new_buf == NULL) return 0;
+-    memcpy(new_buf, old_base, current_size);
++    if (old_base != NULL) memcpy(new_buf, old_base, current_size);
+     WebPSafeFree(mem->buf_);
+     mem->buf_ = new_buf;
+     mem->buf_size_ = (size_t)extra_size;
+@@ -192,6 +194,7 @@ static int AppendToMemBuffer(WebPIDecoder* const idec,
+     mem->end_ = current_size;
+   }
+ 
++  assert(mem->buf_ != NULL);
+   memcpy(mem->buf_ + mem->end_, data, data_size);
+   mem->end_ += data_size;
+   assert(mem->end_ <= mem->buf_size_);
+@@ -204,7 +207,9 @@ static int RemapMemBuffer(WebPIDecoder* const idec,
+                           const uint8_t* const data, size_t data_size) {
+   MemBuffer* const mem = &idec->mem_;
+   const uint8_t* const old_buf = mem->buf_;
+-  const uint8_t* const old_start = old_buf + mem->start_;
++  const uint8_t* const old_start =
++      (old_buf == NULL) ? NULL : old_buf + mem->start_;
++  assert(old_buf != NULL || mem->start_ == 0);
+   assert(mem->mode_ == MEM_MODE_MAP);
+ 
+   if (data_size < mem->buf_size_) return 0;  // can't remap to a shorter buffer!
+diff --git a/src/dec/vp8i_dec.h b/src/dec/vp8i_dec.h
+index 3de8d86..600a684 100644
+--- a/src/dec/vp8i_dec.h
++++ b/src/dec/vp8i_dec.h
+@@ -31,8 +31,8 @@ extern "C" {
+ 
+ // version numbers
+ #define DEC_MAJ_VERSION 1
+-#define DEC_MIN_VERSION 0
+-#define DEC_REV_VERSION 3
++#define DEC_MIN_VERSION 1
++#define DEC_REV_VERSION 0
+ 
+ // YUV-cache parameters. Cache is 32-bytes wide (= one cacheline).
+ // Constraints are: We need to store one 16x16 block of luma samples (y),
+diff --git a/src/dec/vp8li_dec.h b/src/dec/vp8li_dec.h
+index 0a4d613..72b2e86 100644
+--- a/src/dec/vp8li_dec.h
++++ b/src/dec/vp8li_dec.h
+@@ -37,7 +37,7 @@ struct VP8LTransform {
+   int                    bits_;   // subsampling bits defining transform window.
+   int                    xsize_;  // transform window X index.
+   int                    ysize_;  // transform window Y index.
+-  uint32_t              *data_;   // transform data.
++  uint32_t*              data_;   // transform data.
+ };
+ 
+ typedef struct {
+@@ -48,23 +48,23 @@ typedef struct {
+   int             huffman_mask_;
+   int             huffman_subsample_bits_;
+   int             huffman_xsize_;
+-  uint32_t       *huffman_image_;
++  uint32_t*       huffman_image_;
+   int             num_htree_groups_;
+-  HTreeGroup     *htree_groups_;
+-  HuffmanCode    *huffman_tables_;
++  HTreeGroup*     htree_groups_;
++  HuffmanCode*    huffman_tables_;
+ } VP8LMetadata;
+ 
+ typedef struct VP8LDecoder VP8LDecoder;
+ struct VP8LDecoder {
+   VP8StatusCode    status_;
+   VP8LDecodeState  state_;
+-  VP8Io           *io_;
++  VP8Io*           io_;
+ 
+-  const WebPDecBuffer *output_;    // shortcut to io->opaque->output
++  const WebPDecBuffer* output_;    // shortcut to io->opaque->output
+ 
+-  uint32_t        *pixels_;        // Internal data: either uint8_t* for alpha
++  uint32_t*        pixels_;        // Internal data: either uint8_t* for alpha
+                                    // or uint32_t* for BGRA.
+-  uint32_t        *argb_cache_;    // Scratch buffer for temporary BGRA storage.
++  uint32_t*        argb_cache_;    // Scratch buffer for temporary BGRA storage.
+ 
+   VP8LBitReader    br_;
+   int              incremental_;   // if true, incremental decoding is expected
+@@ -86,8 +86,8 @@ struct VP8LDecoder {
+   // or'd bitset storing the transforms types.
+   uint32_t         transforms_seen_;
+ 
+-  uint8_t         *rescaler_memory;  // Working memory for rescaling work.
+-  WebPRescaler    *rescaler;         // Common rescaler for all channels.
++  uint8_t*         rescaler_memory;  // Working memory for rescaling work.
++  WebPRescaler*    rescaler;         // Common rescaler for all channels.
+ };
+ 
+ //------------------------------------------------------------------------------
+diff --git a/src/demux/demux.c b/src/demux/demux.c
+index ab6433e..1b3cc2e 100644
+--- a/src/demux/demux.c
++++ b/src/demux/demux.c
+@@ -24,8 +24,8 @@
+ #include "src/webp/format_constants.h"
+ 
+ #define DMUX_MAJ_VERSION 1
+-#define DMUX_MIN_VERSION 0
+-#define DMUX_REV_VERSION 3
++#define DMUX_MIN_VERSION 1
++#define DMUX_REV_VERSION 0
+ 
+ typedef struct {
+   size_t start_;        // start location of the data
+diff --git a/src/dsp/dec_neon.c b/src/dsp/dec_neon.c
+index ffa697f..239ec41 100644
+--- a/src/dsp/dec_neon.c
++++ b/src/dsp/dec_neon.c
+@@ -1361,7 +1361,8 @@ static void RD4_NEON(uint8_t* dst) {   // Down-right
+   const uint32_t J = dst[-1 + 1 * BPS];
+   const uint32_t K = dst[-1 + 2 * BPS];
+   const uint32_t L = dst[-1 + 3 * BPS];
+-  const uint64x1_t LKJI____ = vcreate_u64(L | (K << 8) | (J << 16) | (I << 24));
++  const uint64x1_t LKJI____ =
++      vcreate_u64((uint64_t)L | (K << 8) | (J << 16) | (I << 24));
+   const uint64x1_t LKJIXABC = vorr_u64(LKJI____, ____XABC);
+   const uint8x8_t KJIXABC_ = vreinterpret_u8_u64(vshr_n_u64(LKJIXABC, 8));
+   const uint8x8_t JIXABC__ = vreinterpret_u8_u64(vshr_n_u64(LKJIXABC, 16));
+@@ -1427,10 +1428,16 @@ static WEBP_INLINE void DC8_NEON(uint8_t* dst, int do_top, int do_left) {
+ 
+   if (do_top) {
+     const uint8x8_t A = vld1_u8(dst - BPS);  // top row
++#if defined(__aarch64__)
++    const uint16x8_t B = vmovl_u8(A);
++    const uint16_t p2 = vaddvq_u16(B);
++    sum_top = vdupq_n_u16(p2);
++#else
+     const uint16x4_t p0 = vpaddl_u8(A);  // cascading summation of the top
+     const uint16x4_t p1 = vpadd_u16(p0, p0);
+     const uint16x4_t p2 = vpadd_u16(p1, p1);
+     sum_top = vcombine_u16(p2, p2);
++#endif
+   }
+ 
+   if (do_left) {
+diff --git a/src/dsp/dsp.h b/src/dsp/dsp.h
+index fafc2d0..a784de3 100644
+--- a/src/dsp/dsp.h
++++ b/src/dsp/dsp.h
+@@ -246,9 +246,9 @@ extern VP8Fdct VP8FTransform2;   // performs two transforms at a time
+ extern VP8WHT VP8FTransformWHT;
+ // Predictions
+ // *dst is the destination block. *top and *left can be NULL.
+-typedef void (*VP8IntraPreds)(uint8_t *dst, const uint8_t* left,
++typedef void (*VP8IntraPreds)(uint8_t* dst, const uint8_t* left,
+                               const uint8_t* top);
+-typedef void (*VP8Intra4Preds)(uint8_t *dst, const uint8_t* top);
++typedef void (*VP8Intra4Preds)(uint8_t* dst, const uint8_t* top);
+ extern VP8Intra4Preds VP8EncPredLuma4;
+ extern VP8IntraPreds VP8EncPredLuma16;
+ extern VP8IntraPreds VP8EncPredChroma8;
+diff --git a/src/dsp/lossless.c b/src/dsp/lossless.c
+index d05af84..aad5f43 100644
+--- a/src/dsp/lossless.c
++++ b/src/dsp/lossless.c
+@@ -81,7 +81,7 @@ static WEBP_INLINE uint32_t ClampedAddSubtractHalf(uint32_t c0, uint32_t c1,
+ 
+ // gcc <= 4.9 on ARM generates incorrect code in Select() when Sub3() is
+ // inlined.
+-#if defined(__arm__) && LOCAL_GCC_VERSION <= 0x409
++#if defined(__arm__) && defined(__GNUC__) && LOCAL_GCC_VERSION <= 0x409
+ # define LOCAL_INLINE __attribute__ ((noinline))
+ #else
+ # define LOCAL_INLINE WEBP_INLINE
+@@ -167,15 +167,20 @@ static uint32_t Predictor13_C(uint32_t left, const uint32_t* const top) {
+   return pred;
+ }
+ 
+-GENERATE_PREDICTOR_ADD(Predictor0_C, PredictorAdd0_C)
++static void PredictorAdd0_C(const uint32_t* in, const uint32_t* upper,
++                            int num_pixels, uint32_t* out) {
++  int x;
++  (void)upper;
++  for (x = 0; x < num_pixels; ++x) out[x] = VP8LAddPixels(in[x], ARGB_BLACK);
++}
+ static void PredictorAdd1_C(const uint32_t* in, const uint32_t* upper,
+                             int num_pixels, uint32_t* out) {
+   int i;
+   uint32_t left = out[-1];
++  (void)upper;
+   for (i = 0; i < num_pixels; ++i) {
+     out[i] = left = VP8LAddPixels(in[i], left);
+   }
+-  (void)upper;
+ }
+ GENERATE_PREDICTOR_ADD(Predictor2_C, PredictorAdd2_C)
+ GENERATE_PREDICTOR_ADD(Predictor3_C, PredictorAdd3_C)
+diff --git a/src/dsp/lossless_common.h b/src/dsp/lossless_common.h
+index a2648d1..9c2ebe6 100644
+--- a/src/dsp/lossless_common.h
++++ b/src/dsp/lossless_common.h
+@@ -177,6 +177,7 @@ uint32_t VP8LSubPixels(uint32_t a, uint32_t b) {
+ static void PREDICTOR_ADD(const uint32_t* in, const uint32_t* upper, \
+                           int num_pixels, uint32_t* out) {           \
+   int x;                                                             \
++  assert(upper != NULL);                                             \
+   for (x = 0; x < num_pixels; ++x) {                                 \
+     const uint32_t pred = (PREDICTOR)(out[x - 1], upper + x);        \
+     out[x] = VP8LAddPixels(in[x], pred);                             \
+@@ -189,6 +190,7 @@ static void PREDICTOR_ADD(const uint32_t* in, const uint32_t* upper, \
+ static void PREDICTOR_SUB(const uint32_t* in, const uint32_t* upper, \
+                           int num_pixels, uint32_t* out) {           \
+   int x;                                                             \
++  assert(upper != NULL);                                             \
+   for (x = 0; x < num_pixels; ++x) {                                 \
+     const uint32_t pred = (PREDICTOR)(in[x - 1], upper + x);         \
+     out[x] = VP8LSubPixels(in[x], pred);                             \
+diff --git a/src/dsp/lossless_enc_sse2.c b/src/dsp/lossless_enc_sse2.c
+index 8adc521..e676f6f 100644
+--- a/src/dsp/lossless_enc_sse2.c
++++ b/src/dsp/lossless_enc_sse2.c
+@@ -455,8 +455,9 @@ static void PredictorSub0_SSE2(const uint32_t* in, const uint32_t* upper,
+     _mm_storeu_si128((__m128i*)&out[i], res);
+   }
+   if (i != num_pixels) {
+-    VP8LPredictorsSub_C[0](in + i, upper + i, num_pixels - i, out + i);
++    VP8LPredictorsSub_C[0](in + i, NULL, num_pixels - i, out + i);
+   }
++  (void)upper;
+ }
+ 
+ #define GENERATE_PREDICTOR_1(X, IN)                                           \
+diff --git a/src/dsp/lossless_sse2.c b/src/dsp/lossless_sse2.c
+index 17d7576..aef0cee 100644
+--- a/src/dsp/lossless_sse2.c
++++ b/src/dsp/lossless_sse2.c
+@@ -191,8 +191,9 @@ static void PredictorAdd0_SSE2(const uint32_t* in, const uint32_t* upper,
+     _mm_storeu_si128((__m128i*)&out[i], res);
+   }
+   if (i != num_pixels) {
+-    VP8LPredictorsAdd_C[0](in + i, upper + i, num_pixels - i, out + i);
++    VP8LPredictorsAdd_C[0](in + i, NULL, num_pixels - i, out + i);
+   }
++  (void)upper;
+ }
+ 
+ // Predictor1: left.
+diff --git a/src/dsp/upsampling_msa.c b/src/dsp/upsampling_msa.c
+index 99eea70..f2e03e8 100644
+--- a/src/dsp/upsampling_msa.c
++++ b/src/dsp/upsampling_msa.c
+@@ -576,9 +576,9 @@ static void FUNC_NAME(const uint8_t* top_y, const uint8_t* bot_y,        \
+   const uint32_t l_uv = ((cur_u[0]) | ((cur_v[0]) << 16));               \
+   const uint32_t uv0 = (3 * tl_uv + l_uv + 0x00020002u) >> 2;            \
+   const uint8_t* ptop_y = &top_y[1];                                     \
+-  uint8_t *ptop_dst = top_dst + XSTEP;                                   \
++  uint8_t* ptop_dst = top_dst + XSTEP;                                   \
+   const uint8_t* pbot_y = &bot_y[1];                                     \
+-  uint8_t *pbot_dst = bot_dst + XSTEP;                                   \
++  uint8_t* pbot_dst = bot_dst + XSTEP;                                   \
+                                                                          \
+   FUNC(top_y[0], uv0 & 0xff, (uv0 >> 16), top_dst);                      \
+   if (bot_y != NULL) {                                                   \
+diff --git a/src/dsp/upsampling_neon.c b/src/dsp/upsampling_neon.c
+index 17cbc9f..6ba71a7 100644
+--- a/src/dsp/upsampling_neon.c
++++ b/src/dsp/upsampling_neon.c
+@@ -58,8 +58,8 @@
+ } while (0)
+ 
+ // Turn the macro into a function for reducing code-size when non-critical
+-static void Upsample16Pixels_NEON(const uint8_t *r1, const uint8_t *r2,
+-                                  uint8_t *out) {
++static void Upsample16Pixels_NEON(const uint8_t* r1, const uint8_t* r2,
++                                  uint8_t* out) {
+   UPSAMPLE_16PIXELS(r1, r2, out);
+ }
+ 
+@@ -190,14 +190,14 @@ static const int16_t kCoeffs1[4] = { 19077, 26149, 6419, 13320 };
+ }
+ 
+ #define NEON_UPSAMPLE_FUNC(FUNC_NAME, FMT, XSTEP)                       \
+-static void FUNC_NAME(const uint8_t *top_y, const uint8_t *bottom_y,    \
+-                      const uint8_t *top_u, const uint8_t *top_v,       \
+-                      const uint8_t *cur_u, const uint8_t *cur_v,       \
+-                      uint8_t *top_dst, uint8_t *bottom_dst, int len) { \
++static void FUNC_NAME(const uint8_t* top_y, const uint8_t* bottom_y,    \
++                      const uint8_t* top_u, const uint8_t* top_v,       \
++                      const uint8_t* cur_u, const uint8_t* cur_v,       \
++                      uint8_t* top_dst, uint8_t* bottom_dst, int len) { \
+   int block;                                                            \
+   /* 16 byte aligned array to cache reconstructed u and v */            \
+   uint8_t uv_buf[2 * 32 + 15];                                          \
+-  uint8_t *const r_uv = (uint8_t*)((uintptr_t)(uv_buf + 15) & ~15);     \
++  uint8_t* const r_uv = (uint8_t*)((uintptr_t)(uv_buf + 15) & ~15);     \
+   const int uv_len = (len + 1) >> 1;                                    \
+   /* 9 pixels must be read-able for each block */                       \
+   const int num_blocks = (uv_len - 1) >> 3;                             \
+diff --git a/src/enc/histogram_enc.c b/src/enc/histogram_enc.c
+index d89b985..a4e6bf3 100644
+--- a/src/enc/histogram_enc.c
++++ b/src/enc/histogram_enc.c
+@@ -641,7 +641,7 @@ static void HistogramAnalyzeEntropyBin(VP8LHistogramSet* const image_histo,
+ // Merges some histograms with same bin_id together if it's advantageous.
+ // Sets the remaining histograms to NULL.
+ static void HistogramCombineEntropyBin(VP8LHistogramSet* const image_histo,
+-                                       int *num_used,
++                                       int* num_used,
+                                        const uint16_t* const clusters,
+                                        uint16_t* const cluster_mappings,
+                                        VP8LHistogram* cur_combo,
+diff --git a/src/enc/picture_csp_enc.c b/src/enc/picture_csp_enc.c
+index 02d9df7..718e014 100644
+--- a/src/enc/picture_csp_enc.c
++++ b/src/enc/picture_csp_enc.c
+@@ -29,11 +29,15 @@
+ #define USE_INVERSE_ALPHA_TABLE
+ 
+ #ifdef WORDS_BIGENDIAN
+-#define ALPHA_OFFSET 0   // uint32_t 0xff000000 is 0xff,00,00,00 in memory
++// uint32_t 0xff000000 is 0xff,00,00,00 in memory
++#define CHANNEL_OFFSET(i) (i)
+ #else
+-#define ALPHA_OFFSET 3   // uint32_t 0xff000000 is 0x00,00,00,ff in memory
++// uint32_t 0xff000000 is 0x00,00,00,ff in memory
++#define CHANNEL_OFFSET(i) (3-(i))
+ #endif
+ 
++#define ALPHA_OFFSET CHANNEL_OFFSET(0)
++
+ //------------------------------------------------------------------------------
+ // Detection of non-trivial transparency
+ 
+@@ -997,10 +1001,10 @@ static int PictureARGBToYUVA(WebPPicture* picture, WebPEncCSP colorspace,
+     return WebPEncodingSetError(picture, VP8_ENC_ERROR_INVALID_CONFIGURATION);
+   } else {
+     const uint8_t* const argb = (const uint8_t*)picture->argb;
+-    const uint8_t* const a = argb + (0 ^ ALPHA_OFFSET);
+-    const uint8_t* const r = argb + (1 ^ ALPHA_OFFSET);
+-    const uint8_t* const g = argb + (2 ^ ALPHA_OFFSET);
+-    const uint8_t* const b = argb + (3 ^ ALPHA_OFFSET);
++    const uint8_t* const a = argb + CHANNEL_OFFSET(0);
++    const uint8_t* const r = argb + CHANNEL_OFFSET(1);
++    const uint8_t* const g = argb + CHANNEL_OFFSET(2);
++    const uint8_t* const b = argb + CHANNEL_OFFSET(3);
+ 
+     picture->colorspace = WEBP_YUV420;
+     return ImportYUVAFromRGBA(r, g, b, a, 4, 4 * picture->argb_stride,
+@@ -1050,7 +1054,7 @@ int WebPPictureYUVAToARGB(WebPPicture* picture) {
+     const int height = picture->height;
+     const int argb_stride = 4 * picture->argb_stride;
+     uint8_t* dst = (uint8_t*)picture->argb;
+-    const uint8_t *cur_u = picture->u, *cur_v = picture->v, *cur_y = picture->y;
++    const uint8_t* cur_u = picture->u, *cur_v = picture->v, *cur_y = picture->y;
+     WebPUpsampleLinePairFunc upsample =
+         WebPGetLinePairConverter(ALPHA_OFFSET > 0);
+ 
+diff --git a/src/enc/vp8i_enc.h b/src/enc/vp8i_enc.h
+index 24e1944..fedcaee 100644
+--- a/src/enc/vp8i_enc.h
++++ b/src/enc/vp8i_enc.h
+@@ -31,8 +31,8 @@ extern "C" {
+ 
+ // version numbers
+ #define ENC_MAJ_VERSION 1
+-#define ENC_MIN_VERSION 0
+-#define ENC_REV_VERSION 3
++#define ENC_MIN_VERSION 1
++#define ENC_REV_VERSION 0
+ 
+ enum { MAX_LF_LEVELS = 64,       // Maximum loop filter level
+        MAX_VARIABLE_LEVEL = 67,  // last (inclusive) level with variable cost
+@@ -249,7 +249,7 @@ typedef struct {
+   int           percent0_;         // saved initial progress percent
+ 
+   DError        left_derr_;        // left error diffusion (u/v)
+-  DError       *top_derr_;         // top diffusion error - NULL if disabled
++  DError*       top_derr_;         // top diffusion error - NULL if disabled
+ 
+   uint8_t* y_left_;    // left luma samples (addressable from index -1 to 15).
+   uint8_t* u_left_;    // left u samples (addressable from index -1 to 7)
+diff --git a/src/mux/muxi.h b/src/mux/muxi.h
+index 7bc0b07..ad3e1bd 100644
+--- a/src/mux/muxi.h
++++ b/src/mux/muxi.h
+@@ -28,8 +28,8 @@ extern "C" {
+ // Defines and constants.
+ 
+ #define MUX_MAJ_VERSION 1
+-#define MUX_MIN_VERSION 0
+-#define MUX_REV_VERSION 3
++#define MUX_MIN_VERSION 1
++#define MUX_REV_VERSION 0
+ 
+ // Chunk object.
+ typedef struct WebPChunk WebPChunk;
+diff --git a/src/mux/muxread.c b/src/mux/muxread.c
+index 268f6ac..ae3b876 100644
+--- a/src/mux/muxread.c
++++ b/src/mux/muxread.c
+@@ -100,7 +100,7 @@ static int MuxImageParse(const WebPChunk* const chunk, int copy_data,
+                          WebPMuxImage* const wpi) {
+   const uint8_t* bytes = chunk->data_.bytes;
+   size_t size = chunk->data_.size;
+-  const uint8_t* const last = bytes + size;
++  const uint8_t* const last = (bytes == NULL) ? NULL : bytes + size;
+   WebPChunk subchunk;
+   size_t subchunk_size;
+   WebPChunk** unknown_chunk_list = &wpi->unknown_;
+diff --git a/src/utils/color_cache_utils.h b/src/utils/color_cache_utils.h
+index ec21d51..b45d47c 100644
+--- a/src/utils/color_cache_utils.h
++++ b/src/utils/color_cache_utils.h
+@@ -26,7 +26,7 @@ extern "C" {
+ 
+ // Main color cache struct.
+ typedef struct {
+-  uint32_t *colors_;  // color entries
++  uint32_t* colors_;  // color entries
+   int hash_shift_;    // Hash shift: 32 - hash_bits_.
+   int hash_bits_;
+ } VP8LColorCache;
+diff --git a/src/utils/thread_utils.c b/src/utils/thread_utils.c
+index 438296b..4e470e1 100644
+--- a/src/utils/thread_utils.c
++++ b/src/utils/thread_utils.c
+@@ -73,7 +73,7 @@ typedef struct {
+ #endif
+ 
+ static int pthread_create(pthread_t* const thread, const void* attr,
+-                          unsigned int (__stdcall *start)(void*), void* arg) {
++                          unsigned int (__stdcall* start)(void*), void* arg) {
+   (void)attr;
+ #ifdef USE_CREATE_THREAD
+   *thread = CreateThread(NULL,   /* lpThreadAttributes */
+diff --git a/src/utils/utils.c b/src/utils/utils.c
+index 44d5c14..764f752 100644
+--- a/src/utils/utils.c
++++ b/src/utils/utils.c
+@@ -216,9 +216,14 @@ void WebPSafeFree(void* const ptr) {
+   free(ptr);
+ }
+ 
+-// Public API function.
++// Public API functions.
++
++void* WebPMalloc(size_t size) {
++  return WebPSafeMalloc(1, size);
++}
++
+ void WebPFree(void* ptr) {
+-  free(ptr);
++  WebPSafeFree(ptr);
+ }
+ 
+ //------------------------------------------------------------------------------
+diff --git a/src/webp/decode.h b/src/webp/decode.h
+index ae8bfe8..80dd0ef 100644
+--- a/src/webp/decode.h
++++ b/src/webp/decode.h
+@@ -20,7 +20,7 @@
+ extern "C" {
+ #endif
+ 
+-#define WEBP_DECODER_ABI_VERSION 0x0208    // MAJOR(8b) + MINOR(8b)
++#define WEBP_DECODER_ABI_VERSION 0x0209    // MAJOR(8b) + MINOR(8b)
+ 
+ // Note: forward declaring enumerations is not allowed in (strict) C and C++,
+ // the types are left here for reference.
+@@ -91,9 +91,6 @@ WEBP_EXTERN uint8_t* WebPDecodeYUV(const uint8_t* data, size_t data_size,
+                                    uint8_t** u, uint8_t** v,
+                                    int* stride, int* uv_stride);
+ 
+-// Releases memory returned by the WebPDecode*() functions above.
+-WEBP_EXTERN void WebPFree(void* ptr);
+-
+ // These five functions are variants of the above ones, that decode the image
+ // directly into a pre-allocated buffer 'output_buffer'. The maximum storage
+ // available in this buffer is indicated by 'output_buffer_size'. If this
+diff --git a/src/webp/encode.h b/src/webp/encode.h
+index 339f881..655166e 100644
+--- a/src/webp/encode.h
++++ b/src/webp/encode.h
+@@ -20,7 +20,7 @@
+ extern "C" {
+ #endif
+ 
+-#define WEBP_ENCODER_ABI_VERSION 0x020e    // MAJOR(8b) + MINOR(8b)
++#define WEBP_ENCODER_ABI_VERSION 0x020f    // MAJOR(8b) + MINOR(8b)
+ 
+ // Note: forward declaring enumerations is not allowed in (strict) C and C++,
+ // the types are left here for reference.
+@@ -79,9 +79,6 @@ WEBP_EXTERN size_t WebPEncodeLosslessBGRA(const uint8_t* bgra,
+                                           int width, int height, int stride,
+                                           uint8_t** output);
+ 
+-// Releases memory returned by the WebPEncode*() functions above.
+-WEBP_EXTERN void WebPFree(void* ptr);
+-
+ //------------------------------------------------------------------------------
+ // Coding parameters
+ 
+@@ -306,7 +303,7 @@ struct WebPPicture {
+   // YUV input (mostly used for input to lossy compression)
+   WebPEncCSP colorspace;     // colorspace: should be YUV420 for now (=Y'CbCr).
+   int width, height;         // dimensions (less or equal to WEBP_MAX_DIMENSION)
+-  uint8_t *y, *u, *v;        // pointers to luma/chroma planes.
++  uint8_t* y, *u, *v;        // pointers to luma/chroma planes.
+   int y_stride, uv_stride;   // luma/chroma strides.
+   uint8_t* a;                // pointer to the alpha plane
+   int a_stride;              // stride of the alpha plane
+@@ -350,7 +347,7 @@ struct WebPPicture {
+   uint32_t pad3[3];       // padding for later use
+ 
+   // Unused for now
+-  uint8_t *pad4, *pad5;
++  uint8_t* pad4, *pad5;
+   uint32_t pad6[8];       // padding for later use
+ 
+   // PRIVATE FIELDS
+diff --git a/src/webp/mux.h b/src/webp/mux.h
+index 66096a9..7d27489 100644
+--- a/src/webp/mux.h
++++ b/src/webp/mux.h
+@@ -57,7 +57,7 @@ extern "C" {
+   WebPMuxGetChunk(mux, "ICCP", &icc_profile);
+   // ... (Consume icc_data).
+   WebPMuxDelete(mux);
+-  free(data);
++  WebPFree(data);
+ */
+ 
+ // Note: forward declaring enumerations is not allowed in (strict) C and C++,
+@@ -245,7 +245,7 @@ WEBP_EXTERN WebPMuxError WebPMuxPushFrame(
+     WebPMux* mux, const WebPMuxFrameInfo* frame, int copy_data);
+ 
+ // Gets the nth frame from the mux object.
+-// The content of 'frame->bitstream' is allocated using malloc(), and NOT
++// The content of 'frame->bitstream' is allocated using WebPMalloc(), and NOT
+ // owned by the 'mux' object. It MUST be deallocated by the caller by calling
+ // WebPDataClear().
+ // nth=0 has a special meaning - last position.
+@@ -376,10 +376,10 @@ WEBP_EXTERN WebPMuxError WebPMuxNumChunks(const WebPMux* mux,
+ // Assembles all chunks in WebP RIFF format and returns in 'assembled_data'.
+ // This function also validates the mux object.
+ // Note: The content of 'assembled_data' will be ignored and overwritten.
+-// Also, the content of 'assembled_data' is allocated using malloc(), and NOT
+-// owned by the 'mux' object. It MUST be deallocated by the caller by calling
+-// WebPDataClear(). It's always safe to call WebPDataClear() upon return,
+-// even in case of error.
++// Also, the content of 'assembled_data' is allocated using WebPMalloc(), and
++// NOT owned by the 'mux' object. It MUST be deallocated by the caller by
++// calling WebPDataClear(). It's always safe to call WebPDataClear() upon
++// return, even in case of error.
+ // Parameters:
+ //   mux - (in/out) object whose chunks are to be assembled
+ //   assembled_data - (out) assembled WebP data
+diff --git a/src/webp/mux_types.h b/src/webp/mux_types.h
+index ceea77d..2fe8195 100644
+--- a/src/webp/mux_types.h
++++ b/src/webp/mux_types.h
+@@ -14,7 +14,6 @@
+ #ifndef WEBP_WEBP_MUX_TYPES_H_
+ #define WEBP_WEBP_MUX_TYPES_H_
+ 
+-#include <stdlib.h>  // free()
+ #include <string.h>  // memset()
+ #include "./types.h"
+ 
+@@ -56,6 +55,7 @@ typedef enum WebPMuxAnimBlend {
+ 
+ // Data type used to describe 'raw' data, e.g., chunk data
+ // (ICC profile, metadata) and WebP compressed image data.
++// 'bytes' memory must be allocated using WebPMalloc() and such.
+ struct WebPData {
+   const uint8_t* bytes;
+   size_t size;
+@@ -68,11 +68,11 @@ static WEBP_INLINE void WebPDataInit(WebPData* webp_data) {
+   }
+ }
+ 
+-// Clears the contents of the 'webp_data' object by calling free(). Does not
+-// deallocate the object itself.
++// Clears the contents of the 'webp_data' object by calling WebPFree().
++// Does not deallocate the object itself.
+ static WEBP_INLINE void WebPDataClear(WebPData* webp_data) {
+   if (webp_data != NULL) {
+-    free((void*)webp_data->bytes);
++    WebPFree((void*)webp_data->bytes);
+     WebPDataInit(webp_data);
+   }
+ }
+@@ -83,7 +83,7 @@ static WEBP_INLINE int WebPDataCopy(const WebPData* src, WebPData* dst) {
+   if (src == NULL || dst == NULL) return 0;
+   WebPDataInit(dst);
+   if (src->bytes != NULL && src->size != 0) {
+-    dst->bytes = (uint8_t*)malloc(src->size);
++    dst->bytes = (uint8_t*)WebPMalloc(src->size);
+     if (dst->bytes == NULL) return 0;
+     memcpy((void*)dst->bytes, src->bytes, src->size);
+     dst->size = src->size;
+diff --git a/src/webp/types.h b/src/webp/types.h
+index 0ce2622..47f7f2b 100644
+--- a/src/webp/types.h
++++ b/src/webp/types.h
+@@ -7,7 +7,7 @@
+ // be found in the AUTHORS file in the root of the source tree.
+ // -----------------------------------------------------------------------------
+ //
+-//  Common types
++//  Common types + memory wrappers
+ //
+ // Author: Skal (pascal.massimino@gmail.com)
+ 
+@@ -49,4 +49,20 @@ typedef long long int int64_t;
+ // Macro to check ABI compatibility (same major revision number)
+ #define WEBP_ABI_IS_INCOMPATIBLE(a, b) (((a) >> 8) != ((b) >> 8))
+ 
++#ifdef __cplusplus
++extern "C" {
++#endif
++
++// Allocates 'size' bytes of memory. Returns NULL upon error. Memory
++// must be deallocated by calling WebPFree(). This function is made available
++// by the core 'libwebp' library.
++WEBP_EXTERN void* WebPMalloc(size_t size);
++
++// Releases memory returned by the WebPDecode*() functions (from decode.h).
++WEBP_EXTERN void WebPFree(void* ptr);
++
++#ifdef __cplusplus
++}    // extern "C"
++#endif
++
+ #endif  // WEBP_WEBP_TYPES_H_
+-- 
+2.40.1
+
