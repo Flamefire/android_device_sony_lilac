@@ -50,8 +50,7 @@ numWarned=0
 function applyPatch {
     patch=${1:?"No patch specified"}
 
-    patch_dir=$(head -n1 "$patch" | grep "# PWD: " | awk '{print $NF}')
-    if [[ "$patch_dir" == "" ]]; then
+    if ! patch_dir=$(head -n1 "$patch" | grep "# PWD: " | awk '{print $NF}') || [[ "$patch_dir" == "" ]]; then
         showError "Faulty patch: $patch"
     fi
 
@@ -77,10 +76,10 @@ function applyPatch {
         echo -e "${LGREEN}Skipped (empty).${NC}"
         ((++numSkipped))
     else
-        patch_dir="$repo_root/$patch_dir"
+        pushd "$repo_root/$patch_dir" > /dev/null
         # If the reverse patch could be applied, then the patch was likely already applied
-        patch --reverse --force  -p1 -d "$patch_dir" --input "$patch" --dry-run > /dev/null && applied=1 || applied=0
-        if out=$(patch --forward -p1 -d "$patch_dir" --input "$patch" -r /dev/null --no-backup-if-mismatch 2>&1); then
+        git apply --check --reverse -p1 --whitespace=nowarn "$patch" &> /dev/null && applied=1 || applied=0
+        if out=$(git apply -p1 --whitespace=nowarn "$patch" 2>&1); then
             echo -e "${LGREEN}Done.${NC}"
             ((++numApplied))
             # We applied the patch but could apply the reverse before, i.e. would detect it as already applied.
@@ -95,8 +94,10 @@ function applyPatch {
         else
             echo -e "${RED}Failed!${NC}"
             echo "$out"
+	    popd > /dev/null
             exit 1
         fi
+	popd > /dev/null
     fi
 }
 
