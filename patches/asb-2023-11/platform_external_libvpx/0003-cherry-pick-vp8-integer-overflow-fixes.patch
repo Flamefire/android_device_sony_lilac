@@ -1,0 +1,160 @@
+From 29634290bbfdc0b855d92dd0b4b7894de55f1b76 Mon Sep 17 00:00:00 2001
+From: James Zern <jzern@google.com>
+Date: Sat, 6 Nov 2021 10:42:46 -0700
+Subject: [PATCH 3/3] cherry-pick vp8 integer overflow fixes
+
+218b99892 vp8 encoder: fix some integer overflows
+05f80a920 vp8,calc_pframe_target_size: fix integer overflow
+7afb3a676 vp8_update_rate_correction_factors: fix integer overflow
+
+Bug: b/189602769
+Test: aosp_arm-eng aosp_arm64-eng aosp_x86-eng aosp_x86_64-eng
+      aosp_crosshatch-userdebug compile
+  aosp_sargo_hwasan-userdebug:
+  - vts-tradefed run commandAndExit vts  \
+      --include-filter VtsHalMediaC2V1_0TargetVideoEncTest \
+      --module-arg \
+      "VtsHalMediaC2V1_0TargetVideoEncTest:include-filter:*vp8*"
+  - cts-tradefed run commandAndExit cts-dev \
+      --include-filter CtsMediaTestCases \
+      --module-arg "CtsMediaTestCases:include-filter:.*(?i:vp8)"
+      (with many exclusions due to b/205221267)
+Change-Id: I0c6fac7271f4ef0c2bb369543308cd7d579b4540
+---
+ README.version                |  3 +++
+ libvpx/test/realtime_test.cc  | 43 +++++++++++++++++++++++++++++++----
+ libvpx/vp8/encoder/ratectrl.c |  9 +++++---
+ libvpx/vp8/vp8_cx_iface.c     |  4 +++-
+ 4 files changed, 50 insertions(+), 9 deletions(-)
+
+diff --git a/README.version b/README.version
+index 48337a752..03a9bc11a 100644
+--- a/README.version
++++ b/README.version
+@@ -9,3 +9,6 @@ Local Modifications:
+     * https://chromium-review.googlesource.com/q/I1d8a6e263fddb9e4cc6265a313011a18d18bbf9e
+       (04383393e Add missing typecast and re-enable timestamp test)
+   baefbe85d Cap target bitrate to raw rate internally
++  218b99892 vp8 encoder: fix some integer overflows
++  05f80a920 vp8,calc_pframe_target_size: fix integer overflow
++  7afb3a676 vp8_update_rate_correction_factors: fix integer overflow
+diff --git a/libvpx/test/realtime_test.cc b/libvpx/test/realtime_test.cc
+index 6378c9f2b..bc74fdac1 100644
+--- a/libvpx/test/realtime_test.cc
++++ b/libvpx/test/realtime_test.cc
+@@ -7,6 +7,8 @@
+  *  in the file PATENTS.  All contributing project authors may
+  *  be found in the AUTHORS file in the root of the source tree.
+  */
++#include <limits.h>
++
+ #include "test/codec_factory.h"
+ #include "test/encode_test_driver.h"
+ #include "test/util.h"
+@@ -44,6 +46,22 @@ class RealtimeTest
+     frame_packets_++;
+   }
+ 
++  bool IsVP9() const {
++#if CONFIG_VP9_ENCODER
++    return codec_ == &libvpx_test::kVP9;
++#else
++    return false;
++#endif
++  }
++
++  void TestIntegerOverflow(unsigned int width, unsigned int height) {
++    ::libvpx_test::RandomVideoSource video;
++    video.SetSize(width, height);
++    video.set_limit(20);
++    cfg_.rc_target_bitrate = UINT_MAX;
++    ASSERT_NO_FATAL_FAILURE(RunLoop(&video));
++  }
++
+   int frame_packets_;
+ };
+ 
+@@ -56,11 +74,26 @@ TEST_P(RealtimeTest, RealtimeFirstPassProducesFrames) {
+ }
+ 
+ TEST_P(RealtimeTest, IntegerOverflow) {
+-  ::libvpx_test::RandomVideoSource video;
+-  video.SetSize(800, 480);
+-  video.set_limit(20);
+-  cfg_.rc_target_bitrate = 140000000;
+-  ASSERT_NO_FATAL_FAILURE(RunLoop(&video));
++  if (IsVP9()) {
++    // TODO(https://crbug.com/webm/1749): This should match VP8.
++    TestIntegerOverflow(800, 480);
++  } else {
++    TestIntegerOverflow(2048, 2048);
++  }
++}
++
++TEST_P(RealtimeTest, IntegerOverflowLarge) {
++  if (IsVP9()) {
++    GTEST_SKIP() << "TODO(https://crbug.com/webm/1750): Enable this test after "
++                    "undefined sanitizer warnings are fixed.";
++    // TestIntegerOverflow(16384, 16384);
++  } else {
++    GTEST_SKIP()
++        << "TODO(https://crbug.com/webm/1748,https://crbug.com/webm/1751):"
++        << " Enable this test after bitstream errors & undefined sanitizer "
++           "warnings are fixed.";
++    // TestIntegerOverflow(16383, 16383);
++  }
+ }
+ 
+ VP8_INSTANTIATE_TEST_CASE(RealtimeTest,
+diff --git a/libvpx/vp8/encoder/ratectrl.c b/libvpx/vp8/encoder/ratectrl.c
+index ce07a6f19..2b344a2bf 100644
+--- a/libvpx/vp8/encoder/ratectrl.c
++++ b/libvpx/vp8/encoder/ratectrl.c
+@@ -776,6 +776,7 @@ static void calc_pframe_target_size(VP8_COMP *cpi) {
+         }
+       } else {
+         int percent_high = 0;
++        int64_t target = cpi->this_frame_target;
+ 
+         if ((cpi->oxcf.end_usage == USAGE_STREAM_FROM_SERVER) &&
+             (cpi->buffer_level > cpi->oxcf.optimal_buffer_level)) {
+@@ -793,7 +794,9 @@ static void calc_pframe_target_size(VP8_COMP *cpi) {
+           percent_high = 0;
+         }
+ 
+-        cpi->this_frame_target += (cpi->this_frame_target * percent_high) / 200;
++        target += (target * percent_high) / 200;
++        target = VPXMIN(target, INT_MAX);
++        cpi->this_frame_target = (int)target;
+ 
+         /* Are we allowing control of active_worst_allowed_q according
+          * to buffer level.
+@@ -1074,8 +1077,8 @@ void vp8_update_rate_correction_factors(VP8_COMP *cpi, int damp_var) {
+ 
+   /* Work out a size correction factor. */
+   if (projected_size_based_on_q > 0) {
+-    correction_factor =
+-        (100 * cpi->projected_frame_size) / projected_size_based_on_q;
++    correction_factor = (int)((100 * (int64_t)cpi->projected_frame_size) /
++                              projected_size_based_on_q);
+   }
+ 
+   /* More heavily damped adjustment used if we have been oscillating
+diff --git a/libvpx/vp8/vp8_cx_iface.c b/libvpx/vp8/vp8_cx_iface.c
+index 1394f2adc..d7007d514 100644
+--- a/libvpx/vp8/vp8_cx_iface.c
++++ b/libvpx/vp8/vp8_cx_iface.c
+@@ -334,7 +334,9 @@ static vpx_codec_err_t set_vp8e_config(VP8_CONFIG *oxcf,
+     oxcf->end_usage = USAGE_CONSTANT_QUALITY;
+   }
+ 
+-  oxcf->target_bandwidth = cfg.rc_target_bitrate;
++  // Cap the target rate to 1000 Mbps to avoid some integer overflows in
++  // target bandwidth calculations.
++  oxcf->target_bandwidth = VPXMIN(cfg.rc_target_bitrate, 1000000);
+   oxcf->rc_max_intra_bitrate_pct = vp8_cfg.rc_max_intra_bitrate_pct;
+   oxcf->gf_cbr_boost_pct = vp8_cfg.gf_cbr_boost_pct;
+ 
+-- 
+2.40.1
+

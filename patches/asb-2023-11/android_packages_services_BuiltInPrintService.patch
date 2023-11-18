@@ -1,0 +1,153 @@
+# PWD: packages/services/BuiltInPrintService
+diff --git a/jni/include/lib_wprint.h b/jni/include/lib_wprint.h
+index 0d2fd12..57cf9f3 100644
+--- a/jni/include/lib_wprint.h
++++ b/jni/include/lib_wprint.h
+@@ -49,14 +49,16 @@
+ #define MAX_MIME_LENGTH         (64)
+ #define MAX_PRINTER_ADDR_LENGTH (64)
+ #define MAX_FILENAME_LENGTH     (32)
+ #define MAX_PATHNAME_LENGTH     (255)
+ #define MAX_ID_STRING_LENGTH    (64)
+ #define MAX_NAME_LENGTH         (255)
+ 
++#define HTTP_TIMEOUT_MILLIS 30000
++
+ #ifdef __cplusplus
+ extern "C"
+ {
+ #endif
+ 
+ typedef enum {
+     DUPLEX_DRY_TIME_NORMAL, // 18 seconds
+diff --git a/jni/ipphelper/ipp_print.c b/jni/ipphelper/ipp_print.c
+index 36b7015..8ea4a20 100644
+--- a/jni/ipphelper/ipp_print.c
++++ b/jni/ipphelper/ipp_print.c
+@@ -94,25 +94,28 @@ static status_t _init(const ifc_print_job_t *this_p, const char *printer_address
+     }
+ 
+     int ippPortNumber = ((port == IPP_PORT) ? ippPort() : port);
+     LOGD("Normal URI for %s:%d", printer_address, ippPortNumber);
+     ipp_scheme = (use_secure_uri) ? IPPS_PREFIX : IPP_PREFIX;
+ 
+     httpAssembleURIf(HTTP_URI_CODING_ALL, ipp_job->printer_uri, sizeof(ipp_job->printer_uri),
+-            ipp_scheme, NULL, printer_address, ippPortNumber, printer_uri);
++            ipp_scheme, NULL, printer_address, ippPortNumber, "%s", printer_uri);
+     getResourceFromURI(ipp_job->printer_uri, ipp_job->http_resource, 1024);
+     if (use_secure_uri) {
+-        ipp_job->http = httpConnectEncrypt(printer_address, ippPortNumber, HTTP_ENCRYPTION_ALWAYS);
++        ipp_job->http = httpConnect2(printer_address, ippPortNumber, NULL, AF_UNSPEC,
++                HTTP_ENCRYPTION_ALWAYS, 1, HTTP_TIMEOUT_MILLIS, NULL);
+ 
+         // If ALWAYS doesn't work, fall back to REQUIRED
+         if (ipp_job->http == NULL) {
+-            ipp_job->http = httpConnectEncrypt(printer_address, ippPortNumber, HTTP_ENCRYPT_REQUIRED);
++            ipp_job->http = httpConnect2(printer_address, ippPortNumber, NULL, AF_UNSPEC,
++                    HTTP_ENCRYPTION_REQUIRED, 1, HTTP_TIMEOUT_MILLIS, NULL);
+         }
+     } else {
+-        ipp_job->http = httpConnectEncrypt(printer_address, ippPortNumber, HTTP_ENCRYPTION_IF_REQUESTED);
++        ipp_job->http = httpConnect2(printer_address, ippPortNumber, NULL, AF_UNSPEC,
++                HTTP_ENCRYPTION_IF_REQUESTED, 1, HTTP_TIMEOUT_MILLIS, NULL);
+     }
+ 
+     httpSetTimeout(ipp_job->http, DEFAULT_IPP_TIMEOUT, NULL, 0);
+ 
+     return OK;
+ }
+ 
+@@ -510,16 +513,14 @@ static status_t _start_job(const ifc_print_job_t *this_p, const wprint_job_param
+                 LOGI("_start_job retry due to internal error");
+                 // We will retry for one of these failures since we could have just
+                 // lost our connection to the server and cups will not always attempt
+                 // a reconnect for us.
+                 ippDelete(request);
+                 continue;
+             }
+-
+-            _cupsSetHTTPError(ipp_job->status);
+         }
+         ippDelete(request);
+         LOGI("_start_job httpPrint fd %d status %d ipp_status %d", ipp_job->http->fd,
+                 ipp_job->status, cupsLastError());
+ 
+         result = ((ipp_job->status == HTTP_CONTINUE) ? OK : ERROR);
+     } while (retry);
+@@ -611,8 +612,8 @@ static status_t _end_job(const ifc_print_job_t *this_p) {
+             }
+             ippDelete(response);
+         }
+     }
+     LOGD("_end_job: exit status %d job_id %d", ipp_job->status, job_id);
+ 
+     return result;
+-}
+\ No newline at end of file
++}
+diff --git a/jni/ipphelper/ipphelper.c b/jni/ipphelper/ipphelper.c
+index 8b7f00d..27a4090 100644
+--- a/jni/ipphelper/ipphelper.c
++++ b/jni/ipphelper/ipphelper.c
+@@ -1194,27 +1194,30 @@ http_t *ipp_cups_connect(const wprint_connect_info_t *connect_info, char *printe
+     } else {
+         uri_path = connect_info->uri_path;
+     }
+ 
+     int ippPortNumber = ((connect_info->port_num == IPP_PORT) ? ippPort() : connect_info->port_num);
+ 
+     if (strstr(connect_info->uri_scheme,IPPS_PREFIX) != NULL) {
+-        curl_http = httpConnectEncrypt(connect_info->printer_addr, ippPortNumber, HTTP_ENCRYPTION_ALWAYS);
++        curl_http = httpConnect2(connect_info->printer_addr, ippPortNumber, NULL, AF_UNSPEC,
++                HTTP_ENCRYPTION_ALWAYS, 1, HTTP_TIMEOUT_MILLIS, NULL);
+ 
+         // If ALWAYS doesn't work, fall back to REQUIRED
+         if (curl_http == NULL) {
+-            curl_http = httpConnectEncrypt(connect_info->printer_addr, ippPortNumber, HTTP_ENCRYPT_REQUIRED);
++            curl_http = httpConnect2(connect_info->printer_addr, ippPortNumber, NULL, AF_UNSPEC,
++                    HTTP_ENCRYPTION_REQUIRED, 1, HTTP_TIMEOUT_MILLIS, NULL);
+         }
+     } else {
+-        curl_http = httpConnectEncrypt(connect_info->printer_addr, ippPortNumber, HTTP_ENCRYPTION_IF_REQUESTED);
++        curl_http = httpConnect2(connect_info->printer_addr, ippPortNumber, NULL, AF_UNSPEC,
++                HTTP_ENCRYPTION_IF_REQUESTED, 1, HTTP_TIMEOUT_MILLIS, NULL);
+     }
+ 
+     httpSetTimeout(curl_http, (double)connect_info->timeout / 1000, NULL, 0);
+     httpAssembleURIf(HTTP_URI_CODING_ALL, printer_uri, uriLength, connect_info->uri_scheme, NULL,
+-            connect_info->printer_addr, ippPortNumber, uri_path);
++            connect_info->printer_addr, ippPortNumber, "%s", uri_path);
+ 
+     if (curl_http == NULL) {
+         LOGD("ipp_cups_connect failed addr=%s port=%d", connect_info->printer_addr, ippPortNumber);
+     }
+ 
+     cupsSetServerCertCB(NULL, NULL);
+     return curl_http;
+@@ -1238,15 +1241,14 @@ static ipp_t *ippSendRequest(http_t *http, ipp_t *request, char *resource) {
+         }
+ 
+         if (result == HTTP_CONTINUE && response == NULL) {
+             // We need to retry when this happens.
+             LOGD("ippSendRequest: (Continue with NULL response) Retry");
+             retry = true;
+         } else if (result == HTTP_ERROR || result >= HTTP_BAD_REQUEST) {
+-            _cupsSetHTTPError(result);
+             break;
+         }
+ 
+         if (http->state != HTTP_WAITING) {
+             httpFlush(http);
+         }
+     } while (retry);
+@@ -1341,8 +1343,8 @@ ipp_t *ipp_doCupsRequest(http_t *http, ipp_t *request, char *http_resource, char
+                 continue;
+             }
+         }
+         break;
+     } while (1);
+ 
+     return response;
+-}
+\ No newline at end of file
++}

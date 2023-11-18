@@ -1,0 +1,374 @@
+# PWD: external/libvpx
+diff --git a/README.version b/README.version
+index dfc6a897b..03a9bc11a 100644
+--- a/README.version
++++ b/README.version
+@@ -4,7 +4,11 @@ BugComponent: 42195
+ Owners: johannkoenig
+ Local Modifications:
+   - cherry-pick:
+     * https://chromium-review.googlesource.com/q/Ic6f5eacd9a7c21b95707d31ee2da77dc8ac7dccf
+       (11de1b838 Fix timestamp overflow issues)
+     * https://chromium-review.googlesource.com/q/I1d8a6e263fddb9e4cc6265a313011a18d18bbf9e
+       (04383393e Add missing typecast and re-enable timestamp test)
++  baefbe85d Cap target bitrate to raw rate internally
++  218b99892 vp8 encoder: fix some integer overflows
++  05f80a920 vp8,calc_pframe_target_size: fix integer overflow
++  7afb3a676 vp8_update_rate_correction_factors: fix integer overflow
+diff --git a/libvpx/test/realtime_test.cc b/libvpx/test/realtime_test.cc
+index 63f1ac3c2..bc74fdac1 100644
+--- a/libvpx/test/realtime_test.cc
++++ b/libvpx/test/realtime_test.cc
+@@ -3,14 +3,16 @@
+  *
+  *  Use of this source code is governed by a BSD-style license
+  *  that can be found in the LICENSE file in the root of the source
+  *  tree. An additional intellectual property rights grant can be found
+  *  in the file PATENTS.  All contributing project authors may
+  *  be found in the AUTHORS file in the root of the source tree.
+  */
++#include <limits.h>
++
+ #include "test/codec_factory.h"
+ #include "test/encode_test_driver.h"
+ #include "test/util.h"
+ #include "test/video_source.h"
+ #include "third_party/googletest/src/include/gtest/gtest.h"
+ 
+ namespace {
+@@ -40,24 +42,63 @@ class RealtimeTest
+     // which overrides the one specified in SetUp() above.
+     cfg_.g_pass = VPX_RC_FIRST_PASS;
+   }
+   virtual void FramePktHook(const vpx_codec_cx_pkt_t * /*pkt*/) {
+     frame_packets_++;
+   }
+ 
++  bool IsVP9() const {
++#if CONFIG_VP9_ENCODER
++    return codec_ == &libvpx_test::kVP9;
++#else
++    return false;
++#endif
++  }
++
++  void TestIntegerOverflow(unsigned int width, unsigned int height) {
++    ::libvpx_test::RandomVideoSource video;
++    video.SetSize(width, height);
++    video.set_limit(20);
++    cfg_.rc_target_bitrate = UINT_MAX;
++    ASSERT_NO_FATAL_FAILURE(RunLoop(&video));
++  }
++
+   int frame_packets_;
+ };
+ 
+ TEST_P(RealtimeTest, RealtimeFirstPassProducesFrames) {
+   ::libvpx_test::RandomVideoSource video;
+   video.SetSize(kVideoSourceWidth, kVideoSourceHeight);
+   video.set_limit(kFramesToEncode);
+   ASSERT_NO_FATAL_FAILURE(RunLoop(&video));
+   EXPECT_EQ(kFramesToEncode, frame_packets_);
+ }
+ 
++TEST_P(RealtimeTest, IntegerOverflow) {
++  if (IsVP9()) {
++    // TODO(https://crbug.com/webm/1749): This should match VP8.
++    TestIntegerOverflow(800, 480);
++  } else {
++    TestIntegerOverflow(2048, 2048);
++  }
++}
++
++TEST_P(RealtimeTest, IntegerOverflowLarge) {
++  if (IsVP9()) {
++    GTEST_SKIP() << "TODO(https://crbug.com/webm/1750): Enable this test after "
++                    "undefined sanitizer warnings are fixed.";
++    // TestIntegerOverflow(16384, 16384);
++  } else {
++    GTEST_SKIP()
++        << "TODO(https://crbug.com/webm/1748,https://crbug.com/webm/1751):"
++        << " Enable this test after bitstream errors & undefined sanitizer "
++           "warnings are fixed.";
++    // TestIntegerOverflow(16383, 16383);
++  }
++}
++
+ VP8_INSTANTIATE_TEST_CASE(RealtimeTest,
+                           ::testing::Values(::libvpx_test::kRealTime));
+ VP9_INSTANTIATE_TEST_CASE(RealtimeTest,
+                           ::testing::Values(::libvpx_test::kRealTime));
+ 
+ }  // namespace
+diff --git a/libvpx/vp8/encoder/bitstream.c b/libvpx/vp8/encoder/bitstream.c
+index 8dd042775..777f028c8 100644
+--- a/libvpx/vp8/encoder/bitstream.c
++++ b/libvpx/vp8/encoder/bitstream.c
+@@ -218,15 +218,15 @@ void vp8_pack_tokens(vp8_writer *w, const TOKENEXTRA *p, int xcount) {
+               }
+ 
+               w->buffer[x] += 1;
+             }
+ 
+             validate_buffer(w->buffer + w->pos, 1, w->buffer_end, w->error);
+ 
+-            w->buffer[w->pos++] = (lowvalue >> (24 - offset));
++            w->buffer[w->pos++] = (lowvalue >> (24 - offset)) & 0xff;
+             lowvalue <<= offset;
+             shift = count;
+             lowvalue &= 0xffffff;
+             count -= 8;
+           }
+ 
+           lowvalue <<= shift;
+diff --git a/libvpx/vp8/encoder/onyx_if.c b/libvpx/vp8/encoder/onyx_if.c
+index adc25024c..d27ac5b28 100644
+--- a/libvpx/vp8/encoder/onyx_if.c
++++ b/libvpx/vp8/encoder/onyx_if.c
+@@ -1425,28 +1425,34 @@ static void update_layer_contexts(VP8_COMP *cpi) {
+   }
+ }
+ 
+ void vp8_change_config(VP8_COMP *cpi, VP8_CONFIG *oxcf) {
+   VP8_COMMON *cm = &cpi->common;
+   int last_w, last_h;
+   unsigned int prev_number_of_layers;
++  unsigned int raw_target_rate;
+ 
+   if (!cpi) return;
+ 
+   if (!oxcf) return;
+ 
+   if (cm->version != oxcf->Version) {
+     cm->version = oxcf->Version;
+     vp8_setup_version(cm);
+   }
+ 
+   last_w = cpi->oxcf.Width;
+   last_h = cpi->oxcf.Height;
+   prev_number_of_layers = cpi->oxcf.number_of_layers;
+ 
++  if (cpi->initial_width) {
++    // TODO(https://crbug.com/1486441): Allow changing thread counts; the
++    // allocation is done once in vp8_create_compressor().
++    oxcf->multi_threaded = cpi->oxcf.multi_threaded;
++  }
+   cpi->oxcf = *oxcf;
+ 
+   switch (cpi->oxcf.Mode) {
+     case MODE_REALTIME:
+       cpi->pass = 0;
+       cpi->compressor_speed = 2;
+ 
+@@ -1563,14 +1569,18 @@ void vp8_change_config(VP8_COMP *cpi, VP8_CONFIG *oxcf) {
+     cpi->oxcf.optimal_buffer_level = 60000;
+     cpi->oxcf.maximum_buffer_size = 240000;
+     cpi->oxcf.starting_buffer_level_in_ms = 60000;
+     cpi->oxcf.optimal_buffer_level_in_ms = 60000;
+     cpi->oxcf.maximum_buffer_size_in_ms = 240000;
+   }
+ 
++  raw_target_rate = (unsigned int)((int64_t)cpi->oxcf.Width * cpi->oxcf.Height *
++                                   8 * 3 * cpi->framerate / 1000);
++  if (cpi->oxcf.target_bandwidth > raw_target_rate)
++    cpi->oxcf.target_bandwidth = raw_target_rate;
+   /* Convert target bandwidth from Kbit/s to Bit/s */
+   cpi->oxcf.target_bandwidth *= 1000;
+ 
+   cpi->oxcf.starting_buffer_level = rescale(
+       (int)cpi->oxcf.starting_buffer_level, cpi->oxcf.target_bandwidth, 1000);
+ 
+   /* Set or reset optimal and maximum buffer levels. */
+@@ -3610,15 +3620,15 @@ static void encode_frame_to_data_rate(VP8_COMP *cpi, size_t *size,
+         /* Special case for key frames forced because we have reached
+          * the maximum key frame interval. Here force the Q to a range
+          * based on the ambient Q to reduce the risk of popping
+          */
+         if (cpi->this_key_frame_forced) {
+           if (cpi->active_best_quality > cpi->avg_frame_qindex * 7 / 8) {
+             cpi->active_best_quality = cpi->avg_frame_qindex * 7 / 8;
+-          } else if (cpi->active_best_quality<cpi->avg_frame_qindex>> 2) {
++          } else if (cpi->active_best_quality < (cpi->avg_frame_qindex >> 2)) {
+             cpi->active_best_quality = cpi->avg_frame_qindex >> 2;
+           }
+         }
+       }
+       /* One pass more conservative */
+       else {
+         cpi->active_best_quality = kf_high_motion_minq[Q];
+diff --git a/libvpx/vp8/encoder/ratectrl.c b/libvpx/vp8/encoder/ratectrl.c
+index ce07a6f19..2b344a2bf 100644
+--- a/libvpx/vp8/encoder/ratectrl.c
++++ b/libvpx/vp8/encoder/ratectrl.c
+@@ -772,14 +772,15 @@ static void calc_pframe_target_size(VP8_COMP *cpi) {
+             cpi->active_worst_quality = cpi->ni_av_qi;
+           }
+         } else {
+           cpi->active_worst_quality = cpi->worst_quality;
+         }
+       } else {
+         int percent_high = 0;
++        int64_t target = cpi->this_frame_target;
+ 
+         if ((cpi->oxcf.end_usage == USAGE_STREAM_FROM_SERVER) &&
+             (cpi->buffer_level > cpi->oxcf.optimal_buffer_level)) {
+           percent_high =
+               (int)((cpi->buffer_level - cpi->oxcf.optimal_buffer_level) /
+                     one_percent_bits);
+         } else if (cpi->bits_off_target > cpi->oxcf.optimal_buffer_level) {
+@@ -789,15 +790,17 @@ static void calc_pframe_target_size(VP8_COMP *cpi) {
+ 
+         if (percent_high > cpi->oxcf.over_shoot_pct) {
+           percent_high = cpi->oxcf.over_shoot_pct;
+         } else if (percent_high < 0) {
+           percent_high = 0;
+         }
+ 
+-        cpi->this_frame_target += (cpi->this_frame_target * percent_high) / 200;
++        target += (target * percent_high) / 200;
++        target = VPXMIN(target, INT_MAX);
++        cpi->this_frame_target = (int)target;
+ 
+         /* Are we allowing control of active_worst_allowed_q according
+          * to buffer level.
+          */
+         if (cpi->auto_worst_q && cpi->ni_frames > 150) {
+           /* When using the relaxed buffer model stick to the
+            * user specified value
+@@ -1070,16 +1073,16 @@ void vp8_update_rate_correction_factors(VP8_COMP *cpi, int damp_var) {
+ 
+       if (Factor >= 0.999) Factor = 0.999;
+     }
+   }
+ 
+   /* Work out a size correction factor. */
+   if (projected_size_based_on_q > 0) {
+-    correction_factor =
+-        (100 * cpi->projected_frame_size) / projected_size_based_on_q;
++    correction_factor = (int)((100 * (int64_t)cpi->projected_frame_size) /
++                              projected_size_based_on_q);
+   }
+ 
+   /* More heavily damped adjustment used if we have been oscillating
+    * either side of target
+    */
+   switch (damp_var) {
+     case 0: adjustment_limit = 0.75; break;
+diff --git a/libvpx/vp8/vp8_cx_iface.c b/libvpx/vp8/vp8_cx_iface.c
+index 1394f2adc..d7007d514 100644
+--- a/libvpx/vp8/vp8_cx_iface.c
++++ b/libvpx/vp8/vp8_cx_iface.c
+@@ -330,15 +330,17 @@ static vpx_codec_err_t set_vp8e_config(VP8_CONFIG *oxcf,
+     oxcf->end_usage = USAGE_STREAM_FROM_SERVER;
+   } else if (cfg.rc_end_usage == VPX_CQ) {
+     oxcf->end_usage = USAGE_CONSTRAINED_QUALITY;
+   } else if (cfg.rc_end_usage == VPX_Q) {
+     oxcf->end_usage = USAGE_CONSTANT_QUALITY;
+   }
+ 
+-  oxcf->target_bandwidth = cfg.rc_target_bitrate;
++  // Cap the target rate to 1000 Mbps to avoid some integer overflows in
++  // target bandwidth calculations.
++  oxcf->target_bandwidth = VPXMIN(cfg.rc_target_bitrate, 1000000);
+   oxcf->rc_max_intra_bitrate_pct = vp8_cfg.rc_max_intra_bitrate_pct;
+   oxcf->gf_cbr_boost_pct = vp8_cfg.gf_cbr_boost_pct;
+ 
+   oxcf->best_allowed_q = cfg.rc_min_quantizer;
+   oxcf->worst_allowed_q = cfg.rc_max_quantizer;
+   oxcf->cq_level = vp8_cfg.cq_level;
+   oxcf->fixed_q = -1;
+diff --git a/libvpx/vp9/encoder/vp9_pickmode.c b/libvpx/vp9/encoder/vp9_pickmode.c
+index a3240513f..b92c13d6c 100644
+--- a/libvpx/vp9/encoder/vp9_pickmode.c
++++ b/libvpx/vp9/encoder/vp9_pickmode.c
+@@ -1088,15 +1088,15 @@ static INLINE void update_thresh_freq_fact_row_mt(
+   } else {
+     *freq_fact = VPXMIN(*freq_fact + RD_THRESH_INC,
+                         cpi->sf.adaptive_rd_thresh * RD_THRESH_MAX_FACT);
+   }
+ }
+ 
+ static INLINE void update_thresh_freq_fact(
+-    VP9_COMP *cpi, TileDataEnc *tile_data, int source_variance,
++    VP9_COMP *cpi, TileDataEnc *tile_data, unsigned int source_variance,
+     BLOCK_SIZE bsize, MV_REFERENCE_FRAME ref_frame, THR_MODES best_mode_idx,
+     PREDICTION_MODE mode) {
+   THR_MODES thr_mode_idx = mode_idx[ref_frame][mode_offset(mode)];
+   int *freq_fact = &tile_data->thresh_freq_fact[bsize][thr_mode_idx];
+   if (thr_mode_idx == best_mode_idx)
+     *freq_fact -= (*freq_fact >> 4);
+   else if (cpi->sf.limit_newmv_early_exit && mode == NEWMV &&
+diff --git a/libvpx/vp9/encoder/vp9_ratectrl.c b/libvpx/vp9/encoder/vp9_ratectrl.c
+index 5ad68e2e5..7a178c7e9 100644
+--- a/libvpx/vp9/encoder/vp9_ratectrl.c
++++ b/libvpx/vp9/encoder/vp9_ratectrl.c
+@@ -1641,16 +1641,18 @@ void vp9_rc_compute_frame_size_bounds(const VP9_COMP *cpi, int frame_target,
+                                       int *frame_over_shoot_limit) {
+   if (cpi->oxcf.rc_mode == VPX_Q) {
+     *frame_under_shoot_limit = 0;
+     *frame_over_shoot_limit = INT_MAX;
+   } else {
+     // For very small rate targets where the fractional adjustment
+     // may be tiny make sure there is at least a minimum range.
+-    const int tol_low = (cpi->sf.recode_tolerance_low * frame_target) / 100;
+-    const int tol_high = (cpi->sf.recode_tolerance_high * frame_target) / 100;
++    const int tol_low =
++        (int)(((int64_t)cpi->sf.recode_tolerance_low * frame_target) / 100);
++    const int tol_high =
++        (int)(((int64_t)cpi->sf.recode_tolerance_high * frame_target) / 100);
+     *frame_under_shoot_limit = VPXMAX(frame_target - tol_low - 100, 0);
+     *frame_over_shoot_limit =
+         VPXMIN(frame_target + tol_high + 100, cpi->rc.max_frame_bandwidth);
+   }
+ }
+ 
+ void vp9_rc_set_frame_target(VP9_COMP *cpi, int target) {
+diff --git a/libvpx/vp9/vp9_cx_iface.c b/libvpx/vp9/vp9_cx_iface.c
+index 374f862f9..af1fe45f3 100644
+--- a/libvpx/vp9/vp9_cx_iface.c
++++ b/libvpx/vp9/vp9_cx_iface.c
+@@ -467,18 +467,19 @@ static void config_target_level(VP9EncoderConfig *oxcf) {
+            vp9_level_defs[target_level_index].max_col_tiles <
+                (1 << oxcf->tile_columns))
+       --oxcf->tile_columns;
+   }
+ }
+ 
+ static vpx_codec_err_t set_encoder_config(
+-    VP9EncoderConfig *oxcf, const vpx_codec_enc_cfg_t *cfg,
++    VP9EncoderConfig *oxcf, vpx_codec_enc_cfg_t *cfg,
+     const struct vp9_extracfg *extra_cfg) {
+   const int is_vbr = cfg->rc_end_usage == VPX_VBR;
+   int sl, tl;
++  unsigned int raw_target_rate;
+   oxcf->profile = cfg->g_profile;
+   oxcf->max_threads = (int)cfg->g_threads;
+   oxcf->width = cfg->g_w;
+   oxcf->height = cfg->g_h;
+   oxcf->bit_depth = cfg->g_bit_depth;
+   oxcf->input_bit_depth = cfg->g_input_bit_depth;
+   // guess a frame rate if out of whack, use 30
+@@ -493,16 +494,22 @@ static vpx_codec_err_t set_encoder_config(
+     case VPX_RC_LAST_PASS: oxcf->pass = 2; break;
+   }
+ 
+   oxcf->lag_in_frames =
+       cfg->g_pass == VPX_RC_FIRST_PASS ? 0 : cfg->g_lag_in_frames;
+   oxcf->rc_mode = cfg->rc_end_usage;
+ 
++  raw_target_rate =
++      (unsigned int)((int64_t)oxcf->width * oxcf->height * oxcf->bit_depth * 3 *
++                     oxcf->init_framerate / 1000);
++  // Cap target bitrate to raw rate
++  cfg->rc_target_bitrate = VPXMIN(raw_target_rate, cfg->rc_target_bitrate);
++
+   // Convert target bandwidth from Kbit/s to Bit/s
+-  oxcf->target_bandwidth = 1000 * cfg->rc_target_bitrate;
++  oxcf->target_bandwidth = 1000 * (int64_t)cfg->rc_target_bitrate;
+   oxcf->rc_max_intra_bitrate_pct = extra_cfg->rc_max_intra_bitrate_pct;
+   oxcf->rc_max_inter_bitrate_pct = extra_cfg->rc_max_inter_bitrate_pct;
+   oxcf->gf_cbr_boost_pct = extra_cfg->gf_cbr_boost_pct;
+ 
+   oxcf->best_allowed_q =
+       extra_cfg->lossless ? 0 : vp9_quantizer_to_qindex(cfg->rc_min_quantizer);
+   oxcf->worst_allowed_q =
