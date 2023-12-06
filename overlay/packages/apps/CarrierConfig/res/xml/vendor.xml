@@ -156,6 +156,12 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.-->
     <!-- Carrier-specific Orange MCV FR-ES-PL-SK-RO -->
     <carrier_config mcc="226" mnc="10" spn="orange">
         <boolean name="carrier_volte_available_bool" value="true" />
+        <boolean name="carrier_wfc_ims_available_bool" value="true" />
+    </carrier_config>
+   <!-- Carrier-specific DIGI Mobil RO -->
+    <carrier_config mcc="226" mnc="5" spn="Digi RO">
+        <boolean name="carrier_volte_available_bool" value="true" />
+        <boolean name="carrier_wfc_ims_available_bool" value="true" />
     </carrier_config>
 
     <!-- Carrier-specific Swisscom CH -->
