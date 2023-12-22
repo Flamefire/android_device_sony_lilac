@@ -1,0 +1,25 @@
+# PWD: packages/apps/Trebuchet
+diff --git a/src/com/android/launcher3/util/PackageManagerHelper.java b/src/com/android/launcher3/util/PackageManagerHelper.java
+index 78d1d3ca8f..1ca28f82dc 100644
+--- a/src/com/android/launcher3/util/PackageManagerHelper.java
++++ b/src/com/android/launcher3/util/PackageManagerHelper.java
+@@ -108,14 +108,19 @@ public class PackageManagerHelper {
+ 
+     /**
+      * Returns true if {@param srcPackage} has the permission required to start the activity from
+      * {@param intent}. If {@param srcPackage} is null, then the activity should not need
+      * any permissions
+      */
+     public boolean hasPermissionForActivity(Intent intent, String srcPackage) {
++        // b/270152142
++        if (Intent.ACTION_CHOOSER.equals(intent.getAction())) {
++            // Chooser shortcuts is not a valid target
++            return false;
++        }
+         ResolveInfo target = mPm.resolveActivity(intent, 0);
+         if (target == null) {
+             // Not a valid target
+             return false;
+         }
+         if (TextUtils.isEmpty(target.activityInfo.permission)) {
+             // No permission is needed

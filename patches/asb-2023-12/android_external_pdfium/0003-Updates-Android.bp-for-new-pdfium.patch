@@ -1,0 +1,1652 @@
+From 596a1f1c7c584e4d13f40a91d896e36427c60336 Mon Sep 17 00:00:00 2001
+From: Haibo Huang <hhb@google.com>
+Date: Mon, 27 Apr 2020 18:22:36 -0700
+Subject: [PATCH 3/6] Updates Android.bp for new pdfium
+
+Rewrite Android.bp to follow the new BUILD.gn structure.
+
+Will try to set up auto update in following changes.
+
+Bug: 155031873
+Change-Id: I4a0632e1f5220ecbd257153a647b594a038f1229
+Merged-Id: I4a0632e1f5220ecbd257153a647b594a038f1229
+---
+ Android.bp                          |  89 +++++++++----
+ build/build_config.h                |   7 ++
+ constants/Android.bp                |   6 +
+ core/fdrm/Android.bp                |  19 +++
+ core/fpdfapi/cmaps/Android.bp       |  14 +++
+ core/fpdfapi/edit/Android.bp        |  22 ++++
+ core/fpdfapi/font/Android.bp        |  17 +++
+ core/fpdfapi/page/Android.bp        |  22 ++++
+ core/fpdfapi/parser/Android.bp      |  25 ++++
+ core/fpdfapi/render/Android.bp      |  28 +++++
+ core/fpdfdoc/Android.bp             |  23 ++++
+ core/fpdftext/Android.bp            |  17 +++
+ core/fxcodec/Android.bp             |  35 ++++++
+ core/fxcrt/Android.bp               |  34 +++++
+ core/fxge/Android.bp                |  36 ++++++
+ fpdfsdk/Android.bp                  |  35 ++++++
+ fpdfsdk/formfiller/Android.bp       |  22 ++++
+ fpdfsdk/pwl/Android.bp              |  27 ++++
+ fxjs/Android.bp                     |  30 +++++
+ pdfium.bp                           |  78 ------------
+ pdfiumfdrm.bp                       |  14 ---
+ pdfiumformfiller.bp                 |  27 ----
+ pdfiumfpdfapi.bp                    | 189 ----------------------------
+ pdfiumfpdfdoc.bp                    |  49 --------
+ pdfiumfpdftext.bp                   |  20 ---
+ pdfiumfxcodec.bp                    |  49 --------
+ pdfiumfxcrt.bp                      |  42 -------
+ pdfiumfxge.bp                       |  82 ------------
+ pdfiumfxjs.bp                       |  13 --
+ pdfiumpwl.bp                        |  32 -----
+ third_party/Android.bp              | 100 +++++++++++++--
+ third_party/pdfiumbigint.bp         |  11 --
+ third_party/pdfiumfx_agg.bp         |  20 ---
+ third_party/pdfiumfx_libopenjpeg.bp |  27 ----
+ third_party/pdfiumlcms2.bp          |  37 ------
+ third_party/pdfiumpdfiumbase.bp     |  11 --
+ 36 files changed, 574 insertions(+), 735 deletions(-)
+ create mode 100644 build/build_config.h
+ create mode 100644 constants/Android.bp
+ create mode 100644 core/fdrm/Android.bp
+ create mode 100644 core/fpdfapi/cmaps/Android.bp
+ create mode 100644 core/fpdfapi/edit/Android.bp
+ create mode 100644 core/fpdfapi/font/Android.bp
+ create mode 100644 core/fpdfapi/page/Android.bp
+ create mode 100644 core/fpdfapi/parser/Android.bp
+ create mode 100644 core/fpdfapi/render/Android.bp
+ create mode 100644 core/fpdfdoc/Android.bp
+ create mode 100644 core/fpdftext/Android.bp
+ create mode 100644 core/fxcodec/Android.bp
+ create mode 100644 core/fxcrt/Android.bp
+ create mode 100644 core/fxge/Android.bp
+ create mode 100644 fpdfsdk/Android.bp
+ create mode 100644 fpdfsdk/formfiller/Android.bp
+ create mode 100644 fpdfsdk/pwl/Android.bp
+ create mode 100644 fxjs/Android.bp
+ delete mode 100644 pdfium.bp
+ delete mode 100644 pdfiumfdrm.bp
+ delete mode 100644 pdfiumformfiller.bp
+ delete mode 100644 pdfiumfpdfapi.bp
+ delete mode 100644 pdfiumfpdfdoc.bp
+ delete mode 100644 pdfiumfpdftext.bp
+ delete mode 100644 pdfiumfxcodec.bp
+ delete mode 100644 pdfiumfxcrt.bp
+ delete mode 100644 pdfiumfxge.bp
+ delete mode 100644 pdfiumfxjs.bp
+ delete mode 100644 pdfiumpwl.bp
+ delete mode 100644 third_party/pdfiumbigint.bp
+ delete mode 100644 third_party/pdfiumfx_agg.bp
+ delete mode 100644 third_party/pdfiumfx_libopenjpeg.bp
+ delete mode 100644 third_party/pdfiumlcms2.bp
+ delete mode 100644 third_party/pdfiumpdfiumbase.bp
+
+diff --git a/Android.bp b/Android.bp
+index 550d9341f..575921228 100644
+--- a/Android.bp
++++ b/Android.bp
+@@ -6,22 +6,16 @@ cc_defaults {
+         "-fprefetch-loop-arrays",
+         "-fexceptions",
+ 
+-        "-Wextra",
+-        "-Wall",
++        "-Wno-implicit-fallthrough",
++        "-Wno-missing-field-initializers",
+         "-Wno-non-virtual-dtor",
+-        "-Wno-null-pointer-arithmetic",
+         "-Wno-unused-parameter",
+-        "-Wno-sign-compare",
+-        "-Wno-missing-field-initializers",
+-        "-Wno-implicit-fallthrough",
+-        // cpdf_renderstatus.cpp:1768, cpdf_variabletext.cpp:320,
+-        // and cpwl_edit_impl.cpp:1825 have -Wimplicit-fallthrough.
+-        "-Werror",
+ 
+         // The new pass manager causes non-deterministic build result.
+         // http://b/135660678
+         "-fno-experimental-new-pass-manager",
+ 
++        // pdfium_common_config
+         "-DOPJ_STATIC",
+         "-DPNG_PREFIX",
+         "-DPNG_USE_READ_MACROS",
+@@ -33,6 +27,10 @@ cc_defaults {
+         },
+     },
+ 
++    include_dirs: [
++        "external/freetype/include",
++    ],
++
+     header_libs: [
+         "pdfium-headers",
+         "pdfium-third-party-headers"
+@@ -41,13 +39,15 @@ cc_defaults {
+ 
+ cc_defaults {
+     name: "pdfium-core",
+-    cflags: [
+-        "-DV8_DEPRECATION_WARNINGS",
+-    ],
+ 
+     defaults: [
+         "pdfium-common"
+-    ]
++    ],
++
++    exclude_srcs: [
++        "**/*_unittest.cpp",
++        "**/*_embeddertest.cpp",
++    ],
+ }
+ 
+ 
+@@ -61,19 +61,54 @@ cc_library_headers {
+     export_include_dirs: ["third_party"],
+ }
+ 
+-build = [
+-    "pdfiumfdrm.bp",
+-    "pdfiumfpdfapi.bp",
+-    "pdfiumfpdfdoc.bp",
+-    "pdfiumfpdftext.bp",
+-    "pdfiumfxcodec.bp",
+-    "pdfiumfxcrt.bp",
+-    "pdfiumfxge.bp",
+-    "pdfiumpwl.bp",
+-    "pdfiumformfiller.bp",
+-
+-    "pdfiumfxjs.bp",
+-    "pdfium.bp",
+-]
++cc_library_shared {
++    name: "libpdfium",
++    defaults: ["pdfium-core"],
++
++    header_libs: [
++        "libpdfium-constants",
++    ],
++
++    whole_static_libs: [
++        "libpdfium-fpdfsdk",
++    ],
++
++    // Transitivity is not supported for static libraries (yet).
++    // Lists the whole transitivity closure here.
++    static_libs: [
++        "libpdfium-agg",
++        "libpdfium-cmaps",
++        "libpdfium-edit",
++        "libpdfium-fdrm",
++        "libpdfium-font",
++        "libpdfium-formfiller",
++        "libpdfium-fpdfdoc",
++        "libpdfium-fpdftext",
++        "libpdfium-fxcodec",
++        "libpdfium-fxcrt",
++        "libpdfium-fxge",
++        "libpdfium-fxjs",
++        "libpdfium-libopenjpeg2",
++        "libpdfium-page",
++        "libpdfium-parser",
++        "libpdfium-pwl",
++        "libpdfium-render",
++        "libpdfium-skia_shared",
++        "libpdfium-third_party-base",
++        "libpdfium-lcms2",
++    ],
++
++    // TODO: figure out why turning on exceptions requires manually linking libdl
++    shared_libs: [
++        "libandroidicu",
++        "libdl",
++        "libft2",
++        "libjpeg",
++        "libz",
++    ],
++
++    export_include_dirs: ["public"],
++
++}
+ 
+ subdirs = ["third_party"]
+diff --git a/build/build_config.h b/build/build_config.h
+new file mode 100644
+index 000000000..8165eee47
+--- /dev/null
++++ b/build/build_config.h
+@@ -0,0 +1,7 @@
++#define OS_POSIX
++#define OS_ANDROID
++#define USE_SYSTEM_ICUUC
++#define USE_SYSTEM_LIBJPEG
++#define USE_SYSTEM_ZLIB
++// Makes base/logging.h and base/bits.h work.
++#define COMPILER_GCC
+diff --git a/constants/Android.bp b/constants/Android.bp
+new file mode 100644
+index 000000000..23c97557d
+--- /dev/null
++++ b/constants/Android.bp
+@@ -0,0 +1,6 @@
++cc_library_headers {
++    name: "libpdfium-constants",
++    export_include_dirs: ["."],
++    visibility: ["//external/pdfium:__subpackages__"],
++}
++
+diff --git a/core/fdrm/Android.bp b/core/fdrm/Android.bp
+new file mode 100644
+index 000000000..c35475a0f
+--- /dev/null
++++ b/core/fdrm/Android.bp
+@@ -0,0 +1,19 @@
++cc_library_static {
++    name: "libpdfium-fdrm",
++    defaults: ["pdfium-core"],
++
++    visibility: ["//external/pdfium:__subpackages__"],
++
++    static_libs: [
++        "libpdfium-fxcrt",
++    ],
++
++    srcs: [
++        "*.cpp",
++    ],
++
++    include_dirs: [
++        "external/freetype/include",
++        "external/freetype/include/freetype",
++    ],
++}
+diff --git a/core/fpdfapi/cmaps/Android.bp b/core/fpdfapi/cmaps/Android.bp
+new file mode 100644
+index 000000000..e2d5067b2
+--- /dev/null
++++ b/core/fpdfapi/cmaps/Android.bp
+@@ -0,0 +1,14 @@
++cc_library_static {
++    name: "libpdfium-cmaps",
++    defaults: ["pdfium-core"],
++
++    visibility: ["//external/pdfium:__subpackages__"],
++
++    static_libs: [
++        "libpdfium-fxcrt",
++    ],
++
++    srcs: [
++        "**/*.cpp",
++    ],
++}
+diff --git a/core/fpdfapi/edit/Android.bp b/core/fpdfapi/edit/Android.bp
+new file mode 100644
+index 000000000..bbd2b6341
+--- /dev/null
++++ b/core/fpdfapi/edit/Android.bp
+@@ -0,0 +1,22 @@
++cc_library_static {
++    name: "libpdfium-edit",
++    defaults: ["pdfium-core"],
++
++    visibility: ["//external/pdfium:__subpackages__"],
++
++    header_libs: [
++        "libpdfium-constants",
++    ],
++
++    static_libs: [
++        "libpdfium-fxcrt",
++        "libpdfium-font",
++        "libpdfium-page",
++        "libpdfium-parser",
++        "libpdfium-skia_shared",
++    ],
++
++    srcs: [
++        "*.cpp",
++    ],
++}
+diff --git a/core/fpdfapi/font/Android.bp b/core/fpdfapi/font/Android.bp
+new file mode 100644
+index 000000000..c4054f4c0
+--- /dev/null
++++ b/core/fpdfapi/font/Android.bp
+@@ -0,0 +1,17 @@
++cc_library_static {
++    name: "libpdfium-font",
++    defaults: ["pdfium-core"],
++
++    visibility: ["//external/pdfium:__subpackages__"],
++
++    static_libs: [
++        "libpdfium-fxcrt",
++        "libpdfium-fxge",
++        "libpdfium-cmaps",
++        "libpdfium-parser",
++    ],
++
++    srcs: [
++        "*.cpp",
++    ],
++}
+diff --git a/core/fpdfapi/page/Android.bp b/core/fpdfapi/page/Android.bp
+new file mode 100644
+index 000000000..650e4f802
+--- /dev/null
++++ b/core/fpdfapi/page/Android.bp
+@@ -0,0 +1,22 @@
++cc_library_static {
++    name: "libpdfium-page",
++    defaults: ["pdfium-core"],
++
++    visibility: ["//external/pdfium:__subpackages__"],
++
++    header_libs: [
++        "libpdfium-constants",
++    ],
++
++    static_libs: [
++        "libpdfium-fxcodec",
++        "libpdfium-fxcrt",
++        "libpdfium-fxge",
++        "libpdfium-font",
++        "libpdfium-parser",
++    ],
++
++    srcs: [
++        "*.cpp",
++    ],
++}
+diff --git a/core/fpdfapi/parser/Android.bp b/core/fpdfapi/parser/Android.bp
+new file mode 100644
+index 000000000..6864dfac6
+--- /dev/null
++++ b/core/fpdfapi/parser/Android.bp
+@@ -0,0 +1,25 @@
++cc_library_static {
++    name: "libpdfium-parser",
++    defaults: ["pdfium-core"],
++
++    visibility: ["//external/pdfium:__subpackages__"],
++
++    header_libs: [
++        "libpdfium-constants",
++    ],
++
++    static_libs: [
++        "libpdfium-fdrm",
++        "libpdfium-fxcodec",
++        "libpdfium-fxcrt",
++    ],
++
++    exclude_srcs: [
++        // pdf_enable_xfa
++        "cpdf_seekablemultistream.cpp",
++    ],
++
++    srcs: [
++        "*.cpp",
++    ],
++}
+diff --git a/core/fpdfapi/render/Android.bp b/core/fpdfapi/render/Android.bp
+new file mode 100644
+index 000000000..60818b5ed
+--- /dev/null
++++ b/core/fpdfapi/render/Android.bp
+@@ -0,0 +1,28 @@
++cc_library_static {
++    name: "libpdfium-render",
++    defaults: ["pdfium-core"],
++
++    visibility: ["//external/pdfium:__subpackages__"],
++
++    header_libs: [
++        "libpdfium-constants",
++    ],
++
++    static_libs: [
++        "libpdfium-fxcodec",
++        "libpdfium-fxcrt",
++        "libpdfium-fxge",
++        "libpdfium-font",
++        "libpdfium-page",
++        "libpdfium-parser",
++    ],
++
++    exclude_srcs: [
++        // is_win
++        "cpdf_windowsrenderdevice.cpp",
++    ],
++
++    srcs: [
++        "*.cpp",
++    ],
++}
+diff --git a/core/fpdfdoc/Android.bp b/core/fpdfdoc/Android.bp
+new file mode 100644
+index 000000000..5bb33ea5e
+--- /dev/null
++++ b/core/fpdfdoc/Android.bp
+@@ -0,0 +1,23 @@
++cc_library_static {
++    name: "libpdfium-fpdfdoc",
++    defaults: ["pdfium-core"],
++
++    visibility: ["//external/pdfium:__subpackages__"],
++
++    header_libs: [
++        "libpdfium-constants",
++    ],
++
++    static_libs: [
++        "libpdfium-font",
++        "libpdfium-page",
++        "libpdfium-parser",
++        "libpdfium-render",
++        "libpdfium-fxcrt",
++        "libpdfium-fxge",
++    ],
++
++    srcs: [
++        "*.cpp",
++    ],
++}
+diff --git a/core/fpdftext/Android.bp b/core/fpdftext/Android.bp
+new file mode 100644
+index 000000000..711f35dcd
+--- /dev/null
++++ b/core/fpdftext/Android.bp
+@@ -0,0 +1,17 @@
++cc_library_static {
++    name: "libpdfium-fpdftext",
++    defaults: ["pdfium-core"],
++
++    visibility: ["//external/pdfium:__subpackages__"],
++
++    static_libs: [
++        "libpdfium-font",
++        "libpdfium-page",
++        "libpdfium-parser",
++        "libpdfium-fxcrt",
++    ],
++
++    srcs: [
++        "*.cpp",
++    ],
++}
+diff --git a/core/fxcodec/Android.bp b/core/fxcodec/Android.bp
+new file mode 100644
+index 000000000..b5d78d1a7
+--- /dev/null
++++ b/core/fxcodec/Android.bp
+@@ -0,0 +1,35 @@
++cc_library_static {
++    name: "libpdfium-fxcodec",
++    defaults: ["pdfium-core"],
++
++    visibility: ["//external/pdfium:__subpackages__"],
++
++    static_libs: [
++        "libpdfium-lcms2",
++        "libpdfium-libopenjpeg2",
++        "libpdfium-fxcrt",
++        "libpdfium-fxge",
++    ],
++
++    shared_libs: [
++        "libz",
++        "libjpeg",
++    ],
++
++    exclude_srcs: [
++        // pdf_enable_xfa
++        "progressivedecoder.cpp",
++        // pdf_enable_xfa_bmp
++        "bmp/*",
++        // pdf_enable_xfa_gif
++        "gif/*",
++        // pdf_enable_xfa_png
++        "png/*",
++        // pdf_enable_xfa_tiff
++        "tiff/*",
++    ],
++
++    srcs: [
++        "**/*.cpp",
++    ],
++}
+diff --git a/core/fxcrt/Android.bp b/core/fxcrt/Android.bp
+new file mode 100644
+index 000000000..cfbe939eb
+--- /dev/null
++++ b/core/fxcrt/Android.bp
+@@ -0,0 +1,34 @@
++cc_library_static {
++    name: "libpdfium-fxcrt",
++    defaults: ["pdfium-core"],
++
++    visibility: ["//external/pdfium:__subpackages__"],
++
++    header_libs: [
++        "libandroidicu_headers",
++    ],
++
++    export_header_lib_headers: [
++        "libandroidicu_headers",
++    ],
++
++    static_libs: [
++        "libpdfium-third_party-base",
++    ],
++
++    shared_libs: [
++        "libandroidicu",
++    ],
++
++    exclude_srcs: [
++        // is_win
++        "cfx_fileaccess_windows.cpp",
++        // pdf_enable_xfa
++        "cfx_memorystream.cpp",
++    ],
++
++    srcs: [
++        "*.cpp",
++        "xml/*.cpp",
++    ],
++}
+diff --git a/core/fxge/Android.bp b/core/fxge/Android.bp
+new file mode 100644
+index 000000000..fe648c669
+--- /dev/null
++++ b/core/fxge/Android.bp
+@@ -0,0 +1,36 @@
++cc_library_static {
++    name: "libpdfium-fxge",
++    defaults: ["pdfium-core"],
++
++    visibility: ["//external/pdfium:__subpackages__"],
++
++    static_libs: [
++        "libpdfium-agg",
++        "libpdfium-fxcrt",
++    ],
++
++    exclude_srcs: [
++        // pdf_enable_xfa
++        "cfx_unicodeencodingex.cpp",
++        // is_win
++        "dib/cfx_dibextractor.cpp",
++        // is_linux
++        "fx_ge_linux.cpp",
++    ],
++
++    srcs: [
++        "*.cpp",
++        "dib/*.cpp",
++        "freetype/*.cpp",
++        "fontdata/**/*.cpp",
++        // !pdf_use_skia
++        "agg/*.cpp",
++        // is_android
++        "android/*.cpp",
++    ],
++
++    include_dirs: [
++        "external/freetype/include",
++        "external/freetype/include/freetype",
++    ],
++}
+diff --git a/fpdfsdk/Android.bp b/fpdfsdk/Android.bp
+new file mode 100644
+index 000000000..af37009aa
+--- /dev/null
++++ b/fpdfsdk/Android.bp
+@@ -0,0 +1,35 @@
++cc_library_static {
++    name: "libpdfium-fpdfsdk",
++    defaults: ["pdfium-core"],
++
++    visibility: ["//external/pdfium:__subpackages__"],
++
++    header_libs: [
++        "libpdfium-constants",
++    ],
++
++    static_libs: [
++        "libpdfium-fdrm",
++        "libpdfium-edit",
++        "libpdfium-font",
++        "libpdfium-page",
++        "libpdfium-parser",
++        "libpdfium-render",
++        "libpdfium-fpdfdoc",
++        "libpdfium-fpdftext",
++        "libpdfium-fxcrt",
++        "libpdfium-fxge",
++        "libpdfium-fxjs",
++        "libpdfium-formfiller",
++        "libpdfium-pwl",
++    ],
++
++    srcs: [
++        "*.cpp",
++    ],
++
++    include_dirs: [
++        "external/freetype/include",
++        "external/freetype/include/freetype",
++    ],
++}
+diff --git a/fpdfsdk/formfiller/Android.bp b/fpdfsdk/formfiller/Android.bp
+new file mode 100644
+index 000000000..5dc4ba68c
+--- /dev/null
++++ b/fpdfsdk/formfiller/Android.bp
+@@ -0,0 +1,22 @@
++cc_library_static {
++    name: "libpdfium-formfiller",
++    defaults: ["pdfium-core"],
++
++    visibility: ["//external/pdfium:__subpackages__"],
++
++    header_libs: [
++        "libpdfium-constants",
++    ],
++
++    static_libs: [
++        "libpdfium-page",
++        "libpdfium-fpdfdoc",
++        "libpdfium-fxcrt",
++        "libpdfium-fxge",
++        "libpdfium-pwl",
++    ],
++
++    srcs: [
++        "*.cpp",
++    ],
++}
+diff --git a/fpdfsdk/pwl/Android.bp b/fpdfsdk/pwl/Android.bp
+new file mode 100644
+index 000000000..d57a01f33
+--- /dev/null
++++ b/fpdfsdk/pwl/Android.bp
+@@ -0,0 +1,27 @@
++cc_library_static {
++    name: "libpdfium-pwl",
++    defaults: ["pdfium-core"],
++
++    visibility: ["//external/pdfium:__subpackages__"],
++
++    header_libs: [
++        "libpdfium-constants",
++    ],
++
++    static_libs: [
++        "libpdfium-font",
++        "libpdfium-render",
++        "libpdfium-fpdfdoc",
++        "libpdfium-fxcrt",
++        "libpdfium-fxge",
++    ],
++
++    srcs: [
++        "*.cpp",
++    ],
++
++    include_dirs: [
++        "external/freetype/include",
++        "external/freetype/include/freetype",
++    ],
++}
+diff --git a/fxjs/Android.bp b/fxjs/Android.bp
+new file mode 100644
+index 000000000..9616816ea
+--- /dev/null
++++ b/fxjs/Android.bp
+@@ -0,0 +1,30 @@
++cc_library_static {
++    name: "libpdfium-fxjs",
++    defaults: ["pdfium-core"],
++
++    visibility: ["//external/pdfium:__subpackages__"],
++
++    header_libs: [
++        "libpdfium-constants",
++    ],
++
++    static_libs: [
++        "libpdfium-fdrm",
++        "libpdfium-page",
++        "libpdfium-parser",
++        "libpdfium-render",
++        "libpdfium-fpdfdoc",
++        "libpdfium-fxge",
++    ],
++
++    srcs: [
++        "cjs_event_context_stub.cpp",
++        "cjs_runtimestub.cpp",
++        "ijs_runtime.cpp",
++    ],
++
++    include_dirs: [
++        "external/freetype/include",
++        "external/freetype/include/freetype",
++    ],
++}
+diff --git a/pdfium.bp b/pdfium.bp
+deleted file mode 100644
+index e188280f0..000000000
+--- a/pdfium.bp
++++ /dev/null
+@@ -1,78 +0,0 @@
+-cc_library_shared {
+-    name: "libpdfium",
+-    defaults: ["pdfium-core"],
+-
+-    static_libs: [
+-        "libpdfiumfdrm",
+-        "libpdfiumformfiller",
+-        "libpdfiumfpdfapi",
+-        "libpdfiumfpdfdoc",
+-        "libpdfiumfpdftext",
+-        "libpdfiumfxcodec",
+-        "libpdfiumfxcrt",
+-        "libpdfiumfxge",
+-        "libpdfiumfxjs",
+-        "libpdfiumpwl",
+-        "libpdfiumfx_agg",
+-        "libpdfiumbigint",
+-        "libpdfiumpdfiumbase",
+-        "libpdfiumlcms2",
+-        "libpdfiumfx_libopenjpeg",
+-    ],
+-
+-    // TODO: figure out why turning on exceptions requires manually linking libdl
+-    shared_libs: [
+-        "libdl",
+-        "libft2",
+-        "libz",
+-        "libjpeg",
+-    ],
+-
+-    srcs: [
+-        "fpdfsdk/cba_annotiterator.cpp",
+-        "fpdfsdk/cfx_systemhandler.cpp",
+-        "fpdfsdk/cpdfsdk_annot.cpp",
+-        "fpdfsdk/cpdfsdk_annothandlermgr.cpp",
+-        "fpdfsdk/cpdfsdk_annotiteration.cpp",
+-        "fpdfsdk/cpdfsdk_baannot.cpp",
+-        "fpdfsdk/cpdfsdk_baannothandler.cpp",
+-        "fpdfsdk/cpdfsdk_datetime.cpp",
+-        "fpdfsdk/cpdfsdk_formfillenvironment.cpp",
+-        "fpdfsdk/cpdfsdk_interform.cpp",
+-        "fpdfsdk/cpdfsdk_pageview.cpp",
+-        "fpdfsdk/cpdfsdk_widget.cpp",
+-        "fpdfsdk/cpdfsdk_widgethandler.cpp",
+-        "fpdfsdk/fpdf_dataavail.cpp",
+-        "fpdfsdk/fpdf_ext.cpp",
+-        "fpdfsdk/fpdf_flatten.cpp",
+-        "fpdfsdk/fpdf_progressive.cpp",
+-        "fpdfsdk/fpdf_searchex.cpp",
+-        "fpdfsdk/fpdf_structtree.cpp",
+-        "fpdfsdk/fpdf_sysfontinfo.cpp",
+-        "fpdfsdk/fpdf_transformpage.cpp",
+-        "fpdfsdk/fpdfannot.cpp",
+-        "fpdfsdk/fpdfattachment.cpp",
+-        "fpdfsdk/fpdfcatalog.cpp",
+-        "fpdfsdk/fpdfdoc.cpp",
+-        "fpdfsdk/fpdfeditimg.cpp",
+-        "fpdfsdk/fpdfeditpage.cpp",
+-        "fpdfsdk/fpdfeditpath.cpp",
+-        "fpdfsdk/fpdfedittext.cpp",
+-        "fpdfsdk/fpdfformfill.cpp",
+-        "fpdfsdk/fpdfppo.cpp",
+-        "fpdfsdk/fpdfsave.cpp",
+-        "fpdfsdk/fpdftext.cpp",
+-        "fpdfsdk/fpdfview.cpp",
+-        "fpdfsdk/fsdk_actionhandler.cpp",
+-        "fpdfsdk/fsdk_filewriteadapter.cpp",
+-        "fpdfsdk/fsdk_pauseadapter.cpp",
+-        "fpdfsdk/pdfsdk_fieldaction.cpp",
+-    ],
+-
+-    export_include_dirs: ["public"],
+-
+-    include_dirs: [
+-        "external/freetype/include",
+-        "external/freetype/include/freetype",
+-    ],
+-}
+diff --git a/pdfiumfdrm.bp b/pdfiumfdrm.bp
+deleted file mode 100644
+index b59898fc2..000000000
+--- a/pdfiumfdrm.bp
++++ /dev/null
+@@ -1,14 +0,0 @@
+-cc_library_static {
+-    name: "libpdfiumfdrm",
+-    defaults: ["pdfium-core"],
+-
+-    static_libs: [
+-        "libpdfiumfxcrt",
+-    ],
+-
+-    srcs: [
+-        "core/fdrm/crypto/fx_crypt.cpp",
+-        "core/fdrm/crypto/fx_crypt_aes.cpp",
+-        "core/fdrm/crypto/fx_crypt_sha.cpp",
+-    ],
+-}
+diff --git a/pdfiumformfiller.bp b/pdfiumformfiller.bp
+deleted file mode 100644
+index a6619df6d..000000000
+--- a/pdfiumformfiller.bp
++++ /dev/null
+@@ -1,27 +0,0 @@
+-cc_library_static {
+-    name: "libpdfiumformfiller",
+-    defaults: ["pdfium-core"],
+-
+-    static_libs: [
+-        "libpdfiumfxcrt",
+-    ],
+-
+-    srcs: [
+-        "fpdfsdk/formfiller/cba_fontmap.cpp",
+-        "fpdfsdk/formfiller/cffl_button.cpp",
+-        "fpdfsdk/formfiller/cffl_checkbox.cpp",
+-        "fpdfsdk/formfiller/cffl_combobox.cpp",
+-        "fpdfsdk/formfiller/cffl_formfiller.cpp",
+-        "fpdfsdk/formfiller/cffl_interactiveformfiller.cpp",
+-        "fpdfsdk/formfiller/cffl_listbox.cpp",
+-        "fpdfsdk/formfiller/cffl_pushbutton.cpp",
+-        "fpdfsdk/formfiller/cffl_radiobutton.cpp",
+-        "fpdfsdk/formfiller/cffl_textfield.cpp",
+-        "fpdfsdk/formfiller/cffl_textobject.cpp",
+-    ],
+-
+-    include_dirs: [
+-        "external/freetype/include",
+-        "external/freetype/include/freetype",
+-    ],
+-}
+diff --git a/pdfiumfpdfapi.bp b/pdfiumfpdfapi.bp
+deleted file mode 100644
+index 2beb9c63a..000000000
+--- a/pdfiumfpdfapi.bp
++++ /dev/null
+@@ -1,189 +0,0 @@
+-cc_library_static {
+-    name: "libpdfiumfpdfapi",
+-    defaults: ["pdfium-core"],
+-
+-    static_libs: [
+-        "libpdfiumfxcrt",
+-        "libpdfiumlcms2",
+-        "libpdfiumfdrm",
+-    ],
+-
+-    srcs: [
+-        "core/fpdfapi/cmaps/CNS1/Adobe-CNS1-UCS2_5.cpp",
+-        "core/fpdfapi/cmaps/CNS1/B5pc-H_0.cpp",
+-        "core/fpdfapi/cmaps/CNS1/B5pc-V_0.cpp",
+-        "core/fpdfapi/cmaps/CNS1/CNS-EUC-H_0.cpp",
+-        "core/fpdfapi/cmaps/CNS1/CNS-EUC-V_0.cpp",
+-        "core/fpdfapi/cmaps/CNS1/ETen-B5-H_0.cpp",
+-        "core/fpdfapi/cmaps/CNS1/ETen-B5-V_0.cpp",
+-        "core/fpdfapi/cmaps/CNS1/ETenms-B5-H_0.cpp",
+-        "core/fpdfapi/cmaps/CNS1/ETenms-B5-V_0.cpp",
+-        "core/fpdfapi/cmaps/CNS1/HKscs-B5-H_5.cpp",
+-        "core/fpdfapi/cmaps/CNS1/HKscs-B5-V_5.cpp",
+-        "core/fpdfapi/cmaps/CNS1/UniCNS-UCS2-H_3.cpp",
+-        "core/fpdfapi/cmaps/CNS1/UniCNS-UCS2-V_3.cpp",
+-        "core/fpdfapi/cmaps/CNS1/UniCNS-UTF16-H_0.cpp",
+-        "core/fpdfapi/cmaps/CNS1/cmaps_cns1.cpp",
+-        "core/fpdfapi/cmaps/GB1/Adobe-GB1-UCS2_5.cpp",
+-        "core/fpdfapi/cmaps/GB1/GB-EUC-H_0.cpp",
+-        "core/fpdfapi/cmaps/GB1/GB-EUC-V_0.cpp",
+-        "core/fpdfapi/cmaps/GB1/GBK-EUC-H_2.cpp",
+-        "core/fpdfapi/cmaps/GB1/GBK-EUC-V_2.cpp",
+-        "core/fpdfapi/cmaps/GB1/GBK2K-H_5.cpp",
+-        "core/fpdfapi/cmaps/GB1/GBK2K-V_5.cpp",
+-        "core/fpdfapi/cmaps/GB1/GBKp-EUC-H_2.cpp",
+-        "core/fpdfapi/cmaps/GB1/GBKp-EUC-V_2.cpp",
+-        "core/fpdfapi/cmaps/GB1/GBpc-EUC-H_0.cpp",
+-        "core/fpdfapi/cmaps/GB1/GBpc-EUC-V_0.cpp",
+-        "core/fpdfapi/cmaps/GB1/UniGB-UCS2-H_4.cpp",
+-        "core/fpdfapi/cmaps/GB1/UniGB-UCS2-V_4.cpp",
+-        "core/fpdfapi/cmaps/GB1/cmaps_gb1.cpp",
+-        "core/fpdfapi/cmaps/Japan1/83pv-RKSJ-H_1.cpp",
+-        "core/fpdfapi/cmaps/Japan1/90ms-RKSJ-H_2.cpp",
+-        "core/fpdfapi/cmaps/Japan1/90ms-RKSJ-V_2.cpp",
+-        "core/fpdfapi/cmaps/Japan1/90msp-RKSJ-H_2.cpp",
+-        "core/fpdfapi/cmaps/Japan1/90msp-RKSJ-V_2.cpp",
+-        "core/fpdfapi/cmaps/Japan1/90pv-RKSJ-H_1.cpp",
+-        "core/fpdfapi/cmaps/Japan1/Add-RKSJ-H_1.cpp",
+-        "core/fpdfapi/cmaps/Japan1/Add-RKSJ-V_1.cpp",
+-        "core/fpdfapi/cmaps/Japan1/Adobe-Japan1-UCS2_4.cpp",
+-        "core/fpdfapi/cmaps/Japan1/EUC-H_1.cpp",
+-        "core/fpdfapi/cmaps/Japan1/EUC-V_1.cpp",
+-        "core/fpdfapi/cmaps/Japan1/Ext-RKSJ-H_2.cpp",
+-        "core/fpdfapi/cmaps/Japan1/Ext-RKSJ-V_2.cpp",
+-        "core/fpdfapi/cmaps/Japan1/H_1.cpp",
+-        "core/fpdfapi/cmaps/Japan1/UniJIS-UCS2-HW-H_4.cpp",
+-        "core/fpdfapi/cmaps/Japan1/UniJIS-UCS2-HW-V_4.cpp",
+-        "core/fpdfapi/cmaps/Japan1/UniJIS-UCS2-H_4.cpp",
+-        "core/fpdfapi/cmaps/Japan1/UniJIS-UCS2-V_4.cpp",
+-        "core/fpdfapi/cmaps/Japan1/V_1.cpp",
+-        "core/fpdfapi/cmaps/Japan1/cmaps_japan1.cpp",
+-        "core/fpdfapi/cmaps/Korea1/Adobe-Korea1-UCS2_2.cpp",
+-        "core/fpdfapi/cmaps/Korea1/KSC-EUC-H_0.cpp",
+-        "core/fpdfapi/cmaps/Korea1/KSC-EUC-V_0.cpp",
+-        "core/fpdfapi/cmaps/Korea1/KSCms-UHC-HW-H_1.cpp",
+-        "core/fpdfapi/cmaps/Korea1/KSCms-UHC-HW-V_1.cpp",
+-        "core/fpdfapi/cmaps/Korea1/KSCms-UHC-H_1.cpp",
+-        "core/fpdfapi/cmaps/Korea1/KSCms-UHC-V_1.cpp",
+-        "core/fpdfapi/cmaps/Korea1/KSCpc-EUC-H_0.cpp",
+-        "core/fpdfapi/cmaps/Korea1/UniKS-UCS2-H_1.cpp",
+-        "core/fpdfapi/cmaps/Korea1/UniKS-UCS2-V_1.cpp",
+-        "core/fpdfapi/cmaps/Korea1/UniKS-UTF16-H_0.cpp",
+-        "core/fpdfapi/cmaps/Korea1/cmaps_korea1.cpp",
+-        "core/fpdfapi/cmaps/fpdf_cmaps.cpp",
+-        "core/fpdfapi/cpdf_modulemgr.cpp",
+-        "core/fpdfapi/cpdf_pagerendercontext.cpp",
+-        "core/fpdfapi/edit/cpdf_creator.cpp",
+-        "core/fpdfapi/edit/cpdf_encryptor.cpp",
+-        "core/fpdfapi/edit/cpdf_flateencoder.cpp",
+-        "core/fpdfapi/edit/cpdf_pagecontentgenerator.cpp",
+-        "core/fpdfapi/font/cfx_cttgsubtable.cpp",
+-        "core/fpdfapi/font/cfx_stockfontarray.cpp",
+-        "core/fpdfapi/font/cpdf_cid2unicodemap.cpp",
+-        "core/fpdfapi/font/cpdf_cidfont.cpp",
+-        "core/fpdfapi/font/cpdf_cmap.cpp",
+-        "core/fpdfapi/font/cpdf_cmapmanager.cpp",
+-        "core/fpdfapi/font/cpdf_cmapparser.cpp",
+-        "core/fpdfapi/font/cpdf_font.cpp",
+-        "core/fpdfapi/font/cpdf_fontencoding.cpp",
+-        "core/fpdfapi/font/cpdf_fontglobals.cpp",
+-        "core/fpdfapi/font/cpdf_simplefont.cpp",
+-        "core/fpdfapi/font/cpdf_tounicodemap.cpp",
+-        "core/fpdfapi/font/cpdf_truetypefont.cpp",
+-        "core/fpdfapi/font/cpdf_type1font.cpp",
+-        "core/fpdfapi/font/cpdf_type3char.cpp",
+-        "core/fpdfapi/font/cpdf_type3font.cpp",
+-        "core/fpdfapi/page/cpdf_allstates.cpp",
+-        "core/fpdfapi/page/cpdf_clippath.cpp",
+-        "core/fpdfapi/page/cpdf_color.cpp",
+-        "core/fpdfapi/page/cpdf_colorspace.cpp",
+-        "core/fpdfapi/page/cpdf_colorstate.cpp",
+-        "core/fpdfapi/page/cpdf_contentmark.cpp",
+-        "core/fpdfapi/page/cpdf_contentmarkitem.cpp",
+-        "core/fpdfapi/page/cpdf_contentparser.cpp",
+-        "core/fpdfapi/page/cpdf_devicecs.cpp",
+-        "core/fpdfapi/page/cpdf_docpagedata.cpp",
+-        "core/fpdfapi/page/cpdf_expintfunc.cpp",
+-        "core/fpdfapi/page/cpdf_form.cpp",
+-        "core/fpdfapi/page/cpdf_formobject.cpp",
+-        "core/fpdfapi/page/cpdf_function.cpp",
+-        "core/fpdfapi/page/cpdf_generalstate.cpp",
+-        "core/fpdfapi/page/cpdf_graphicstates.cpp",
+-        "core/fpdfapi/page/cpdf_iccprofile.cpp",
+-        "core/fpdfapi/page/cpdf_image.cpp",
+-        "core/fpdfapi/page/cpdf_imageobject.cpp",
+-        "core/fpdfapi/page/cpdf_meshstream.cpp",
+-        "core/fpdfapi/page/cpdf_page.cpp",
+-        "core/fpdfapi/page/cpdf_pagemodule.cpp",
+-        "core/fpdfapi/page/cpdf_pageobject.cpp",
+-        "core/fpdfapi/page/cpdf_pageobjectholder.cpp",
+-        "core/fpdfapi/page/cpdf_pageobjectlist.cpp",
+-        "core/fpdfapi/page/cpdf_path.cpp",
+-        "core/fpdfapi/page/cpdf_pathobject.cpp",
+-        "core/fpdfapi/page/cpdf_pattern.cpp",
+-        "core/fpdfapi/page/cpdf_patterncs.cpp",
+-        "core/fpdfapi/page/cpdf_psengine.cpp",
+-        "core/fpdfapi/page/cpdf_psfunc.cpp",
+-        "core/fpdfapi/page/cpdf_sampledfunc.cpp",
+-        "core/fpdfapi/page/cpdf_shadingobject.cpp",
+-        "core/fpdfapi/page/cpdf_shadingpattern.cpp",
+-        "core/fpdfapi/page/cpdf_stitchfunc.cpp",
+-        "core/fpdfapi/page/cpdf_streamcontentparser.cpp",
+-        "core/fpdfapi/page/cpdf_streamparser.cpp",
+-        "core/fpdfapi/page/cpdf_textobject.cpp",
+-        "core/fpdfapi/page/cpdf_textstate.cpp",
+-        "core/fpdfapi/page/cpdf_tilingpattern.cpp",
+-        "core/fpdfapi/parser/cfdf_document.cpp",
+-        "core/fpdfapi/parser/cpdf_array.cpp",
+-        "core/fpdfapi/parser/cpdf_boolean.cpp",
+-        "core/fpdfapi/parser/cpdf_cross_ref_avail.cpp",
+-        "core/fpdfapi/parser/cpdf_crypto_handler.cpp",
+-        "core/fpdfapi/parser/cpdf_data_avail.cpp",
+-        "core/fpdfapi/parser/cpdf_dictionary.cpp",
+-        "core/fpdfapi/parser/cpdf_document.cpp",
+-        "core/fpdfapi/parser/cpdf_hint_tables.cpp",
+-        "core/fpdfapi/parser/cpdf_indirect_object_holder.cpp",
+-        "core/fpdfapi/parser/cpdf_linearized_header.cpp",
+-        "core/fpdfapi/parser/cpdf_name.cpp",
+-        "core/fpdfapi/parser/cpdf_null.cpp",
+-        "core/fpdfapi/parser/cpdf_number.cpp",
+-        "core/fpdfapi/parser/cpdf_object.cpp",
+-        "core/fpdfapi/parser/cpdf_object_avail.cpp",
+-        "core/fpdfapi/parser/cpdf_object_walker.cpp",
+-        "core/fpdfapi/parser/cpdf_page_object_avail.cpp",
+-        "core/fpdfapi/parser/cpdf_parser.cpp",
+-        "core/fpdfapi/parser/cpdf_read_validator.cpp",
+-        "core/fpdfapi/parser/cpdf_reference.cpp",
+-        "core/fpdfapi/parser/cpdf_security_handler.cpp",
+-        "core/fpdfapi/parser/cpdf_simple_parser.cpp",
+-        "core/fpdfapi/parser/cpdf_stream.cpp",
+-        "core/fpdfapi/parser/cpdf_stream_acc.cpp",
+-        "core/fpdfapi/parser/cpdf_string.cpp",
+-        "core/fpdfapi/parser/cpdf_syntax_parser.cpp",
+-        "core/fpdfapi/parser/fpdf_parser_decode.cpp",
+-        "core/fpdfapi/parser/fpdf_parser_utility.cpp",
+-        "core/fpdfapi/render/cpdf_charposlist.cpp",
+-        "core/fpdfapi/render/cpdf_devicebuffer.cpp",
+-        "core/fpdfapi/render/cpdf_dibsource.cpp",
+-        "core/fpdfapi/render/cpdf_dibtransferfunc.cpp",
+-        "core/fpdfapi/render/cpdf_docrenderdata.cpp",
+-        "core/fpdfapi/render/cpdf_imagecacheentry.cpp",
+-        "core/fpdfapi/render/cpdf_imageloader.cpp",
+-        "core/fpdfapi/render/cpdf_imagerenderer.cpp",
+-        "core/fpdfapi/render/cpdf_pagerendercache.cpp",
+-        "core/fpdfapi/render/cpdf_progressiverenderer.cpp",
+-        "core/fpdfapi/render/cpdf_rendercontext.cpp",
+-        "core/fpdfapi/render/cpdf_renderoptions.cpp",
+-        "core/fpdfapi/render/cpdf_renderstatus.cpp",
+-        "core/fpdfapi/render/cpdf_scaledrenderbuffer.cpp",
+-        "core/fpdfapi/render/cpdf_textrenderer.cpp",
+-        "core/fpdfapi/render/cpdf_transferfunc.cpp",
+-        "core/fpdfapi/render/cpdf_type3cache.cpp",
+-        "core/fpdfapi/render/cpdf_type3glyphs.cpp",
+-    ],
+-
+-    include_dirs: [
+-        "external/freetype/include",
+-        "external/freetype/include/freetype",
+-    ],
+-}
+diff --git a/pdfiumfpdfdoc.bp b/pdfiumfpdfdoc.bp
+deleted file mode 100644
+index c3493a8cc..000000000
+--- a/pdfiumfpdfdoc.bp
++++ /dev/null
+@@ -1,49 +0,0 @@
+-cc_library_static {
+-    name: "libpdfiumfpdfdoc",
+-    defaults: ["pdfium-core"],
+-
+-    static_libs: [
+-        "libpdfiumfxcrt",
+-    ],
+-
+-    srcs: [
+-        "core/fpdfdoc/cline.cpp",
+-        "core/fpdfdoc/cpdf_aaction.cpp",
+-        "core/fpdfdoc/cpdf_action.cpp",
+-        "core/fpdfdoc/cpdf_actionfields.cpp",
+-        "core/fpdfdoc/cpdf_annot.cpp",
+-        "core/fpdfdoc/cpdf_annotlist.cpp",
+-        "core/fpdfdoc/cpdf_apsettings.cpp",
+-        "core/fpdfdoc/cpdf_bookmark.cpp",
+-        "core/fpdfdoc/cpdf_bookmarktree.cpp",
+-        "core/fpdfdoc/cpdf_defaultappearance.cpp",
+-        "core/fpdfdoc/cpdf_dest.cpp",
+-        "core/fpdfdoc/cpdf_docjsactions.cpp",
+-        "core/fpdfdoc/cpdf_filespec.cpp",
+-        "core/fpdfdoc/cpdf_formcontrol.cpp",
+-        "core/fpdfdoc/cpdf_formfield.cpp",
+-        "core/fpdfdoc/cpdf_iconfit.cpp",
+-        "core/fpdfdoc/cpdf_interform.cpp",
+-        "core/fpdfdoc/cpdf_link.cpp",
+-        "core/fpdfdoc/cpdf_linklist.cpp",
+-        "core/fpdfdoc/cpdf_metadata.cpp",
+-        "core/fpdfdoc/cpdf_nametree.cpp",
+-        "core/fpdfdoc/cpdf_numbertree.cpp",
+-        "core/fpdfdoc/cpdf_occontext.cpp",
+-        "core/fpdfdoc/cpdf_pagelabel.cpp",
+-        "core/fpdfdoc/cpdf_structelement.cpp",
+-        "core/fpdfdoc/cpdf_structtree.cpp",
+-        "core/fpdfdoc/cpdf_variabletext.cpp",
+-        "core/fpdfdoc/cpdf_viewerpreferences.cpp",
+-        "core/fpdfdoc/cpvt_fontmap.cpp",
+-        "core/fpdfdoc/cpvt_generateap.cpp",
+-        "core/fpdfdoc/cpvt_wordinfo.cpp",
+-        "core/fpdfdoc/csection.cpp",
+-        "core/fpdfdoc/ctypeset.cpp",
+-    ],
+-
+-    include_dirs: [
+-        "external/freetype/include",
+-        "external/freetype/include/freetype",
+-    ],
+-}
+diff --git a/pdfiumfpdftext.bp b/pdfiumfpdftext.bp
+deleted file mode 100644
+index 7ae75d79f..000000000
+--- a/pdfiumfpdftext.bp
++++ /dev/null
+@@ -1,20 +0,0 @@
+-cc_library_static {
+-    name: "libpdfiumfpdftext",
+-    defaults: ["pdfium-core"],
+-
+-    static_libs: [
+-        "libpdfiumfxcrt",
+-    ],
+-
+-    srcs: [
+-        "core/fpdftext/cpdf_linkextract.cpp",
+-        "core/fpdftext/cpdf_textpage.cpp",
+-        "core/fpdftext/cpdf_textpagefind.cpp",
+-        "core/fpdftext/unicodenormalizationdata.cpp",
+-    ],
+-
+-    include_dirs: [
+-        "external/freetype/include",
+-        "external/freetype/include/freetype",
+-    ],
+-}
+diff --git a/pdfiumfxcodec.bp b/pdfiumfxcodec.bp
+deleted file mode 100644
+index f8b5fb74c..000000000
+--- a/pdfiumfxcodec.bp
++++ /dev/null
+@@ -1,49 +0,0 @@
+-cc_library_static {
+-    name: "libpdfiumfxcodec",
+-    defaults: ["pdfium-core"],
+-
+-    cflags: [
+-        "-Wno-pointer-to-int-cast",
+-        "-DUSE_SYSTEM_ZLIB",
+-        "-DUSE_SYSTEM_LIBJPEG",
+-    ],
+-
+-    static_libs: [
+-        "libpdfiumfxcrt",
+-        "libpdfiumlcms2",
+-        "libpdfiumfx_libopenjpeg",
+-    ],
+-
+-    shared_libs: [
+-        "libz",
+-        "libjpeg",
+-    ],
+-
+-    srcs: [
+-        "core/fxcodec/codec/ccodec_scanlinedecoder.cpp",
+-        "core/fxcodec/codec/fx_codec.cpp",
+-        "core/fxcodec/codec/fx_codec_fax.cpp",
+-        "core/fxcodec/codec/fx_codec_flate.cpp",
+-        "core/fxcodec/codec/fx_codec_icc.cpp",
+-        "core/fxcodec/codec/fx_codec_jbig.cpp",
+-        "core/fxcodec/codec/fx_codec_jpeg.cpp",
+-        "core/fxcodec/codec/fx_codec_jpx_opj.cpp",
+-        "core/fxcodec/jbig2/JBig2_ArithDecoder.cpp",
+-        "core/fxcodec/jbig2/JBig2_ArithIntDecoder.cpp",
+-        "core/fxcodec/jbig2/JBig2_BitStream.cpp",
+-        "core/fxcodec/jbig2/JBig2_Context.cpp",
+-        "core/fxcodec/jbig2/JBig2_GrdProc.cpp",
+-        "core/fxcodec/jbig2/JBig2_GrrdProc.cpp",
+-        "core/fxcodec/jbig2/JBig2_HtrdProc.cpp",
+-        "core/fxcodec/jbig2/JBig2_HuffmanDecoder.cpp",
+-        "core/fxcodec/jbig2/JBig2_HuffmanTable.cpp",
+-        "core/fxcodec/jbig2/JBig2_HuffmanTable_Standard.cpp",
+-        "core/fxcodec/jbig2/JBig2_Image.cpp",
+-        "core/fxcodec/jbig2/JBig2_PatternDict.cpp",
+-        "core/fxcodec/jbig2/JBig2_PddProc.cpp",
+-        "core/fxcodec/jbig2/JBig2_SddProc.cpp",
+-        "core/fxcodec/jbig2/JBig2_Segment.cpp",
+-        "core/fxcodec/jbig2/JBig2_SymbolDict.cpp",
+-        "core/fxcodec/jbig2/JBig2_TrdProc.cpp",
+-    ],
+-}
+diff --git a/pdfiumfxcrt.bp b/pdfiumfxcrt.bp
+deleted file mode 100644
+index 5acbc2892..000000000
+--- a/pdfiumfxcrt.bp
++++ /dev/null
+@@ -1,42 +0,0 @@
+-cc_library_static {
+-    name: "libpdfiumfxcrt",
+-    defaults: ["pdfium-core"],
+-
+-    static_libs: [
+-        "libpdfiumpdfiumbase"
+-    ],
+-
+-    shared_libs: [
+-        "libft2",
+-    ],
+-
+-    srcs: [
+-        "core/fxcrt/bytestring.cpp",
+-        "core/fxcrt/cfx_binarybuf.cpp",
+-        "core/fxcrt/cfx_bitstream.cpp",
+-        "core/fxcrt/cfx_datetime.cpp",
+-        "core/fxcrt/cfx_fileaccess_posix.cpp",
+-        "core/fxcrt/cfx_fileaccess_windows.cpp",
+-        "core/fxcrt/cfx_memorystream.cpp",
+-        "core/fxcrt/cfx_seekablemultistream.cpp",
+-        "core/fxcrt/cfx_utf8decoder.cpp",
+-        "core/fxcrt/cfx_widetextbuf.cpp",
+-        "core/fxcrt/fx_bidi.cpp",
+-        "core/fxcrt/fx_coordinates.cpp",
+-        "core/fxcrt/fx_extension.cpp",
+-        "core/fxcrt/fx_memory.cpp",
+-        "core/fxcrt/fx_random.cpp",
+-        "core/fxcrt/fx_stream.cpp",
+-        "core/fxcrt/fx_string.cpp",
+-        "core/fxcrt/fx_system.cpp",
+-        "core/fxcrt/fx_ucddata.cpp",
+-        "core/fxcrt/fx_unicode.cpp",
+-        "core/fxcrt/widestring.cpp",
+-        "core/fxcrt/xml/cxml_attritem.cpp",
+-        "core/fxcrt/xml/cxml_content.cpp",
+-        "core/fxcrt/xml/cxml_databufacc.cpp",
+-        "core/fxcrt/xml/cxml_element.cpp",
+-        "core/fxcrt/xml/cxml_object.cpp",
+-        "core/fxcrt/xml/cxml_parser.cpp",
+-    ],
+-}
+diff --git a/pdfiumfxge.bp b/pdfiumfxge.bp
+deleted file mode 100644
+index 9c72701f2..000000000
+--- a/pdfiumfxge.bp
++++ /dev/null
+@@ -1,82 +0,0 @@
+-cc_library_static {
+-    name: "libpdfiumfxge",
+-    defaults: ["pdfium-core"],
+-
+-    cflags: [
+-        "-DDEFINE_PS_TABLES",
+-        "-DEFINE_PS_TABLES_DATA",
+-    ],
+-
+-    static_libs: [
+-        "libpdfiumfxcrt",
+-        "libpdfiumfx_agg",
+-    ],
+-
+-    srcs: [
+-        "core/fxge/android/cfpf_skiabufferfont.cpp",
+-        "core/fxge/android/cfpf_skiadevicemodule.cpp",
+-        "core/fxge/android/cfpf_skiafilefont.cpp",
+-        "core/fxge/android/cfpf_skiafont.cpp",
+-        "core/fxge/android/cfpf_skiafontdescriptor.cpp",
+-        "core/fxge/android/cfpf_skiafontmgr.cpp",
+-        "core/fxge/android/cfpf_skiapathfont.cpp",
+-        "core/fxge/android/cfx_androidfontinfo.cpp",
+-        "core/fxge/android/fx_android_imp.cpp",
+-        "core/fxge/cfx_cliprgn.cpp",
+-        "core/fxge/cfx_color.cpp",
+-        "core/fxge/cfx_facecache.cpp",
+-        "core/fxge/cfx_folderfontinfo.cpp",
+-        "core/fxge/cfx_font.cpp",
+-        "core/fxge/cfx_fontcache.cpp",
+-        "core/fxge/cfx_fontmapper.cpp",
+-        "core/fxge/cfx_fontmgr.cpp",
+-        "core/fxge/cfx_gemodule.cpp",
+-        "core/fxge/cfx_graphstate.cpp",
+-        "core/fxge/cfx_graphstatedata.cpp",
+-        "core/fxge/cfx_pathdata.cpp",
+-        "core/fxge/cfx_renderdevice.cpp",
+-        "core/fxge/cfx_substfont.cpp",
+-        "core/fxge/cfx_unicodeencoding.cpp",
+-        "core/fxge/cttfontdesc.cpp",
+-        "core/fxge/dib/cfx_bitmapcomposer.cpp",
+-        "core/fxge/dib/cfx_bitmapstorer.cpp",
+-        "core/fxge/dib/cfx_dibextractor.cpp",
+-        "core/fxge/dib/cfx_dibitmap.cpp",
+-        "core/fxge/dib/cfx_dibsource.cpp",
+-        "core/fxge/dib/cfx_filtereddib.cpp",
+-        "core/fxge/dib/cfx_imagerenderer.cpp",
+-        "core/fxge/dib/cfx_imagestretcher.cpp",
+-        "core/fxge/dib/cfx_imagetransformer.cpp",
+-        "core/fxge/dib/cfx_scanlinecompositor.cpp",
+-        "core/fxge/dib/cstretchengine.cpp",
+-        "core/fxge/dib/fx_dib_main.cpp",
+-        "core/fxge/fontdata/chromefontdata/FoxitDingbats.cpp",
+-        "core/fxge/fontdata/chromefontdata/FoxitFixed.cpp",
+-        "core/fxge/fontdata/chromefontdata/FoxitFixedBold.cpp",
+-        "core/fxge/fontdata/chromefontdata/FoxitFixedBoldItalic.cpp",
+-        "core/fxge/fontdata/chromefontdata/FoxitFixedItalic.cpp",
+-        "core/fxge/fontdata/chromefontdata/FoxitSans.cpp",
+-        "core/fxge/fontdata/chromefontdata/FoxitSansBold.cpp",
+-        "core/fxge/fontdata/chromefontdata/FoxitSansBoldItalic.cpp",
+-        "core/fxge/fontdata/chromefontdata/FoxitSansItalic.cpp",
+-        "core/fxge/fontdata/chromefontdata/FoxitSansMM.cpp",
+-        "core/fxge/fontdata/chromefontdata/FoxitSerif.cpp",
+-        "core/fxge/fontdata/chromefontdata/FoxitSerifBold.cpp",
+-        "core/fxge/fontdata/chromefontdata/FoxitSerifBoldItalic.cpp",
+-        "core/fxge/fontdata/chromefontdata/FoxitSerifItalic.cpp",
+-        "core/fxge/fontdata/chromefontdata/FoxitSerifMM.cpp",
+-        "core/fxge/fontdata/chromefontdata/FoxitSymbol.cpp",
+-        "core/fxge/freetype/fx_freetype.cpp",
+-        "core/fxge/fx_ge_fontmap.cpp",
+-        "core/fxge/fx_ge_linux.cpp",
+-        "core/fxge/fx_ge_text.cpp",
+-        "core/fxge/ifx_renderdevicedriver.cpp",
+-
+-        "core/fxge/agg/fx_agg_driver.cpp",
+-    ],
+-
+-    include_dirs: [
+-        "external/freetype/include",
+-        "external/freetype/include/freetype",
+-    ],
+-}
+diff --git a/pdfiumfxjs.bp b/pdfiumfxjs.bp
+deleted file mode 100644
+index 572c95b38..000000000
+--- a/pdfiumfxjs.bp
++++ /dev/null
+@@ -1,13 +0,0 @@
+-cc_library_static {
+-    name: "libpdfiumfxjs",
+-    defaults: ["pdfium-core"],
+-
+-    static_libs: [
+-        "libpdfiumfxcrt"
+-    ],
+-
+-    srcs: [
+-        "fxjs/cjs_event_context_stub.cpp",
+-        "fxjs/cjs_runtimestub.cpp",
+-    ],
+-}
+diff --git a/pdfiumpwl.bp b/pdfiumpwl.bp
+deleted file mode 100644
+index 78bd56281..000000000
+--- a/pdfiumpwl.bp
++++ /dev/null
+@@ -1,32 +0,0 @@
+-cc_library_static {
+-    name: "libpdfiumpwl",
+-    defaults: ["pdfium-core"],
+-
+-    static_libs: [
+-        "libpdfiumfxcrt",
+-    ],
+-
+-    srcs: [
+-        "fpdfsdk/pwl/cpwl_appstream.cpp",
+-        "fpdfsdk/pwl/cpwl_button.cpp",
+-        "fpdfsdk/pwl/cpwl_caret.cpp",
+-        "fpdfsdk/pwl/cpwl_combo_box.cpp",
+-        "fpdfsdk/pwl/cpwl_edit.cpp",
+-        "fpdfsdk/pwl/cpwl_edit_ctrl.cpp",
+-        "fpdfsdk/pwl/cpwl_edit_impl.cpp",
+-        "fpdfsdk/pwl/cpwl_font_map.cpp",
+-        "fpdfsdk/pwl/cpwl_icon.cpp",
+-        "fpdfsdk/pwl/cpwl_list_box.cpp",
+-        "fpdfsdk/pwl/cpwl_list_impl.cpp",
+-        "fpdfsdk/pwl/cpwl_scroll_bar.cpp",
+-        "fpdfsdk/pwl/cpwl_special_button.cpp",
+-        "fpdfsdk/pwl/cpwl_timer.cpp",
+-        "fpdfsdk/pwl/cpwl_timer_handler.cpp",
+-        "fpdfsdk/pwl/cpwl_wnd.cpp",
+-    ],
+-
+-    include_dirs: [
+-        "external/freetype/include",
+-        "external/freetype/include/freetype",
+-    ],
+-}
+diff --git a/third_party/Android.bp b/third_party/Android.bp
+index 2d294e0d2..824544efb 100644
+--- a/third_party/Android.bp
++++ b/third_party/Android.bp
+@@ -3,12 +3,98 @@ cc_defaults {
+     defaults: [
+         "pdfium-common"
+     ],
++    visibility: ["//external/pdfium:__subpackages__"],
++}
++
++cc_library_static {
++    name: "libpdfium-third_party-base",
++    defaults: ["pdfium-third-party"],
++    visibility: ["//external/pdfium:__subpackages__"],
++
++    arch: {
++        arm: {
++            cflags: [
++                "-DARCH_CPU_32_BITS",
++                "-DARCH_CPU_ARMEL",
++            ],
++        },
++        arm64: {
++            cflags: [
++                "-DARCH_CPU_64_BITS",
++                "-DARCH_CPU_ARM64",
++            ],
++        },
++        x86: {
++            cflags: [
++                "-DARCH_CPU_32_BITS",
++                "-DARCH_CPU_X86",
++            ],
++        },
++        x86_64: {
++            cflags: [
++                "-DARCH_CPU_64_BITS",
++                "-DARCH_CPU_X86_64",
++            ],
++        },
++    },
++
++    srcs: [
++        "base/debug/*.cc",
++        "base/allocator/partition_allocator/*.cc",
++    ],
++}
++
++cc_library_static {
++    name: "libpdfium-lcms2",
++    defaults: ["pdfium-third-party"],
++
++    cflags: [
++      // cmslut.cc is sloppy with aggregate initialization. Version 2.7 of this
++      // library doesn't appear to have this problem.
++      "-Wno-missing-braces",
++
++      // FindPrev() in cmsplugin.c is unused.
++      "-Wno-unused-function",
++    ],
++
++    srcs: [
++        "lcms/src/*.c",
++    ],
++}
++
++cc_library_static {
++    name: "libpdfium-libopenjpeg2",
++    defaults: ["pdfium-third-party"],
++
++    exclude_srcs: [
++        "libopenjpeg20/t1_generate_luts.c",
++    ],
++
++    srcs: [
++        "libopenjpeg20/*.c",
++    ],
++}
++
++cc_library_static {
++    name: "libpdfium-agg",
++    defaults: ["pdfium-third-party"],
++
++    cflags: [
++        // calc_butt_cap() in agg_vcgen_stroke.cpp is unused.
++        "-Wno-unused-function",
++    ],
++
++    srcs: [
++        "agg23/*.cpp",
++    ]
++}
++
++cc_library_static {
++    name: "libpdfium-skia_shared",
++    defaults: ["pdfium-third-party"],
++
++    srcs: [
++        "skia_shared/*.cpp",
++    ],
+ }
+ 
+-build = [
+-    "pdfiumfx_agg.bp",
+-    "pdfiumbigint.bp",
+-    "pdfiumlcms2.bp",
+-    "pdfiumpdfiumbase.bp",
+-    "pdfiumfx_libopenjpeg.bp",
+-]
+diff --git a/third_party/pdfiumbigint.bp b/third_party/pdfiumbigint.bp
+deleted file mode 100644
+index fbd92a9a1..000000000
+--- a/third_party/pdfiumbigint.bp
++++ /dev/null
+@@ -1,11 +0,0 @@
+-cc_library_static {
+-    name: "libpdfiumbigint",
+-    defaults: ["pdfium-third-party"],
+-
+-    srcs: [
+-        "bigint/BigInteger.cc",
+-        "bigint/BigIntegerUtils.cc",
+-        "bigint/BigUnsigned.cc",
+-        "bigint/BigUnsignedInABase.cc",
+-    ],
+-}
+diff --git a/third_party/pdfiumfx_agg.bp b/third_party/pdfiumfx_agg.bp
+deleted file mode 100644
+index f55fa6715..000000000
+--- a/third_party/pdfiumfx_agg.bp
++++ /dev/null
+@@ -1,20 +0,0 @@
+-cc_library_static {
+-    name: "libpdfiumfx_agg",
+-    defaults: ["pdfium-third-party"],
+-
+-    cflags: [
+-        "-Wno-unused-function"
+-    ],
+-
+-    static_libs: [
+-        "libpdfiumfxcrt",
+-    ],
+-
+-    srcs: [
+-        "agg23/agg_curves.cpp",
+-        "agg23/agg_path_storage.cpp",
+-        "agg23/agg_rasterizer_scanline_aa.cpp",
+-        "agg23/agg_vcgen_dash.cpp",
+-        "agg23/agg_vcgen_stroke.cpp",
+-    ],
+-}
+diff --git a/third_party/pdfiumfx_libopenjpeg.bp b/third_party/pdfiumfx_libopenjpeg.bp
+deleted file mode 100644
+index 46b594ddb..000000000
+--- a/third_party/pdfiumfx_libopenjpeg.bp
++++ /dev/null
+@@ -1,27 +0,0 @@
+-cc_library_static {
+-    name: "libpdfiumfx_libopenjpeg",
+-    defaults: ["pdfium-third-party"],
+-
+-    srcs: [
+-        "libopenjpeg20/bio.c",
+-        "libopenjpeg20/cio.c",
+-        "libopenjpeg20/dwt.c",
+-        "libopenjpeg20/event.c",
+-        "libopenjpeg20/function_list.c",
+-        "libopenjpeg20/image.c",
+-        "libopenjpeg20/invert.c",
+-        "libopenjpeg20/j2k.c",
+-        "libopenjpeg20/jp2.c",
+-        "libopenjpeg20/mct.c",
+-        "libopenjpeg20/mqc.c",
+-        "libopenjpeg20/openjpeg.c",
+-        "libopenjpeg20/opj_clock.c",
+-        "libopenjpeg20/pi.c",
+-        "libopenjpeg20/sparse_array.c",
+-        "libopenjpeg20/t1.c",
+-        "libopenjpeg20/t2.c",
+-        "libopenjpeg20/tcd.c",
+-        "libopenjpeg20/tgt.c",
+-        "libopenjpeg20/thread.c",
+-    ],
+-}
+diff --git a/third_party/pdfiumlcms2.bp b/third_party/pdfiumlcms2.bp
+deleted file mode 100644
+index d55287bfd..000000000
+--- a/third_party/pdfiumlcms2.bp
++++ /dev/null
+@@ -1,37 +0,0 @@
+-cc_library_static {
+-    name: "libpdfiumlcms2",
+-    defaults: ["pdfium-third-party"],
+-
+-    cflags: [
+-        "-Wno-missing-braces",
+-    ],
+-
+-    srcs: [
+-        "lcms/src/cmsalpha.c",
+-        "lcms/src/cmscam02.c",
+-        "lcms/src/cmscgats.c",
+-        "lcms/src/cmscnvrt.c",
+-        "lcms/src/cmserr.c",
+-        "lcms/src/cmsgamma.c",
+-        "lcms/src/cmsgmt.c",
+-        "lcms/src/cmshalf.c",
+-        "lcms/src/cmsintrp.c",
+-        "lcms/src/cmsio0.c",
+-        "lcms/src/cmsio1.c",
+-        "lcms/src/cmslut.c",
+-        "lcms/src/cmsmd5.c",
+-        "lcms/src/cmsmtrx.c",
+-        "lcms/src/cmsnamed.c",
+-        "lcms/src/cmsopt.c",
+-        "lcms/src/cmspack.c",
+-        "lcms/src/cmspcs.c",
+-        "lcms/src/cmsplugin.c",
+-        "lcms/src/cmsps2.c",
+-        "lcms/src/cmssamp.c",
+-        "lcms/src/cmssm.c",
+-        "lcms/src/cmstypes.c",
+-        "lcms/src/cmsvirt.c",
+-        "lcms/src/cmswtpnt.c",
+-        "lcms/src/cmsxform.c",
+-    ],
+-}
+diff --git a/third_party/pdfiumpdfiumbase.bp b/third_party/pdfiumpdfiumbase.bp
+deleted file mode 100644
+index fc72eeb5b..000000000
+--- a/third_party/pdfiumpdfiumbase.bp
++++ /dev/null
+@@ -1,11 +0,0 @@
+-cc_library_static {
+-    name: "libpdfiumpdfiumbase",
+-    defaults: ["pdfium-third-party"],
+-
+-    srcs: [
+-        "base/allocator/partition_allocator/address_space_randomization.cc",
+-        "base/allocator/partition_allocator/page_allocator.cc",
+-        "base/allocator/partition_allocator/partition_alloc.cc",
+-        "base/allocator/partition_allocator/spin_lock.cc",
+-    ],
+-}
+-- 
+2.40.1
+

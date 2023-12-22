@@ -1,0 +1,267 @@
+From ee34bd8c61873ac8aba295621ac83d1652adc1ed Mon Sep 17 00:00:00 2001
+From: Alexander Grund <flamefire89@gmail.com>
+Date: Sun, 17 Dec 2023 12:11:44 +0100
+Subject: [PATCH 5/6] Remove `visibility` label from Android.bp
+
+Not present on Android 10 soong
+---
+ constants/Android.bp           | 1 -
+ core/fdrm/Android.bp           | 2 --
+ core/fpdfapi/cmaps/Android.bp  | 2 --
+ core/fpdfapi/edit/Android.bp   | 2 --
+ core/fpdfapi/font/Android.bp   | 2 --
+ core/fpdfapi/page/Android.bp   | 2 --
+ core/fpdfapi/parser/Android.bp | 2 --
+ core/fpdfapi/render/Android.bp | 2 --
+ core/fpdfdoc/Android.bp        | 2 --
+ core/fpdftext/Android.bp       | 2 --
+ core/fxcodec/Android.bp        | 2 --
+ core/fxcrt/Android.bp          | 2 --
+ core/fxge/Android.bp           | 2 --
+ fpdfsdk/Android.bp             | 2 --
+ fpdfsdk/formfiller/Android.bp  | 2 --
+ fpdfsdk/pwl/Android.bp         | 2 --
+ fxjs/Android.bp                | 2 --
+ third_party/Android.bp         | 2 --
+ 18 files changed, 35 deletions(-)
+
+diff --git a/constants/Android.bp b/constants/Android.bp
+index 23c97557d..9be8376db 100644
+--- a/constants/Android.bp
++++ b/constants/Android.bp
+@@ -1,6 +1,5 @@
+ cc_library_headers {
+     name: "libpdfium-constants",
+     export_include_dirs: ["."],
+-    visibility: ["//external/pdfium:__subpackages__"],
+ }
+ 
+diff --git a/core/fdrm/Android.bp b/core/fdrm/Android.bp
+index c35475a0f..079340754 100644
+--- a/core/fdrm/Android.bp
++++ b/core/fdrm/Android.bp
+@@ -2,8 +2,6 @@ cc_library_static {
+     name: "libpdfium-fdrm",
+     defaults: ["pdfium-core"],
+ 
+-    visibility: ["//external/pdfium:__subpackages__"],
+-
+     static_libs: [
+         "libpdfium-fxcrt",
+     ],
+diff --git a/core/fpdfapi/cmaps/Android.bp b/core/fpdfapi/cmaps/Android.bp
+index e2d5067b2..8a529d50b 100644
+--- a/core/fpdfapi/cmaps/Android.bp
++++ b/core/fpdfapi/cmaps/Android.bp
+@@ -2,8 +2,6 @@ cc_library_static {
+     name: "libpdfium-cmaps",
+     defaults: ["pdfium-core"],
+ 
+-    visibility: ["//external/pdfium:__subpackages__"],
+-
+     static_libs: [
+         "libpdfium-fxcrt",
+     ],
+diff --git a/core/fpdfapi/edit/Android.bp b/core/fpdfapi/edit/Android.bp
+index bbd2b6341..0d1aec319 100644
+--- a/core/fpdfapi/edit/Android.bp
++++ b/core/fpdfapi/edit/Android.bp
+@@ -2,8 +2,6 @@ cc_library_static {
+     name: "libpdfium-edit",
+     defaults: ["pdfium-core"],
+ 
+-    visibility: ["//external/pdfium:__subpackages__"],
+-
+     header_libs: [
+         "libpdfium-constants",
+     ],
+diff --git a/core/fpdfapi/font/Android.bp b/core/fpdfapi/font/Android.bp
+index c4054f4c0..3d2ddaffb 100644
+--- a/core/fpdfapi/font/Android.bp
++++ b/core/fpdfapi/font/Android.bp
+@@ -2,8 +2,6 @@ cc_library_static {
+     name: "libpdfium-font",
+     defaults: ["pdfium-core"],
+ 
+-    visibility: ["//external/pdfium:__subpackages__"],
+-
+     static_libs: [
+         "libpdfium-fxcrt",
+         "libpdfium-fxge",
+diff --git a/core/fpdfapi/page/Android.bp b/core/fpdfapi/page/Android.bp
+index 650e4f802..466f16587 100644
+--- a/core/fpdfapi/page/Android.bp
++++ b/core/fpdfapi/page/Android.bp
+@@ -2,8 +2,6 @@ cc_library_static {
+     name: "libpdfium-page",
+     defaults: ["pdfium-core"],
+ 
+-    visibility: ["//external/pdfium:__subpackages__"],
+-
+     header_libs: [
+         "libpdfium-constants",
+     ],
+diff --git a/core/fpdfapi/parser/Android.bp b/core/fpdfapi/parser/Android.bp
+index 6864dfac6..16ba8440d 100644
+--- a/core/fpdfapi/parser/Android.bp
++++ b/core/fpdfapi/parser/Android.bp
+@@ -2,8 +2,6 @@ cc_library_static {
+     name: "libpdfium-parser",
+     defaults: ["pdfium-core"],
+ 
+-    visibility: ["//external/pdfium:__subpackages__"],
+-
+     header_libs: [
+         "libpdfium-constants",
+     ],
+diff --git a/core/fpdfapi/render/Android.bp b/core/fpdfapi/render/Android.bp
+index 60818b5ed..5f5e77496 100644
+--- a/core/fpdfapi/render/Android.bp
++++ b/core/fpdfapi/render/Android.bp
+@@ -2,8 +2,6 @@ cc_library_static {
+     name: "libpdfium-render",
+     defaults: ["pdfium-core"],
+ 
+-    visibility: ["//external/pdfium:__subpackages__"],
+-
+     header_libs: [
+         "libpdfium-constants",
+     ],
+diff --git a/core/fpdfdoc/Android.bp b/core/fpdfdoc/Android.bp
+index 5bb33ea5e..4e4c4644a 100644
+--- a/core/fpdfdoc/Android.bp
++++ b/core/fpdfdoc/Android.bp
+@@ -2,8 +2,6 @@ cc_library_static {
+     name: "libpdfium-fpdfdoc",
+     defaults: ["pdfium-core"],
+ 
+-    visibility: ["//external/pdfium:__subpackages__"],
+-
+     header_libs: [
+         "libpdfium-constants",
+     ],
+diff --git a/core/fpdftext/Android.bp b/core/fpdftext/Android.bp
+index 711f35dcd..324886971 100644
+--- a/core/fpdftext/Android.bp
++++ b/core/fpdftext/Android.bp
+@@ -2,8 +2,6 @@ cc_library_static {
+     name: "libpdfium-fpdftext",
+     defaults: ["pdfium-core"],
+ 
+-    visibility: ["//external/pdfium:__subpackages__"],
+-
+     static_libs: [
+         "libpdfium-font",
+         "libpdfium-page",
+diff --git a/core/fxcodec/Android.bp b/core/fxcodec/Android.bp
+index b5d78d1a7..878acdeea 100644
+--- a/core/fxcodec/Android.bp
++++ b/core/fxcodec/Android.bp
+@@ -2,8 +2,6 @@ cc_library_static {
+     name: "libpdfium-fxcodec",
+     defaults: ["pdfium-core"],
+ 
+-    visibility: ["//external/pdfium:__subpackages__"],
+-
+     static_libs: [
+         "libpdfium-lcms2",
+         "libpdfium-libopenjpeg2",
+diff --git a/core/fxcrt/Android.bp b/core/fxcrt/Android.bp
+index d48b2848c..c669efb91 100644
+--- a/core/fxcrt/Android.bp
++++ b/core/fxcrt/Android.bp
+@@ -2,8 +2,6 @@ cc_library_static {
+     name: "libpdfium-fxcrt",
+     defaults: ["pdfium-core"],
+ 
+-    visibility: ["//external/pdfium:__subpackages__"],
+-
+     export_shared_lib_headers: [
+         "libandroidicu",
+     ],
+diff --git a/core/fxge/Android.bp b/core/fxge/Android.bp
+index fe648c669..00d97966c 100644
+--- a/core/fxge/Android.bp
++++ b/core/fxge/Android.bp
+@@ -2,8 +2,6 @@ cc_library_static {
+     name: "libpdfium-fxge",
+     defaults: ["pdfium-core"],
+ 
+-    visibility: ["//external/pdfium:__subpackages__"],
+-
+     static_libs: [
+         "libpdfium-agg",
+         "libpdfium-fxcrt",
+diff --git a/fpdfsdk/Android.bp b/fpdfsdk/Android.bp
+index af37009aa..f08645449 100644
+--- a/fpdfsdk/Android.bp
++++ b/fpdfsdk/Android.bp
+@@ -2,8 +2,6 @@ cc_library_static {
+     name: "libpdfium-fpdfsdk",
+     defaults: ["pdfium-core"],
+ 
+-    visibility: ["//external/pdfium:__subpackages__"],
+-
+     header_libs: [
+         "libpdfium-constants",
+     ],
+diff --git a/fpdfsdk/formfiller/Android.bp b/fpdfsdk/formfiller/Android.bp
+index 5dc4ba68c..97fee4828 100644
+--- a/fpdfsdk/formfiller/Android.bp
++++ b/fpdfsdk/formfiller/Android.bp
+@@ -2,8 +2,6 @@ cc_library_static {
+     name: "libpdfium-formfiller",
+     defaults: ["pdfium-core"],
+ 
+-    visibility: ["//external/pdfium:__subpackages__"],
+-
+     header_libs: [
+         "libpdfium-constants",
+     ],
+diff --git a/fpdfsdk/pwl/Android.bp b/fpdfsdk/pwl/Android.bp
+index d57a01f33..c72cfc08b 100644
+--- a/fpdfsdk/pwl/Android.bp
++++ b/fpdfsdk/pwl/Android.bp
+@@ -2,8 +2,6 @@ cc_library_static {
+     name: "libpdfium-pwl",
+     defaults: ["pdfium-core"],
+ 
+-    visibility: ["//external/pdfium:__subpackages__"],
+-
+     header_libs: [
+         "libpdfium-constants",
+     ],
+diff --git a/fxjs/Android.bp b/fxjs/Android.bp
+index 9616816ea..70cce3e4b 100644
+--- a/fxjs/Android.bp
++++ b/fxjs/Android.bp
+@@ -2,8 +2,6 @@ cc_library_static {
+     name: "libpdfium-fxjs",
+     defaults: ["pdfium-core"],
+ 
+-    visibility: ["//external/pdfium:__subpackages__"],
+-
+     header_libs: [
+         "libpdfium-constants",
+     ],
+diff --git a/third_party/Android.bp b/third_party/Android.bp
+index 824544efb..6a7d2a211 100644
+--- a/third_party/Android.bp
++++ b/third_party/Android.bp
+@@ -3,13 +3,11 @@ cc_defaults {
+     defaults: [
+         "pdfium-common"
+     ],
+-    visibility: ["//external/pdfium:__subpackages__"],
+ }
+ 
+ cc_library_static {
+     name: "libpdfium-third_party-base",
+     defaults: ["pdfium-third-party"],
+-    visibility: ["//external/pdfium:__subpackages__"],
+ 
+     arch: {
+         arm: {
+-- 
+2.40.1
+

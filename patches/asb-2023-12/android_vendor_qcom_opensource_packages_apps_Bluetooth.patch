@@ -1,0 +1,21 @@
+# PWD: vendor/qcom/opensource/commonsys/packages/apps/Bluetooth
+diff --git a/jni/com_android_bluetooth_btservice_AdapterService.cpp b/jni/com_android_bluetooth_btservice_AdapterService.cpp
+index fdb7dbf0b..b7e927b56 100644
+--- a/jni/com_android_bluetooth_btservice_AdapterService.cpp
++++ b/jni/com_android_bluetooth_btservice_AdapterService.cpp
+@@ -400,14 +400,15 @@ static void callback_thread_event(bt_cb_thread_evt event) {
+     ALOGV("Callback thread attached: %p", callbackEnv);
+   } else if (event == DISASSOCIATE_JVM) {
+     if (callbackEnv != AndroidRuntime::getJNIEnv()) {
+       ALOGE("Callback: '%s' is not called on the correct thread", __func__);
+       return;
+     }
+     vm->DetachCurrentThread();
++    callbackEnv = NULL;
+   }
+ }
+ 
+ static void dut_mode_recv_callback(uint16_t opcode, uint8_t* buf, uint8_t len) {
+ 
+ }
+ 

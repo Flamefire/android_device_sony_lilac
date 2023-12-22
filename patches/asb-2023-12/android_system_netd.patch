@@ -1,0 +1,388 @@
+# PWD: system/netd
+diff --git a/resolv/Android.bp b/resolv/Android.bp
+index 50243f2b..6064fe21 100644
+--- a/resolv/Android.bp
++++ b/resolv/Android.bp
+@@ -87,14 +87,15 @@ cc_library {
+         "libssl",
+         "libstatslog_resolv",
+         "libstatssocket",
+         "libsysutils",
+         "libutils",
+         "netd_event_listener_interface-ndk_platform",
+         "dnsresolver_aidl_interface-ndk_platform",
++        "libutils",
+         "server_configurable_flags",
+         "stats_proto",
+         "libprotobuf-cpp-lite",
+     ],
+     shared_libs: [
+         "libbinder_ndk",
+     ],
+diff --git a/resolv/Dns64Configuration.cpp b/resolv/Dns64Configuration.cpp
+index a1dfdca0..865583e6 100644
+--- a/resolv/Dns64Configuration.cpp
++++ b/resolv/Dns64Configuration.cpp
+@@ -17,14 +17,15 @@
+ #define LOG_TAG "Dns64Configuration"
+ #define DBG 0
+ 
+ #include "Dns64Configuration.h"
+ 
+ #include <log/log.h>
+ #include <netdb.h>
++#include <utils/StrongPointer.h>
+ #include <thread>
+ #include <utility>
+ 
+ #include <arpa/inet.h>
+ 
+ #include "DnsResolver.h"
+ #include "NetdConstants.h"  // ScopedAddrinfo
+@@ -34,14 +35,15 @@
+ #include "netdutils/DumpWriter.h"
+ #include "netid_client.h"
+ #include "stats.pb.h"
+ 
+ namespace android {
+ 
+ using android::net::NetworkDnsEventReported;
++using android::sp;
+ using netdutils::DumpWriter;
+ using netdutils::IPAddress;
+ using netdutils::IPPrefix;
+ 
+ namespace net {
+ 
+ const char Dns64Configuration::kIPv4OnlyHost[] = "ipv4only.arpa.";
+@@ -57,48 +59,49 @@ void Dns64Configuration::startPrefixDiscovery(unsigned netId) {
+     // discovered in a short time.
+     removeDns64Config(netId);
+ 
+     Dns64Config cfg(getNextId(), netId);
+     // Emplace a copy of |cfg| in the map.
+     mDns64Configs.emplace(std::make_pair(netId, cfg));
+ 
++    const sp<Dns64Configuration> thiz = this;
+     // Note that capturing |cfg| in this lambda creates a copy.
+-    std::thread discovery_thread([this, cfg] {
++    std::thread discovery_thread([thiz, cfg] {
+         // Make a mutable copy rather than mark the whole lambda mutable.
+         // No particular reason.
+         Dns64Config evalCfg(cfg);
+ 
+         auto backoff = netdutils::BackoffSequence<>::Builder()
+                                .withInitialRetransmissionTime(std::chrono::seconds(1))
+                                .withMaximumRetransmissionTime(std::chrono::seconds(3600))
+                                .build();
+ 
+         while (true) {
+-            if (!this->shouldContinueDiscovery(evalCfg)) break;
++            if (!thiz->shouldContinueDiscovery(evalCfg)) break;
+ 
+             android_net_context netcontext{};
+-            mGetNetworkContextCallback(evalCfg.netId, 0, &netcontext);
++            thiz->mGetNetworkContextCallback(evalCfg.netId, 0, &netcontext);
+ 
+             // Prefix discovery must bypass private DNS because in strict mode
+             // the server generally won't know the NAT64 prefix.
+             netcontext.flags |= NET_CONTEXT_FLAG_USE_LOCAL_NAMESERVERS;
+             if (doRfc7050PrefixDiscovery(netcontext, &evalCfg)) {
+-                this->recordDns64Config(evalCfg);
++                thiz->recordDns64Config(evalCfg);
+                 break;
+             }
+ 
+-            if (!this->shouldContinueDiscovery(evalCfg)) break;
++            if (!thiz->shouldContinueDiscovery(evalCfg)) break;
+ 
+             if (!backoff.hasNextTimeout()) break;
+             {
+-                std::unique_lock<std::mutex> cvGuard(mMutex);
++                std::unique_lock<std::mutex> cvGuard(thiz->mMutex);
+                 // TODO: Consider some chrono math, combined with wait_until()
+                 // perhaps, to prevent early re-resolves from the removal of
+                 // other netids with IPv6-only nameservers.
+-                mCv.wait_for(cvGuard, backoff.getNextTimeout());
++                thiz->mCv.wait_for(cvGuard, backoff.getNextTimeout());
+             }
+         }
+     });
+     discovery_thread.detach();
+ }
+ 
+ void Dns64Configuration::stopPrefixDiscovery(unsigned netId) {
+diff --git a/resolv/Dns64Configuration.h b/resolv/Dns64Configuration.h
+index 58b115eb..aa899189 100644
+--- a/resolv/Dns64Configuration.h
++++ b/resolv/Dns64Configuration.h
+@@ -22,14 +22,15 @@
+ #include <cstdlib>
+ #include <mutex>
+ #include <unordered_map>
+ 
+ #include <android-base/thread_annotations.h>
+ #include "netdutils/DumpWriter.h"
+ #include "netdutils/InternetAddresses.h"
++#include <utils/RefBase.h>
+ 
+ struct android_net_context;
+ 
+ namespace android {
+ namespace net {
+ 
+ /**
+@@ -43,15 +44,15 @@ namespace net {
+  * that running resolution threads can notice they are no longer the most
+  * recent resolution attempt. This results in the backoff schedule of resolution
+  * being reset.
+  *
+  * Thread-safety: All public methods in this class MUST be thread-safe.
+  * (In other words: this class handles all its locking privately.)
+  */
+-class Dns64Configuration {
++class Dns64Configuration : virtual public RefBase {
+   public:
+     // Simple data struct for passing back packet NAT64 prefix event information to the
+     // Dns64PrefixCallback callback.
+     struct Nat64PrefixInfo {
+         unsigned netId;
+         bool added;
+         std::string prefixString;
+diff --git a/resolv/ResolverController.cpp b/resolv/ResolverController.cpp
+index ac242596..b3515ff0 100644
+--- a/resolv/ResolverController.cpp
++++ b/resolv/ResolverController.cpp
+@@ -171,25 +171,25 @@ int getDnsInfo(unsigned netId, std::vector<std::string>* servers, std::vector<st
+     (*wait_for_pending_req_timeout_count)[0] = res_wait_for_pending_req_timeout_count;
+     return 0;
+ }
+ 
+ }  // namespace
+ 
+ ResolverController::ResolverController()
+-    : mDns64Configuration(
++    : mDns64Configuration(new Dns64Configuration(
+               [](uint32_t netId, uint32_t uid, android_net_context* netcontext) {
+                   gResNetdCallbacks.get_network_context(netId, uid, netcontext);
+               },
+-              std::bind(sendNat64PrefixEvent, _1)) {}
++              std::bind(sendNat64PrefixEvent, _1))) {}
+ 
+ void ResolverController::destroyNetworkCache(unsigned netId) {
+     LOG(VERBOSE) << __func__ << ": netId = " << netId;
+ 
+     resolv_delete_cache_for_net(netId);
+-    mDns64Configuration.stopPrefixDiscovery(netId);
++    mDns64Configuration->stopPrefixDiscovery(netId);
+     gPrivateDnsConfiguration.clear(netId);
+ }
+ 
+ int ResolverController::createNetworkCache(unsigned netId) {
+     LOG(VERBOSE) << __func__ << ": netId = " << netId;
+ 
+     return resolv_create_cache_for_net(netId);
+@@ -276,24 +276,24 @@ int ResolverController::getResolverInfo(int32_t netId, std::vector<std::string>*
+     (*params)[IDnsResolver::RESOLVER_PARAMS_MAX_SAMPLES] = res_params.max_samples;
+     (*params)[IDnsResolver::RESOLVER_PARAMS_BASE_TIMEOUT_MSEC] = res_params.base_timeout_msec;
+     (*params)[IDnsResolver::RESOLVER_PARAMS_RETRY_COUNT] = res_params.retry_count;
+     return 0;
+ }
+ 
+ void ResolverController::startPrefix64Discovery(int32_t netId) {
+-    mDns64Configuration.startPrefixDiscovery(netId);
++    mDns64Configuration->startPrefixDiscovery(netId);
+ }
+ 
+ void ResolverController::stopPrefix64Discovery(int32_t netId) {
+-    return mDns64Configuration.stopPrefixDiscovery(netId);
++    return mDns64Configuration->stopPrefixDiscovery(netId);
+ }
+ 
+ // TODO: use StatusOr<T> to wrap the result.
+ int ResolverController::getPrefix64(unsigned netId, netdutils::IPPrefix* prefix) {
+-    netdutils::IPPrefix p = mDns64Configuration.getPrefix64(netId);
++    netdutils::IPPrefix p = mDns64Configuration->getPrefix64(netId);
+     if (p.family() != AF_INET6 || p.length() == 0) {
+         LOG(ERROR) << "No valid NAT64 prefix (" << netId << ", " << p.toString().c_str() << ")";
+ 
+         return -ENOENT;
+     }
+     *prefix = p;
+     return 0;
+@@ -351,16 +351,15 @@ void ResolverController::dump(DumpWriter& dw, unsigned netId) {
+             dw.println(
+                     "DNS parameters: sample validity = %us, success threshold = %u%%, "
+                     "samples (min, max) = (%u, %u), base_timeout = %dmsec, retry count = "
+                     "%dtimes",
+                     params.sample_validity, params.success_threshold, params.min_samples,
+                     params.max_samples, params.base_timeout_msec, params.retry_count);
+         }
+-
+-        mDns64Configuration.dump(dw, netId);
++        mDns64Configuration->dump(dw, netId);
+         ExternalPrivateDnsStatus privateDnsStatus = {PrivateDnsMode::OFF, 0, {}};
+         gPrivateDnsConfiguration.getStatus(netId, &privateDnsStatus);
+         dw.println("Private DNS mode: %s", getPrivateDnsModeString(privateDnsStatus.mode));
+         if (!privateDnsStatus.numServers) {
+             dw.println("No Private DNS servers configured");
+         } else {
+             dw.println("Private DNS configuration (%u entries)", privateDnsStatus.numServers);
+diff --git a/resolv/ResolverController.h b/resolv/ResolverController.h
+index 6d08cdbe..2163a080 100644
+--- a/resolv/ResolverController.h
++++ b/resolv/ResolverController.h
+@@ -55,13 +55,13 @@ class ResolverController {
+ 
+     void startPrefix64Discovery(int32_t netId);
+     void stopPrefix64Discovery(int32_t netId);
+ 
+     void dump(netdutils::DumpWriter& dw, unsigned netId);
+ 
+   private:
+-    Dns64Configuration mDns64Configuration;
++    android::sp<Dns64Configuration> mDns64Configuration;
+ };
+ }  // namespace net
+ }  // namespace android
+ 
+ #endif /* _RESOLVER_CONTROLLER_H_ */
+diff --git a/server/MDnsSdListener.cpp b/server/MDnsSdListener.cpp
+index 42dcddf3..d551d37c 100644
+--- a/server/MDnsSdListener.cpp
++++ b/server/MDnsSdListener.cpp
+@@ -25,14 +25,15 @@
+ #include <pthread.h>
+ #include <resolv.h>
+ #include <stdlib.h>
+ #include <string.h>
+ #include <sys/poll.h>
+ #include <sys/socket.h>
+ #include <sys/types.h>
++#include <thread>
+ 
+ #define LOG_TAG "MDnsDS"
+ #define DBG 1
+ #define VDBG 1
+ 
+ #include <cutils/properties.h>
+ #include <log/log.h>
+@@ -523,20 +524,26 @@ MDnsSdListener::Monitor::Monitor() {
+     mHead = nullptr;
+     mLiveCount = 0;
+     mPollFds = nullptr;
+     mPollRefs = nullptr;
+     mPollSize = 10;
+     socketpair(AF_LOCAL, SOCK_STREAM | SOCK_CLOEXEC, 0, mCtrlSocketPair);
+ 
+-    const int rval = ::android::netdutils::threadLaunch(this);
+-    if (rval != 0) {
+-        ALOGW("Error spawning monitor thread: %s (%d)", strerror(-rval), -rval);
+-    }
++    mRescanThread = new std::thread(&Monitor::run, this);
++    if (!mRescanThread->joinable()) ALOGE("Unable to launch thread.");
+ }
+ 
++MDnsSdListener::Monitor::~Monitor() {
++    if (VDBG) ALOGD("Monitor recycling");
++    close(mCtrlSocketPair[1]);  // interrupt poll in MDnsSdListener::Monitor::run() and revent will
++                                // be 17 = POLLIN | POLLHUP
++    mRescanThread->join();
++    delete mRescanThread;
++    if (VDBG) ALOGD("Monitor recycled");
++}
+ #define NAP_TIME 200  // 200 ms between polls
+ static int wait_for_property(const char *name, const char *desired_value, int maxwait)
+ {
+     char value[PROPERTY_VALUE_MAX] = {'\0'};
+     int maxnaps = (maxwait * 1000) / NAP_TIME;
+ 
+     if (maxnaps < 1) {
+@@ -607,22 +614,26 @@ void MDnsSdListener::Monitor::run() {
+                     }
+                     std::lock_guard guard(mMutex);
+                     DNSServiceProcessResult(*(mPollRefs[i]));
+                     mPollFds[i].revents = 0;
+                 }
+             }
+             if (VDBG) ALOGD("controlSocket shows revent= %d", mPollFds[0].revents);
+-            switch (mPollFds[0].revents) {
+-                case POLLIN: {
+-                    char readBuf[2];
+-                    read(mCtrlSocketPair[0], &readBuf, 1);
+-                    if (DBG) ALOGD("MDnsSdListener::Monitor got %c", readBuf[0]);
+-                    if (memcmp(RESCAN, readBuf, 1) == 0) {
+-                        pollCount = rescan();
+-                    }
++            if (mPollFds[0].revents & POLLHUP) {
++                free(mPollFds);
++                free(mPollRefs);
++                if (VDBG) ALOGD("Monitor thread leaving.");
++                return;
++            }
++            if (mPollFds[0].revents == POLLIN) {
++                char readBuf[2];
++                read(mCtrlSocketPair[0], &readBuf, 1);
++                if (DBG) ALOGD("MDnsSdListener::Monitor got %c", readBuf[0]);
++                if (memcmp(RESCAN, readBuf, 1) == 0) {
++                    pollCount = rescan();
+                 }
+             }
+             mPollFds[0].revents = 0;
+         } else {
+             if (VDBG) ALOGD("MDnsSdListener::Monitor poll timed out");
+         }
+     }
+diff --git a/server/MDnsSdListener.h b/server/MDnsSdListener.h
+index 47ddc28f..915a3bc8 100644
+--- a/server/MDnsSdListener.h
++++ b/server/MDnsSdListener.h
+@@ -17,14 +17,15 @@
+ #ifndef _MDNSSDLISTENER_H__
+ #define _MDNSSDLISTENER_H__
+ 
+ #include <android-base/thread_annotations.h>
+ #include <dns_sd.h>
+ #include <sysutils/FrameworkListener.h>
+ #include <mutex>
++#include <thread>
+ 
+ #include "NetdCommand.h"
+ 
+ // callbacks
+ void MDnsSdListenerDiscoverCallback(DNSServiceRef sdRef, DNSServiceFlags flags,
+         uint32_t interfaceIndex, DNSServiceErrorType errorCode,
+         const char *serviceName, const char *regType, const char *replyDomain,
+@@ -66,15 +67,15 @@ class MDnsSdListener : public FrameworkListener {
+         }
+     };
+ 
+ private:
+     class Monitor {
+     public:
+         Monitor();
+-        virtual ~Monitor() {}
++        ~Monitor();
+         DNSServiceRef *allocateServiceRef(int id, Context *c);
+         void startMonitoring(int id);
+         DNSServiceRef *lookupServiceRef(int id);
+         void freeServiceRef(int id);
+         int startService();
+         int stopService();
+         void run();
+@@ -96,14 +97,15 @@ private:
+         Element* mHead GUARDED_BY(mMutex);
+         int mLiveCount;
+         struct pollfd *mPollFds;
+         DNSServiceRef **mPollRefs;
+         int mPollSize;
+         int mCtrlSocketPair[2];
+         std::mutex mMutex;
++        std::thread* mRescanThread;
+     };
+ 
+     class Handler : public NetdCommand {
+     public:
+         Handler(Monitor *m, MDnsSdListener *listener);
+         virtual ~Handler();
+         int runCommand(SocketClient *c, int argc, char** argv);
