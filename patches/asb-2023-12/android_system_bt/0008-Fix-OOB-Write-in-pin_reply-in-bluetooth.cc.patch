@@ -1,4 +1,4 @@
-From fa529d7cc57d4efb21508d769882f70605fb31ef Mon Sep 17 00:00:00 2001
+From 0f4ed942f9056bb3ec597775b6b4181d8356e5c5 Mon Sep 17 00:00:00 2001
 From: balakrishna <quic_kunthumu@quicinc.com>
 Date: Wed, 24 May 2023 13:28:21 +0530
 Subject: [PATCH 8/8] Fix OOB Write in pin_reply in bluetooth.cc

@@ -13,8 +13,6 @@ make RunSettingsRoboTests ROBOTEST_FILTER=ApnEditorTest
 (cherry picked from https://googleplex-android-review.googlesource.com/q/commit:5c2d727b8f9198bf758a4896eda7c9e5385435ff)
 Merged-In: Iecdbbff7e21dfb11e3ba385858747a220cfd3e04
 Change-Id: Iecdbbff7e21dfb11e3ba385858747a220cfd3e04
-
-Change-Id: I8b4e6fc1540ae795a200dafc1c77add58620af2d
 ---
  .../android/settings/network/ApnEditor.java   | 23 ++++++++++++++
  .../settings/network/ApnEditorTest.java       | 30 +++++++++++++++++++

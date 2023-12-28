@@ -1,4 +1,4 @@
-From 21ab5e86698ea2fc45481e5354bd34d792a2bb7f Mon Sep 17 00:00:00 2001
+From d884d41583b0a5101d2af10ddb7641081afdccbf Mon Sep 17 00:00:00 2001
 From: Brian Delwiche <delwiche@google.com>
 Date: Thu, 5 Oct 2023 00:01:03 +0000
 Subject: [PATCH] Fix UAF in ~CallbackEnv
@@ -20,8 +20,6 @@ Ignore-AOSP-First: Security
 (cherry picked from https://googleplex-android-review.googlesource.com/q/commit:5f543d919c4067f2f4925580fd8a690ba3440e80)
 Merged-In: I3e5e3c51412640aa19f0981caaa809313d6ad030
 Change-Id: I3e5e3c51412640aa19f0981caaa809313d6ad030
-
-Change-Id: Ic3fc2f9415b01b0a517efb649d4e53ec6b116eaf
 ---
  jni/com_android_bluetooth_btservice_AdapterService.cpp | 1 +
  1 file changed, 1 insertion(+)

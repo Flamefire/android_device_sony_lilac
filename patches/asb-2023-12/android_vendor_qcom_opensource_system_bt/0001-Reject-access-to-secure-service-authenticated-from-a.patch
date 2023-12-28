@@ -1,4 +1,4 @@
-From 5d6dc4f37542be507a618838f9e74c4605310c66 Mon Sep 17 00:00:00 2001
+From 329bccde12059d2aace7d9ab42837979c9d0938e Mon Sep 17 00:00:00 2001
 From: Hui Peng <phui@google.com>
 Date: Sat, 2 Sep 2023 04:20:10 +0000
 Subject: [PATCH 1/7] Reject access to secure service authenticated from a temp
@@ -15,8 +15,6 @@ Ignore-AOSP-First: security
 (cherry picked from https://googleplex-android-review.googlesource.com/q/commit:a36757e967ab6d956127cac298134f28ce8f0d6d)
 Merged-In: Idef4ea28eb3d17b0807ab7dc6849433ddc5581b3
 Change-Id: Idef4ea28eb3d17b0807ab7dc6849433ddc5581b3
-
-Change-Id: I0435b4ee14c40213f3dae8abc54143ef7e8f67e0
 ---
  stack/btm/btm_sec.cc | 38 ++++++++++++++++++++++++++++++++++----
  1 file changed, 34 insertions(+), 4 deletions(-)

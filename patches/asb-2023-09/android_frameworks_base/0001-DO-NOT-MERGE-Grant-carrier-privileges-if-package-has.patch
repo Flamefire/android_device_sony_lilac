@@ -27,8 +27,6 @@ Test: Manual Testing as explained in b/226593252#comment51
 (cherry picked from https://googleplex-android-review.googlesource.com/q/commit:e46bce078fef9dba500a7411e843f7f00a7a33c2)
 Merged-In: I662064529d2a9348f395fe3b541366de8bc2fe7d
 Change-Id: I662064529d2a9348f395fe3b541366de8bc2fe7d
-
-Change-Id: I03cda6940241b463cd84451c8325dc266af1d528
 ---
  telephony/java/android/telephony/SubscriptionInfo.java | 10 ++++++++++
  1 file changed, 10 insertions(+)

@@ -18,8 +18,6 @@ Ignore-AOSP-First: Security
 (cherry picked from https://googleplex-android-review.googlesource.com/q/commit:874c495c886cd8722625756dc5fd0634b16b4f42)
 Merged-In: Ib837f395883de2369207f1b3b974d6bff02dcb19
 Change-Id: Ib837f395883de2369207f1b3b974d6bff02dcb19
-
-Change-Id: I7e94dbdf4990ce8ebb03d8ffdacd4049f16873bb
 ---
  btif/src/btif_hh.cc | 50 ++++++++++++++++++++++++++++++++++++++++-----
  1 file changed, 45 insertions(+), 5 deletions(-)

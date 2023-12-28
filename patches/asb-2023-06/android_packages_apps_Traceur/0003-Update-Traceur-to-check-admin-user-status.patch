@@ -39,8 +39,6 @@ Ignore-AOSP-First: Internal-first security fix
 (cherry picked from https://googleplex-android-review.googlesource.com/q/commit:0c0b30d30dfad851cdce35e1b9097b62fffabc5f)
 Merged-In: I14ee42d18802e7869bae8cb437c4d0b65dbea999
 Change-Id: I14ee42d18802e7869bae8cb437c4d0b65dbea999
-
-Change-Id: I2bbbb42ec6edd34aedb5a3cc3b158d2dc14e65f8
 ---
  AndroidManifest.xml                           |  4 +++
  .../google/android/traceur/MainActivity.java  |  5 ++-

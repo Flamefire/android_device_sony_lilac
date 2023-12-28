@@ -14,8 +14,6 @@ Bug: 268193777
 (cherry picked from https://googleplex-android-review.googlesource.com/q/commit:cfc0b34432ab54e3fa472db5c43e620293f64a5d)
 Merged-In: Ib3bda769c499b4069b49c566b1b227f98f707a8a
 Change-Id: Ib3bda769c499b4069b49c566b1b227f98f707a8a
-
-Change-Id: I0559c8f4c68c75381e311c1f8109ea235e8b24d1
 ---
  .../android/appwidget/AppWidgetHostView.java  | 39 ++++++++++++++-----
  .../row/ExpandableNotificationRow.java        |  1 +

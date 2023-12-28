@@ -1,4 +1,4 @@
-From 38041009cdf7b82071bd0096ae58d97ba10116bb Mon Sep 17 00:00:00 2001
+From 58ada8350e90774a5dc9ef5de17daf1be4be9510 Mon Sep 17 00:00:00 2001
 From: Lifu Tang <lifu@google.com>
 Date: Wed, 5 Jul 2023 13:03:00 -0700
 Subject: [PATCH 02/13] Fix bypass BAL via `requestGeofence`

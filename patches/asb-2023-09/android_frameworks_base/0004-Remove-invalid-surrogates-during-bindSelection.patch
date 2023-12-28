@@ -9,8 +9,6 @@ Bug: 223793631
 (cherry picked from https://googleplex-android-review.googlesource.com/q/commit:b5aadde5f1d3c47562eade2223f7a30729dda53e)
 Merged-In: I18b879f1a51394b4739225ec88b862fd6d0d5526
 Change-Id: I18b879f1a51394b4739225ec88b862fd6d0d5526
-
-Change-Id: I719d97bb763a87b4da9f38fa64e4d08eacf19bea
 ---
  core/java/android/database/DatabaseUtils.java | 36 ++++++++++++++++++-
  .../android/database/DatabaseUtilsTest.java   | 23 ++++++++++++

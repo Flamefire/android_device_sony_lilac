@@ -8,8 +8,6 @@ Test: atest NotificationManagerServiceTest
 (cherry picked from https://googleplex-android-review.googlesource.com/q/commit:47e661cbf37e1dedf676f482ac07ffc433c92d0b)
 Merged-In: I1efaa1301bca36895ad4322a919d7421156a60df
 Change-Id: I1efaa1301bca36895ad4322a919d7421156a60df
-
-Change-Id: I77b46d2a1bdea48360e84db7249218bd08594c7a
 ---
  core/java/android/app/Notification.java       | 24 +++++++++
  .../NotificationManagerServiceTest.java       | 51 ++++++++++++++++++-

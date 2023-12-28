@@ -1,4 +1,4 @@
-From 70f9dd328709fc3cf16807036213bcf230a2f464 Mon Sep 17 00:00:00 2001
+From 54504633d9039a280b1ed8bd42f056754ed683b3 Mon Sep 17 00:00:00 2001
 From: Pinyao Ting <pinyaoting@google.com>
 Date: Mon, 24 Jul 2023 14:58:56 -0700
 Subject: [PATCH 09/13] Validate userId when publishing shortcuts

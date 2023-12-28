@@ -14,8 +14,6 @@ Test: atest + manually
 (cherry picked from https://googleplex-android-review.googlesource.com/q/commit:f1af8c529295c60e516b2cc1d1ac812b8d6047ac)
 Merged-In: Ifc048311746c027e3683cdcf65f1079d04cf7c56
 Change-Id: Ifc048311746c027e3683cdcf65f1079d04cf7c56
-
-Change-Id: Ibf5920294d54408b5d284759bf628a6569c37329
 ---
  .../notification/NotificationAccessConfirmationActivity.java  | 4 +++-
  1 file changed, 3 insertions(+), 1 deletion(-)

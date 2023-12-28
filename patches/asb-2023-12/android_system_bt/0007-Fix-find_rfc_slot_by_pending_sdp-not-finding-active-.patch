@@ -1,4 +1,4 @@
-From a8b2b2868dcbe059225237273a7319af94157847 Mon Sep 17 00:00:00 2001
+From 1e4ee1975366b3bf2fb4bff8c9e7acf6bfc48f04 Mon Sep 17 00:00:00 2001
 From: Alexander Grund <flamefire89@gmail.com>
 Date: Fri, 22 Dec 2023 14:45:39 +0100
 Subject: [PATCH 7/8] Fix `find_rfc_slot_by_pending_sdp` not finding active

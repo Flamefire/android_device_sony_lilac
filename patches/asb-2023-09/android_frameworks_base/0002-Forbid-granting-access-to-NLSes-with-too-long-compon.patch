@@ -12,8 +12,6 @@ Test: atest + manually
 (cherry picked from https://googleplex-android-review.googlesource.com/q/commit:dc71156a29427c8b228129f5b1368392f297835b)
 Merged-In: I4c25d80978cb37a8fa1531f5045259d25ac64692
 Change-Id: I4c25d80978cb37a8fa1531f5045259d25ac64692
-
-Change-Id: Ie61a7d3daf118e05c2d721b65446244d95b67480
 ---
  .../java/android/app/NotificationManager.java |  6 ++++
  .../NotificationManagerService.java           |  5 ++++

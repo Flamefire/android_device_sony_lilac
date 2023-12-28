@@ -1,4 +1,4 @@
-From 059fb65594df1c40bc45c2adce05ffdd71501815 Mon Sep 17 00:00:00 2001
+From f9e5d81e7d527942cebf1a805b479d0b61ecce66 Mon Sep 17 00:00:00 2001
 From: Pinyao Ting <pinyaoting@google.com>
 Date: Wed, 12 Jul 2023 21:38:36 +0000
 Subject: [PATCH 06/13] Validate URI-based shortcut icon at creation time.

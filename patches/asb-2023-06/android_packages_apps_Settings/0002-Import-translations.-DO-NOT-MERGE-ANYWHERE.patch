@@ -9,8 +9,6 @@ Auto-generated-cl: translation import
 (cherry picked from https://googleplex-android-review.googlesource.com/q/commit:ac6b0bdef68e99e0a34656a2148483d7cb77159e)
 Merged-In: I669099ad00ba7d90013836e3d456d530ae725b2f
 Change-Id: I669099ad00ba7d90013836e3d456d530ae725b2f
-
-Change-Id: I3bed2a5f9a1222023967f906431dd47b74c7e0aa
 ---
  res/values-af/strings.xml        | 2 +-
  res/values-am/strings.xml        | 2 +-

@@ -1,4 +1,4 @@
-From 3d622355b8b6ddace8516382c9dc8631d8da27a5 Mon Sep 17 00:00:00 2001
+From 71beed787f9da08b5d3f9668f7c5122400d4855e Mon Sep 17 00:00:00 2001
 From: Beverly Tai <beverlyt@google.com>
 Date: Tue, 19 Sep 2023 21:01:11 +0000
 Subject: [PATCH 12/13] Updated: always show the keyguard on device lockdown

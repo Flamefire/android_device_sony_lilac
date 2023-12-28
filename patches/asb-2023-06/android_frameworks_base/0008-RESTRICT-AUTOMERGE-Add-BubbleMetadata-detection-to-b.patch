@@ -9,8 +9,6 @@ Test: atest NotificationInterruptStateProviderImplTest
 (cherry picked from https://googleplex-android-review.googlesource.com/q/commit:c60e264a551df9f880fd73683321b7e821429da7)
 Merged-In: I40e1aa6377b8a60d91cb2f4189df1e9a4a4578a2
 Change-Id: I40e1aa6377b8a60d91cb2f4189df1e9a4a4578a2
-
-Change-Id: I382e26543ca0e6d853e2ba16dd1b0f04d42d256c
 ---
  .../NotificationInterruptionStateProvider.java     | 14 ++++++++++++++
  1 file changed, 14 insertions(+)

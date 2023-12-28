@@ -12,8 +12,6 @@ Test: atest PinnedStackTests
 (cherry picked from https://googleplex-android-review.googlesource.com/q/commit:4fad1456409b79d6e649a29d5116a4fe3160bd21)
 Merged-In: I458a9508662e72a1adb9d9818105f2e9d7096d44
 Change-Id: I458a9508662e72a1adb9d9818105f2e9d7096d44
-
-Change-Id: I84f6941c93924c94993e1503be18c2a8ed1e2c1c
 ---
  .../core/java/com/android/server/wm/ActivityRecord.java     | 6 ++++++
  1 file changed, 6 insertions(+)

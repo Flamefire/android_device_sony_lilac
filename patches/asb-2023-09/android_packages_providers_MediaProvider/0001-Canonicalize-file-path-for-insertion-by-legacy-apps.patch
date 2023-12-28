@@ -12,8 +12,6 @@ Bug: 276898626
 (cherry picked from https://googleplex-android-review.googlesource.com/q/commit:3c0f583f5dc3f4d395fa2423ab72dbd902c0c6c8)
 Merged-In: If4c941c8156f19459b3ec6cbaf705824ecc2ba77
 Change-Id: If4c941c8156f19459b3ec6cbaf705824ecc2ba77
-
-Change-Id: Ice5d958b44210b96efc94574d0d2f452b4c2a252
 ---
  src/com/android/providers/media/MediaProvider.java | 10 +++++++++-
  1 file changed, 9 insertions(+), 1 deletion(-)

@@ -1,4 +1,4 @@
-From 838f7900de72f6c56b108181ab4493ec739140a5 Mon Sep 17 00:00:00 2001
+From f1181d8531840ffddec5ec01964f521cbf5a546f Mon Sep 17 00:00:00 2001
 From: Mady Mellor <madym@google.com>
 Date: Wed, 29 Jan 2020 11:41:58 -0800
 Subject: [PATCH 03/13] Make sure we visit the icon URIs of Person objects on

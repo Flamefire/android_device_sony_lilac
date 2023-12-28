@@ -19,8 +19,6 @@ Test: atest CtsAutoFillServiceTestCases (added new tests)
 (cherry picked from https://googleplex-android-review.googlesource.com/q/commit:26beceb9a252a50374d056b162fa7e8ea55051b3)
 Merged-In: I6f4d2a35e89bbed7bd9e07bf5cd3e2d68b20af9a
 Change-Id: I6f4d2a35e89bbed7bd9e07bf5cd3e2d68b20af9a
-
-Change-Id: Ib0c85aeb22770db4b6a6fa9479937f8c9cc8bb58
 ---
  .../com/android/server/autofill/Helper.java   | 45 +++++++++++++++++++
  .../android/server/autofill/ui/FillUi.java    | 11 +++--

@@ -49,8 +49,6 @@ Reason for revert: Reinstate original change for QPR
 (cherry picked from https://googleplex-android-review.googlesource.com/q/commit:56891eedc68c86b40977191dad28d65ebf86a94f)
 Merged-In: Iba0c220b82bcf6b15368762b7052a3987ccbc0c6
 Change-Id: Iba0c220b82bcf6b15368762b7052a3987ccbc0c6
-
-Change-Id: Ic5130971306864e5bd2a590f238175c9545a297a
 ---
  stack/btm/btm_sec.cc | 25 -------------------------
  1 file changed, 25 deletions(-)

@@ -14,8 +14,6 @@ the UMO background of the first user.
 (cherry picked from https://googleplex-android-review.googlesource.com/q/commit:f95b7fc61d6b3bf49420ded0357bec031f8cbdcf)
 Merged-In: I384f8e230c909d8fc8e5f147e2fd3558fec44626
 Change-Id: I384f8e230c909d8fc8e5f147e2fd3558fec44626
-
-Change-Id: I1109b2112cbd0f9ce119a6ab36f9491bd8a1159b
 ---
  .../server/media/MediaSessionRecord.java      | 52 +++++++++++++++----
  1 file changed, 43 insertions(+), 9 deletions(-)

@@ -1,4 +1,4 @@
-From f3aa381e37700bdcb2ff4e9bf2290456e8581e06 Mon Sep 17 00:00:00 2001
+From 908ee7396771966d6470f2903380ea35082eb083 Mon Sep 17 00:00:00 2001
 From: Haibo Huang <hhb@google.com>
 Date: Tue, 28 Apr 2020 14:47:47 -0700
 Subject: [PATCH 13/13] Fix the use of pdfium

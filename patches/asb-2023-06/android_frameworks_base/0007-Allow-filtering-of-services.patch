@@ -8,8 +8,6 @@ Bug: 260570119
 (cherry picked from https://googleplex-android-review.googlesource.com/q/commit:44dcb8351e61f4b3a63ec68fa5d8490501e8a823)
 Merged-In: Ib4740ba401667de62fa1a33334c2c1fbee25b760
 Change-Id: Ib4740ba401667de62fa1a33334c2c1fbee25b760
-
-Change-Id: If0de627cecd0b565044493ee3536e06c0db97666
 ---
  .../applications/ServiceListing.java          | 16 ++-
  .../applications/ServiceListingTest.java      | 98 ++++++++++++++++++-

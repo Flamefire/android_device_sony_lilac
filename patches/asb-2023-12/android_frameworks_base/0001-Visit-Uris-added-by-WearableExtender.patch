@@ -1,4 +1,4 @@
-From c7d90106de7ede3f004be46e6dee84a04717e3f8 Mon Sep 17 00:00:00 2001
+From 8423a196c892bed1da50ca09bc66eff7ab888b9f Mon Sep 17 00:00:00 2001
 From: =?UTF-8?q?Mat=C3=ADas=20Hern=C3=A1ndez?= <matiashe@google.com>
 Date: Wed, 5 Jul 2023 13:52:21 +0200
 Subject: [PATCH 01/13] Visit Uris added by WearableExtender

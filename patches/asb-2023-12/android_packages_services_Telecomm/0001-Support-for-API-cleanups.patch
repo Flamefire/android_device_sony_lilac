@@ -1,4 +1,4 @@
-From 90e823d5ec01f6bca10cc43126131ce56e09a021 Mon Sep 17 00:00:00 2001
+From 720aa20f682ed103b9f1e1cec55f2f0548ed5819 Mon Sep 17 00:00:00 2001
 From: Tyler Gunn <tgunn@google.com>
 Date: Mon, 27 Jan 2020 10:32:08 -0800
 Subject: [PATCH 1/2] Support for API cleanups.
@@ -18,8 +18,6 @@ Bug: 148287068
 Bug: 148285484
 Bug: 148285560
 Change-Id: I1f446d81859fa109d74af3661a42a0bd224de5aa
-
-Change-Id: I28f3ed09aae54e3280ee8d966e0836a46152b484
 ---
  .../telecom/ConnectionServiceWrapper.java     | 49 +++++++++++++++++++
  .../server/telecom/TelecomServiceImpl.java    | 12 +++++

@@ -8,8 +8,6 @@ Test: manual
 (cherry picked from https://googleplex-android-review.googlesource.com/q/commit:c7e8052b527434ed8660e3babdab718f7f3cd7da)
 Merged-In: I0051e5d5fc9fd3691504cb5fbb959f701e0bce6a
 Change-Id: I0051e5d5fc9fd3691504cb5fbb959f701e0bce6a
-
-Change-Id: I1ebfb57ef716aeb0116bd1f58d4f7c43b8b71e81
 ---
  src/com/android/settings/accounts/AddAccountSettings.java | 3 ++-
  1 file changed, 2 insertions(+), 1 deletion(-)

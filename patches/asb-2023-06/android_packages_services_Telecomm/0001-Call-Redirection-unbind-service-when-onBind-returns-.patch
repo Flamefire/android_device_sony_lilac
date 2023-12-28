@@ -15,8 +15,6 @@ Test: CTS for similar assertion
 (cherry picked from https://googleplex-android-review.googlesource.com/q/commit:c3580d96071a7232ce11ad83848d6394b93121d8)
 Merged-In: Ib9d44d239833131eb055e83801cb635e8efe0b81
 Change-Id: Ib9d44d239833131eb055e83801cb635e8efe0b81
-
-Change-Id: I1c5b3ff6c1c7e6eb0d328eda3b1c02d18db1abd5
 ---
  .../CallRedirectionProcessor.java             | 13 ++++++++++
  .../tests/CallRedirectionProcessorTest.java   | 24 +++++++++++++++++++

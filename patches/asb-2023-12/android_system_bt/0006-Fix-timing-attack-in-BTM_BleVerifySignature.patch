@@ -1,4 +1,4 @@
-From f102e2ca17f6f7160f06cce75f1a5b625f829cb1 Mon Sep 17 00:00:00 2001
+From aeb6596c75d0073d9daa82994d91a236d9a398bd Mon Sep 17 00:00:00 2001
 From: Brian Delwiche <delwiche@google.com>
 Date: Tue, 3 Oct 2023 21:27:49 +0000
 Subject: [PATCH 6/8] Fix timing attack in BTM_BleVerifySignature
@@ -16,8 +16,6 @@ Ignore-AOSP-First: Security
 (cherry picked from https://googleplex-android-review.googlesource.com/q/commit:fcd1c44f7c4bf431dd6a6902d74c045174bd00ce)
 Merged-In: I41a9b586d663d2ad4694222ae451d2d30a428a3c
 Change-Id: I41a9b586d663d2ad4694222ae451d2d30a428a3c
-
-Change-Id: I89f23ee561bc239fdacd45482420037a53bb279b
 ---
  stack/Android.bp     | 1 +
  stack/btm/btm_ble.cc | 3 ++-

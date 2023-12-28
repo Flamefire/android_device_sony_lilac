@@ -9,8 +9,6 @@ Test: manual
 (cherry picked from https://googleplex-android-review.googlesource.com/q/commit:3195c559667939b458445b7e133fb4a7c76aaead)
 Merged-In: I4b035fd370197b7f4838af5fb6e4d0ce27a5f3e7
 Change-Id: I4b035fd370197b7f4838af5fb6e4d0ce27a5f3e7
-
-Change-Id: Iaa4085e33c8cea9264cfc285d936cecc8219e732
 ---
  src/com/android/car/settings/accounts/AddAccountActivity.java | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)

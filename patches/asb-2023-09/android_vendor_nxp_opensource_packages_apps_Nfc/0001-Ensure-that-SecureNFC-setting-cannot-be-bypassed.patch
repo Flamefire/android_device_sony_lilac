@@ -8,8 +8,6 @@ Test: ctsverifier
 (cherry picked from https://googleplex-android-review.googlesource.com/q/commit:d6d8f79fd8d605b3cb460895a8e3a11bcf0c22b0)
 Merged-In: Ic408b3ef9e35b646b728f9b76a0ba8922ed6e25f
 Change-Id: Ic408b3ef9e35b646b728f9b76a0ba8922ed6e25f
-
-Change-Id: Ib0baa833fe31c72825889b729c83a1d70a5a6a72
 ---
  src/com/android/nfc/NfcService.java                         | 6 ++++++
  src/com/android/nfc/cardemulation/HostEmulationManager.java | 5 +++--

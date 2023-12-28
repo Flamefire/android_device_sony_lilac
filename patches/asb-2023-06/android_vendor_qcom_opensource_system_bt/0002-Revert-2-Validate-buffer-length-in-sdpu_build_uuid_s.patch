@@ -7,8 +7,6 @@ fd2ded7341c7f867a153e86f003758808f11bfb9
 (cherry picked from https://googleplex-android-review.googlesource.com/q/commit:4d33899d2c0573cf351691cdf27628416621f545)
 Merged-In: I40ea9f3858215f460e6dab3768e0c6d2155e4755
 Change-Id: I40ea9f3858215f460e6dab3768e0c6d2155e4755
-
-Change-Id: I41b3e52c09638f8a46a26d9527b0e114f6c8682e
 ---
  stack/sdp/sdp_discovery.cc | 64 +++++++++++++++++++++++++++++++++-----
  1 file changed, 57 insertions(+), 7 deletions(-)

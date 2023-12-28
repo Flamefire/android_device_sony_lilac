@@ -1,4 +1,4 @@
-From 5692a26dcf1ef61b4f9f65167c526f758045067c Mon Sep 17 00:00:00 2001
+From 7ac0e3f8897b09978165c4a8eaa2d36b8938c732 Mon Sep 17 00:00:00 2001
 From: balakrishna <quic_kunthumu@quicinc.com>
 Date: Tue, 7 Mar 2023 16:53:46 +0530
 Subject: [PATCH 5/7] BT: Fixing the rfc_slot_id overflow

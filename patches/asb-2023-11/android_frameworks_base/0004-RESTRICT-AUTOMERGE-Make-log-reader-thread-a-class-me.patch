@@ -16,8 +16,6 @@ Bug: 285645039
 (cherry picked from https://googleplex-android-review.googlesource.com/q/commit:03de4e4f1a0546fdd3b002651851bee9ffe0e11b)
 Merged-In: I1e886f9ccb7203714216da061c35e793b2a63d8a
 Change-Id: I1e886f9ccb7203714216da061c35e793b2a63d8a
-
-Change-Id: If4a117b3f465b7faffbd96d8d607477e50574373
 ---
  cmds/statsd/src/StatsService.cpp | 23 +++++++++++++++++++++--
  cmds/statsd/src/StatsService.h   |  8 ++++++++

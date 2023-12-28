@@ -10,8 +10,6 @@ Test: atest com.android.server.wifi
 (cherry picked from https://googleplex-android-review.googlesource.com/q/commit:b081fc592709895f0e745ad33b41174b3b2ad399)
 Merged-In: I30606e9bb4eba54b5b9111de4982c0cfb565b3dc
 Change-Id: I30606e9bb4eba54b5b9111de4982c0cfb565b3dc
-
-Change-Id: I7df5e55e777189bdc11765d11cb5e428fe928faa
 ---
  .../wifi/hotspot2/PasspointManager.java       |  6 ++
  .../wifi/hotspot2/PasspointManagerTest.java   | 56 ++++++++++---------

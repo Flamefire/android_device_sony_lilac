@@ -1,4 +1,4 @@
-From ec7696b22e25b1c7f7eaf3749be88265bccbd711 Mon Sep 17 00:00:00 2001
+From 082180a9c62f1720c83a4a19e8648f8697210345 Mon Sep 17 00:00:00 2001
 From: =?UTF-8?q?Mat=C3=ADas=20Hern=C3=A1ndez?= <matiashe@google.com>
 Date: Fri, 11 Aug 2023 18:27:57 +0200
 Subject: [PATCH 04/13] Visit Uris related to Notification style extras
@@ -10,8 +10,6 @@ Bug: 287640400
 (cherry picked from https://googleplex-android-review.googlesource.com/q/commit:a7e0c6585fd155d5bd9354b8b15516f4788c33a7)
 Merged-In: I25acab19be7dd486aabede8c91dbad5a1a217abf
 Change-Id: I25acab19be7dd486aabede8c91dbad5a1a217abf
-
-Change-Id: I7c9facb08fece860d9c1c484d753b6d2337576fd
 ---
  core/java/android/app/Notification.java       |  4 +--
  .../NotificationManagerServiceTest.java       | 34 +++++++++++++++++++

@@ -8,8 +8,6 @@ Test: tag r/w
 (cherry picked from https://googleplex-android-review.googlesource.com/q/commit:dc9d09e1698725712628d394bf9be4c9003579e8)
 Merged-In: I1d55954e56a3f995f8dd48bf484fe9fce02b2ed1
 Change-Id: I1d55954e56a3f995f8dd48bf484fe9fce02b2ed1
-
-Change-Id: Ia10491e388a495a164462c73ced7ea1965808860
 ---
  SN100x/src/nfc/tags/rw_i93.cc | 9 +++++++++
  src/nfc/tags/rw_i93.cc        | 9 +++++++++

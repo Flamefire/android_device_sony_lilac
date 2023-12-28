@@ -12,8 +12,6 @@ Test: Create a test app which creates a Conversation with a long shortcutId. Go 
 (cherry picked from https://googleplex-android-review.googlesource.com/q/commit:f31df6234091b5b1de258a01dd4b2d8e5415ee2e)
 Merged-In: I2617de6f9e8a7dbfd8fbeff589a7d592f00d87c5
 Change-Id: I2617de6f9e8a7dbfd8fbeff589a7d592f00d87c5
-
-Change-Id: I6a2025e64ecedfc5cfd2a7dc5ebd5e57daef2717
 ---
  .../java/android/content/pm/ShortcutInfo.java | 20 ++++++++++++++++---
  .../server/pm/ShortcutManagerTest2.java       | 10 ++++++++++

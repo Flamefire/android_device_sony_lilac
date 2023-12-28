@@ -17,8 +17,6 @@ Test: atest MediaProviderTests
 (cherry picked from https://googleplex-android-review.googlesource.com/q/commit:5d2808f30c9dbe35ddbefeda4845328557569a93)
 Merged-In: I61e77d69ae857984b819fa0ea27bec5c26a34842
 Change-Id: I61e77d69ae857984b819fa0ea27bec5c26a34842
-
-Change-Id: Idf0babc3ab4cae14e69ab7448b914510861a47d7
 ---
  .../providers/media/MediaProvider.java        | 88 +++++++++++++------
  .../media/scan/LegacyMediaScanner.java        | 25 +++++-
