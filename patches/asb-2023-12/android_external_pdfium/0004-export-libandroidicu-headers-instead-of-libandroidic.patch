@@ -1,7 +1,7 @@
 From cb821d150e0e16701bee9ef8699604c966003879 Mon Sep 17 00:00:00 2001
 From: Victor Chang <vichang@google.com>
 Date: Mon, 4 May 2020 18:31:09 +0100
-Subject: [PATCH 4/6] export libandroidicu headers instead of
+Subject: [PATCH 4/8] export libandroidicu headers instead of
  libandroidicu_headers
 
 They are the same thing actually.

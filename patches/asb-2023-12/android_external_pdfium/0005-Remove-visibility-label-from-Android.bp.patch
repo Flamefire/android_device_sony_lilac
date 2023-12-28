@@ -1,9 +1,11 @@
-From ee34bd8c61873ac8aba295621ac83d1652adc1ed Mon Sep 17 00:00:00 2001
+From 971919edf5687d31271365d9ed2536b74102bfdf Mon Sep 17 00:00:00 2001
 From: Alexander Grund <flamefire89@gmail.com>
 Date: Sun, 17 Dec 2023 12:11:44 +0100
-Subject: [PATCH 5/6] Remove `visibility` label from Android.bp
+Subject: [PATCH 5/8] Remove `visibility` label from Android.bp
 
 Not present on Android 10 soong
+
+Change-Id: I3bef532659afab476114a47273950f74c0b918c2
 ---
  constants/Android.bp           | 1 -
  core/fdrm/Android.bp           | 2 --

@@ -1,0 +1,29 @@
+From 348c6b2d01fcfd3ccfba426333f57f464ba640fe Mon Sep 17 00:00:00 2001
+From: Alexander Grund <flamefire89@gmail.com>
+Date: Thu, 28 Dec 2023 12:52:22 +0100
+Subject: [PATCH 7/8] Fix compatibility with Clang 9
+
+The `gsl::Pointer` attribute was introduced in Clang 10 so check for the
+clang version before using it.
+
+Change-Id: Ifad55ca72dfb3518c8342c61cd73f7a0dbfa1958
+---
+ third_party/base/compiler_specific.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/third_party/base/compiler_specific.h b/third_party/base/compiler_specific.h
+index 8968f6547..c928026f5 100644
+--- a/third_party/base/compiler_specific.h
++++ b/third_party/base/compiler_specific.h
+@@ -69,7 +69,7 @@
+ #define TRIVIAL_ABI
+ #endif
+ 
+-#if defined(__clang__)
++#if defined(__clang__) && (__clang_major__ >= 10)
+ #define GSL_POINTER [[gsl::Pointer]]
+ #else
+ #define GSL_POINTER
+-- 
+2.40.1
+

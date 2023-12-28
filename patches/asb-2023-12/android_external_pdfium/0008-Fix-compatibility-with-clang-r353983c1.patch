@@ -1,0 +1,118 @@
+From eef1247008e844da1277c813f3d1c03d66d9b08e Mon Sep 17 00:00:00 2001
+From: Alexander Grund <flamefire89@gmail.com>
+Date: Thu, 28 Dec 2023 12:53:16 +0100
+Subject: [PATCH 8/8] Fix compatibility with clang-r353983c1
+
+This clang (9.0.3 used by default in Android 10) doesn't support
+`__builtin_is_constant_evaluated` although r365631c (9.0.8) does.
+So fall back to `__builtin_constant_p` if the former is detected to be
+not available.
+
+Change-Id: I090634a0d7bbc0bfbd7747e8345ff7e2bc5bb7bc
+---
+ third_party/base/numerics/checked_math.h          | 2 +-
+ third_party/base/numerics/checked_math_impl.h     | 2 +-
+ third_party/base/numerics/clamped_math_impl.h     | 8 ++++----
+ third_party/base/numerics/safe_conversions.h      | 2 +-
+ third_party/base/numerics/safe_conversions_impl.h | 6 +++++-
+ 5 files changed, 12 insertions(+), 8 deletions(-)
+
+diff --git a/third_party/base/numerics/checked_math.h b/third_party/base/numerics/checked_math.h
+index 9eb5b0786..eaf3028b8 100644
+--- a/third_party/base/numerics/checked_math.h
++++ b/third_party/base/numerics/checked_math.h
+@@ -145,7 +145,7 @@ class CheckedNumeric {
+ 
+   constexpr CheckedNumeric operator-() const {
+     // Use an optimized code path for a known run-time variable.
+-    if (!IsConstantEvaluated() && std::is_signed<T>::value &&
++    if (!IsConstantEvaluated(state_.value()) && std::is_signed<T>::value &&
+         std::is_floating_point<T>::value) {
+       return FastRuntimeNegate();
+     }
+diff --git a/third_party/base/numerics/checked_math_impl.h b/third_party/base/numerics/checked_math_impl.h
+index 47c73d58f..8a927cfb4 100644
+--- a/third_party/base/numerics/checked_math_impl.h
++++ b/third_party/base/numerics/checked_math_impl.h
+@@ -565,7 +565,7 @@ class CheckedNumericState<T, NUMERIC_FLOATING> {
+ 
+   constexpr bool is_valid() const {
+     // Written this way because std::isfinite is not reliably constexpr.
+-    return IsConstantEvaluated()
++    return IsConstantEvaluated(value_)
+                ? value_ <= std::numeric_limits<T>::max() &&
+                      value_ >= std::numeric_limits<T>::lowest()
+                : std::isfinite(value_);
+diff --git a/third_party/base/numerics/clamped_math_impl.h b/third_party/base/numerics/clamped_math_impl.h
+index a49309e2a..41c928f6e 100644
+--- a/third_party/base/numerics/clamped_math_impl.h
++++ b/third_party/base/numerics/clamped_math_impl.h
+@@ -26,7 +26,7 @@ template <typename T,
+           typename std::enable_if<std::is_integral<T>::value &&
+                                   std::is_signed<T>::value>::type* = nullptr>
+ constexpr T SaturatedNegWrapper(T value) {
+-  return IsConstantEvaluated() || !ClampedNegFastOp<T>::is_supported
++  return IsConstantEvaluated(value) || !ClampedNegFastOp<T>::is_supported
+              ? (NegateWrapper(value) != std::numeric_limits<T>::lowest()
+                     ? NegateWrapper(value)
+                     : std::numeric_limits<T>::max())
+@@ -81,7 +81,7 @@ struct ClampedAddOp<T,
+   using result_type = typename MaxExponentPromotion<T, U>::type;
+   template <typename V = result_type>
+   static constexpr V Do(T x, U y) {
+-    if (!IsConstantEvaluated() && ClampedAddFastOp<T, U>::is_supported)
++    if (!IsConstantEvaluated(x && y) && ClampedAddFastOp<T, U>::is_supported)
+       return ClampedAddFastOp<T, U>::template Do<V>(x, y);
+ 
+     static_assert(std::is_same<V, result_type>::value ||
+@@ -107,7 +107,7 @@ struct ClampedSubOp<T,
+   using result_type = typename MaxExponentPromotion<T, U>::type;
+   template <typename V = result_type>
+   static constexpr V Do(T x, U y) {
+-    if (!IsConstantEvaluated() && ClampedSubFastOp<T, U>::is_supported)
++    if (!IsConstantEvaluated(x && y) && ClampedSubFastOp<T, U>::is_supported)
+       return ClampedSubFastOp<T, U>::template Do<V>(x, y);
+ 
+     static_assert(std::is_same<V, result_type>::value ||
+@@ -133,7 +133,7 @@ struct ClampedMulOp<T,
+   using result_type = typename MaxExponentPromotion<T, U>::type;
+   template <typename V = result_type>
+   static constexpr V Do(T x, U y) {
+-    if (!IsConstantEvaluated() && ClampedMulFastOp<T, U>::is_supported)
++    if (!IsConstantEvaluated(x && y) && ClampedMulFastOp<T, U>::is_supported)
+       return ClampedMulFastOp<T, U>::template Do<V>(x, y);
+ 
+     V result = {};
+diff --git a/third_party/base/numerics/safe_conversions.h b/third_party/base/numerics/safe_conversions.h
+index 77ec8ce73..bf877d991 100644
+--- a/third_party/base/numerics/safe_conversions.h
++++ b/third_party/base/numerics/safe_conversions.h
+@@ -209,7 +209,7 @@ template <typename Dst,
+           typename Src>
+ constexpr Dst saturated_cast(Src value) {
+   using SrcType = typename UnderlyingType<Src>::type;
+-  return !IsConstantEvaluated() && SaturateFastOp<Dst, SrcType>::is_supported &&
++  return !IsConstantEvaluated(value) && SaturateFastOp<Dst, SrcType>::is_supported &&
+                  std::is_same<SaturationHandler<Dst>,
+                               SaturationDefaultLimits<Dst>>::value
+              ? SaturateFastOp<Dst, SrcType>::Do(static_cast<SrcType>(value))
+diff --git a/third_party/base/numerics/safe_conversions_impl.h b/third_party/base/numerics/safe_conversions_impl.h
+index 44c921a14..82523fd39 100644
+--- a/third_party/base/numerics/safe_conversions_impl.h
++++ b/third_party/base/numerics/safe_conversions_impl.h
+@@ -89,7 +89,11 @@ constexpr typename std::make_unsigned<T>::type SafeUnsignedAbs(T value) {
+ 
+ // TODO(jschuh): Switch to std::is_constant_evaluated() once C++20 is supported.
+ // Alternately, the usage could be restructured for "consteval if" in C++23.
+-#define IsConstantEvaluated() (__builtin_is_constant_evaluated())
++#if __has_builtin(__builtin_is_constant_evaluated)
++#define IsConstantEvaluated(x) (__builtin_is_constant_evaluated())
++#else
++#define IsConstantEvaluated(x) (__builtin_constant_p(x))
++#endif
+ 
+ // TODO(jschuh): Debug builds don't reliably propagate constants, so we restrict
+ // some accelerated runtime paths to release builds until this can be forced
+-- 
+2.40.1
+
