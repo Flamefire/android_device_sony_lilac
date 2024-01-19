@@ -1,0 +1,341 @@
+# PWD: frameworks/av
+diff --git a/media/codec2/sfplugin/utils/Codec2BufferUtils.cpp b/media/codec2/sfplugin/utils/Codec2BufferUtils.cpp
+index bf2a07ee52..9bc8eb9c4c 100644
+--- a/media/codec2/sfplugin/utils/Codec2BufferUtils.cpp
++++ b/media/codec2/sfplugin/utils/Codec2BufferUtils.cpp
+@@ -357,16 +357,16 @@ status_t ConvertRGBToPlanarYUV(
+ 
+     const C2PlanarLayout &layout = src.layout();
+     const uint8_t *pRed   = src.data()[C2PlanarLayout::PLANE_R];
+     const uint8_t *pGreen = src.data()[C2PlanarLayout::PLANE_G];
+     const uint8_t *pBlue  = src.data()[C2PlanarLayout::PLANE_B];
+ 
+ #define CLIP3(x,y,z) (((z) < (x)) ? (x) : (((z) > (y)) ? (y) : (z)))
+-    for (size_t y = 0; y < src.height(); ++y) {
+-        for (size_t x = 0; x < src.width(); ++x) {
++    for (size_t y = 0; y < src.crop().height; ++y) {
++        for (size_t x = 0; x < src.crop().width; ++x) {
+             uint8_t red = *pRed;
+             uint8_t green = *pGreen;
+             uint8_t blue = *pBlue;
+ 
+             // using ITU-R BT.601 conversion matrix
+             unsigned luma =
+                 CLIP3(0, (((red * 66 + green * 129 + blue * 25) >> 8) + 16), 255);
+diff --git a/media/libstagefright/colorconversion/ColorConverter.cpp b/media/libstagefright/colorconversion/ColorConverter.cpp
+index d685321028..c491d8043b 100644
+--- a/media/libstagefright/colorconversion/ColorConverter.cpp
++++ b/media/libstagefright/colorconversion/ColorConverter.cpp
+@@ -644,15 +644,16 @@ status_t ColorConverter::convertYUV420Planar16ToY410(
+         uint16_t *ptr_ytop = (uint16_t*) src_y;
+         uint16_t *ptr_ybot = (uint16_t*) (src_y + src.mStride);
+         uint16_t *ptr_u = (uint16_t*) src_u;
+         uint16_t *ptr_v = (uint16_t*) src_v;
+ 
+         uint32_t u01, v01, y01, y23, y45, y67, uv0, uv1;
+         size_t x = 0;
+-        for (; x < src.cropWidth() - 3; x += 4) {
++        // x % 4 is always 0 so x + 3 will never overflow.
++        for (; x + 3 < src.cropWidth(); x += 4) {
+             u01 = *((uint32_t*)ptr_u); ptr_u += 2;
+             v01 = *((uint32_t*)ptr_v); ptr_v += 2;
+ 
+             y01 = *((uint32_t*)ptr_ytop); ptr_ytop += 2;
+             y23 = *((uint32_t*)ptr_ytop); ptr_ytop += 2;
+             y45 = *((uint32_t*)ptr_ybot); ptr_ybot += 2;
+             y67 = *((uint32_t*)ptr_ybot); ptr_ybot += 2;
+diff --git a/media/libstagefright/foundation/MetaDataBase.cpp b/media/libstagefright/foundation/MetaDataBase.cpp
+index bfea6f1537..a3c623e354 100644
+--- a/media/libstagefright/foundation/MetaDataBase.cpp
++++ b/media/libstagefright/foundation/MetaDataBase.cpp
+@@ -20,14 +20,16 @@
+ #include <binder/Parcel.h>
+ #include <utils/KeyedVector.h>
+ #include <utils/Log.h>
+ 
+ #include <stdlib.h>
+ #include <string.h>
+ 
++#include <mutex>
++
+ #include <media/stagefright/foundation/ADebug.h>
+ #include <media/stagefright/foundation/AString.h>
+ #include <media/stagefright/foundation/hexdump.h>
+ #include <media/stagefright/MetaDataBase.h>
+ 
+ namespace android {
+ 
+@@ -71,14 +73,15 @@ private:
+ 
+ struct MetaDataBase::Rect {
+     int32_t mLeft, mTop, mRight, mBottom;
+ };
+ 
+ 
+ struct MetaDataBase::MetaDataInternal {
++    std::mutex mLock;
+     KeyedVector<uint32_t, MetaDataBase::typed_data> mItems;
+ };
+ 
+ 
+ MetaDataBase::MetaDataBase()
+     : mInternalData(new MetaDataInternal()) {
+ }
+@@ -95,18 +98,20 @@ MetaDataBase& MetaDataBase::operator = (const MetaDataBase &rhs) {
+ 
+ MetaDataBase::~MetaDataBase() {
+     clear();
+     delete mInternalData;
+ }
+ 
+ void MetaDataBase::clear() {
++    std::lock_guard<std::mutex> guard(mInternalData->mLock);
+     mInternalData->mItems.clear();
+ }
+ 
+ bool MetaDataBase::remove(uint32_t key) {
++    std::lock_guard<std::mutex> guard(mInternalData->mLock);
+     ssize_t i = mInternalData->mItems.indexOfKey(key);
+ 
+     if (i < 0) {
+         return false;
+     }
+ 
+     mInternalData->mItems.removeItemsAt(i);
+@@ -245,14 +250,15 @@ bool MetaDataBase::findRect(
+     return true;
+ }
+ 
+ bool MetaDataBase::setData(
+         uint32_t key, uint32_t type, const void *data, size_t size) {
+     bool overwrote_existing = true;
+ 
++    std::lock_guard<std::mutex> guard(mInternalData->mLock);
+     ssize_t i = mInternalData->mItems.indexOfKey(key);
+     if (i < 0) {
+         typed_data item;
+         i = mInternalData->mItems.add(key, item);
+ 
+         overwrote_existing = false;
+     }
+@@ -262,28 +268,30 @@ bool MetaDataBase::setData(
+     item.setData(type, data, size);
+ 
+     return overwrote_existing;
+ }
+ 
+ bool MetaDataBase::findData(uint32_t key, uint32_t *type,
+                         const void **data, size_t *size) const {
++    std::lock_guard<std::mutex> guard(mInternalData->mLock);
+     ssize_t i = mInternalData->mItems.indexOfKey(key);
+ 
+     if (i < 0) {
+         return false;
+     }
+ 
+     const typed_data &item = mInternalData->mItems.valueAt(i);
+ 
+     item.getData(type, data, size);
+ 
+     return true;
+ }
+ 
+ bool MetaDataBase::hasData(uint32_t key) const {
++    std::lock_guard<std::mutex> guard(mInternalData->mLock);
+     ssize_t i = mInternalData->mItems.indexOfKey(key);
+ 
+     if (i < 0) {
+         return false;
+     }
+ 
+     return true;
+@@ -422,39 +430,42 @@ static void MakeFourCCString(uint32_t x, char *s) {
+     s[2] = (x >> 8) & 0xff;
+     s[3] = x & 0xff;
+     s[4] = '\0';
+ }
+ 
+ String8 MetaDataBase::toString() const {
+     String8 s;
++    std::lock_guard<std::mutex> guard(mInternalData->mLock);
+     for (int i = mInternalData->mItems.size(); --i >= 0;) {
+         int32_t key = mInternalData->mItems.keyAt(i);
+         char cc[5];
+         MakeFourCCString(key, cc);
+         const typed_data &item = mInternalData->mItems.valueAt(i);
+         s.appendFormat("%s: %s", cc, item.asString(false).string());
+         if (i != 0) {
+             s.append(", ");
+         }
+     }
+     return s;
+ }
+ 
+ void MetaDataBase::dumpToLog() const {
++    std::lock_guard<std::mutex> guard(mInternalData->mLock);
+     for (int i = mInternalData->mItems.size(); --i >= 0;) {
+         int32_t key = mInternalData->mItems.keyAt(i);
+         char cc[5];
+         MakeFourCCString(key, cc);
+         const typed_data &item = mInternalData->mItems.valueAt(i);
+         ALOGI("%s: %s", cc, item.asString(true /* verbose */).string());
+     }
+ }
+ 
+ status_t MetaDataBase::writeToParcel(Parcel &parcel) {
+     status_t ret;
++    std::lock_guard<std::mutex> guard(mInternalData->mLock);
+     size_t numItems = mInternalData->mItems.size();
+     ret = parcel.writeUint32(uint32_t(numItems));
+     if (ret) {
+         return ret;
+     }
+     for (size_t i = 0; i < numItems; i++) {
+         int32_t key = mInternalData->mItems.keyAt(i);
+diff --git a/media/mtp/MtpFfsHandle.cpp b/media/mtp/MtpFfsHandle.cpp
+index bd6a6c679a..09eb96a00d 100644
+--- a/media/mtp/MtpFfsHandle.cpp
++++ b/media/mtp/MtpFfsHandle.cpp
+@@ -292,14 +292,18 @@ int MtpFfsHandle::start(bool ptp) {
+     mPollFds[1].events = POLLIN;
+ 
+     mCanceled = false;
+     return 0;
+ }
+ 
+ void MtpFfsHandle::close() {
++    auto timeout = std::chrono::seconds(2);
++    std::unique_lock lk(m);
++    cv.wait_for(lk, timeout ,[this]{return child_threads==0;});
++
+     io_destroy(mCtx);
+     closeEndpoints();
+     closeConfig();
+ }
+ 
+ int MtpFfsHandle::waitEvents(struct io_buffer *buf, int min_events, struct io_event *events,
+         int *counter) {
+@@ -658,22 +662,32 @@ int MtpFfsHandle::sendFile(mtp_file_range mfr) {
+ 
+ int MtpFfsHandle::sendEvent(mtp_event me) {
+     // Mimic the behavior of f_mtp by sending the event async.
+     // Events aren't critical to the connection, so we don't need to check the return value.
+     char *temp = new char[me.length];
+     memcpy(temp, me.data, me.length);
+     me.data = temp;
++
++    std::unique_lock lk(m);
++    child_threads++;
++    lk.unlock();
++
+     std::thread t([this, me]() { return this->doSendEvent(me); });
+     t.detach();
+     return 0;
+ }
+ 
+ void MtpFfsHandle::doSendEvent(mtp_event me) {
+     unsigned length = me.length;
+     int ret = ::write(mIntr, me.data, length);
+     if (static_cast<unsigned>(ret) != length)
+         PLOG(ERROR) << "Mtp error sending event thread!";
+     delete[] reinterpret_cast<char*>(me.data);
++
++    std::unique_lock lk(m);
++    child_threads--;
++    lk.unlock();
++    cv.notify_one();
+ }
+ 
+ } // namespace android
+ 
+diff --git a/media/mtp/MtpFfsHandle.h b/media/mtp/MtpFfsHandle.h
+index fe343f74f6..ae78db2877 100644
+--- a/media/mtp/MtpFfsHandle.h
++++ b/media/mtp/MtpFfsHandle.h
+@@ -54,14 +54,18 @@ protected:
+     void doSendEvent(mtp_event me);
+     bool openEndpoints(bool ptp);
+ 
+     static int getPacketSize(int ffs_fd);
+ 
+     bool mCanceled;
+ 
++    std::mutex m;
++    std::condition_variable cv;
++    std::atomic<int> child_threads{0};
++
+     android::base::unique_fd mControl;
+     // "in" from the host's perspective => sink for mtp server
+     android::base::unique_fd mBulkIn;
+     // "out" from the host's perspective => source for mtp server
+     android::base::unique_fd mBulkOut;
+     android::base::unique_fd mIntr;
+ 
+diff --git a/media/mtp/MtpPacket.cpp b/media/mtp/MtpPacket.cpp
+index 3b298a9bf3..e4467bbfdc 100644
+--- a/media/mtp/MtpPacket.cpp
++++ b/media/mtp/MtpPacket.cpp
+@@ -88,32 +88,54 @@ void MtpPacket::copyFrom(const MtpPacket& src) {
+     int length = src.mPacketSize;
+     allocate(length);
+     mPacketSize = length;
+     memcpy(mBuffer, src.mBuffer, length);
+ }
+ 
+ uint16_t MtpPacket::getUInt16(int offset) const {
+-    return ((uint16_t)mBuffer[offset + 1] << 8) | (uint16_t)mBuffer[offset];
++    if ((unsigned long)(offset+2) <= mBufferSize) {
++        return ((uint16_t)mBuffer[offset + 1] << 8) | (uint16_t)mBuffer[offset];
++    }
++    else {
++        ALOGE("offset for buffer read is greater than buffer size!");
++        abort();
++    }
+ }
+ 
+ uint32_t MtpPacket::getUInt32(int offset) const {
+-    return ((uint32_t)mBuffer[offset + 3] << 24) | ((uint32_t)mBuffer[offset + 2] << 16) |
+-           ((uint32_t)mBuffer[offset + 1] << 8)  | (uint32_t)mBuffer[offset];
++    if ((unsigned long)(offset+4) <= mBufferSize) {
++        return ((uint32_t)mBuffer[offset + 3] << 24) | ((uint32_t)mBuffer[offset + 2] << 16) |
++               ((uint32_t)mBuffer[offset + 1] << 8)  | (uint32_t)mBuffer[offset];
++    }
++    else {
++        ALOGE("offset for buffer read is greater than buffer size!");
++        abort();
++    }
+ }
+ 
+ void MtpPacket::putUInt16(int offset, uint16_t value) {
+-    mBuffer[offset++] = (uint8_t)(value & 0xFF);
+-    mBuffer[offset++] = (uint8_t)((value >> 8) & 0xFF);
++    if ((unsigned long)(offset+2) <= mBufferSize) {
++        mBuffer[offset++] = (uint8_t)(value & 0xFF);
++        mBuffer[offset++] = (uint8_t)((value >> 8) & 0xFF);
++    }
++    else {
++        ALOGE("offset for buffer write is greater than buffer size!");
++    }
+ }
+ 
+ void MtpPacket::putUInt32(int offset, uint32_t value) {
+-    mBuffer[offset++] = (uint8_t)(value & 0xFF);
+-    mBuffer[offset++] = (uint8_t)((value >> 8) & 0xFF);
+-    mBuffer[offset++] = (uint8_t)((value >> 16) & 0xFF);
+-    mBuffer[offset++] = (uint8_t)((value >> 24) & 0xFF);
++    if ((unsigned long)(offset+4) <= mBufferSize) {
++        mBuffer[offset++] = (uint8_t)(value & 0xFF);
++        mBuffer[offset++] = (uint8_t)((value >> 8) & 0xFF);
++        mBuffer[offset++] = (uint8_t)((value >> 16) & 0xFF);
++        mBuffer[offset++] = (uint8_t)((value >> 24) & 0xFF);
++    }
++    else {
++        ALOGE("offset for buffer write is greater than buffer size!");
++    }
+ }
+ 
+ uint16_t MtpPacket::getContainerCode() const {
+     return getUInt16(MTP_CONTAINER_CODE_OFFSET);
+ }
+ 
+ void MtpPacket::setContainerCode(uint16_t code) {

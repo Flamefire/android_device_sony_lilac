@@ -1,0 +1,28 @@
+# PWD: packages/apps/Camera2
+diff --git a/src/com/android/camera/CameraActivity.java b/src/com/android/camera/CameraActivity.java
+index af64c1091..026c8397f 100644
+--- a/src/com/android/camera/CameraActivity.java
++++ b/src/com/android/camera/CameraActivity.java
+@@ -1756,16 +1756,20 @@ public class CameraActivity extends QuickActivity
+     /**
+      * Incase the calling package doesn't have ACCESS_FINE_LOCATION permissions, we should not pass
+      * it valid location information in exif.
+      */
+     private boolean shouldUseNoOpLocation () {
+         String callingPackage = getCallingPackage();
+         if (callingPackage == null) {
+-            // Activity not started through startActivityForResult.
+-            return false;
++            if (isCaptureIntent()) {
++                // Activity not started through startActivityForResult.
++                return true;
++            } else {
++                callingPackage = mAppContext.getPackageName();
++            }
+         }
+         PackageInfo packageInfo = null;
+         try {
+             packageInfo = getPackageManager().getPackageInfo(callingPackage,
+                     PackageManager.GET_PERMISSIONS);
+         } catch (Exception e) {
+             Log.w(TAG, "Unable to get PackageInfo for callingPackage " + callingPackage);

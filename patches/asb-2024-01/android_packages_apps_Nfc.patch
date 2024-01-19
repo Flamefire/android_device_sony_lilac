@@ -1,0 +1,48 @@
+# PWD: packages/apps/Nfc
+diff --git a/src/com/android/nfc/NfcService.java b/src/com/android/nfc/NfcService.java
+index 46a5d88e..00a0147d 100644
+--- a/src/com/android/nfc/NfcService.java
++++ b/src/com/android/nfc/NfcService.java
+@@ -847,14 +847,18 @@ public class NfcService implements DeviceHostListener {
+                             PackageManager.DONT_KILL_APP,
+                     uh.getIdentifier());
+         } catch (RemoteException e) {
+             Log.w(TAG, "Unable to change Beam status for user " + uh);
+         }
+     }
+ 
++    public boolean isSecureNfcEnabled() {
++        return mIsSecureNfcEnabled;
++    }
++
+     final class NfcAdapterService extends INfcAdapter.Stub {
+         /**
+          * An interface for vendor specific extensions
+          */
+         public IBinder getNfcAdapterVendorInterface(String vendor) {
+             return null;
+         }
+diff --git a/src/com/android/nfc/cardemulation/HostEmulationManager.java b/src/com/android/nfc/cardemulation/HostEmulationManager.java
+index df701f2f..a45c5f50 100644
+--- a/src/com/android/nfc/cardemulation/HostEmulationManager.java
++++ b/src/com/android/nfc/cardemulation/HostEmulationManager.java
+@@ -171,16 +171,17 @@ public class HostEmulationManager {
+                     return;
+                 }
+                 mLastSelectedAid = selectAid;
+                 if (resolveInfo.defaultService != null) {
+                     // Resolve to default
+                     // Check if resolvedService requires unlock
+                     ApduServiceInfo defaultServiceInfo = resolveInfo.defaultService;
+-                    if (defaultServiceInfo.requiresUnlock() &&
+-                            mKeyguard.isKeyguardLocked() && mKeyguard.isKeyguardSecure()) {
++                    if ((defaultServiceInfo.requiresUnlock()
++                            || NfcService.getInstance().isSecureNfcEnabled())
++                          && mKeyguard.isKeyguardLocked() && mKeyguard.isKeyguardSecure()) {
+                         // Just ignore all future APDUs until next tap
+                         mState = STATE_W4_DEACTIVATE;
+                         launchTapAgain(resolveInfo.defaultService, resolveInfo.category);
+                         return;
+                     }
+                     // In no circumstance should this be an OffHostService -
+                     // we should never get this AID on the host in the first place
