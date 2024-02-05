@@ -1,6 +1,17 @@
 ### USB
 ro.vendor.usb.pid_suffix=1F4
 
+### Data
+persist.data.iwlan.enable=true
+persist.data.iwlan=1
+persist.data.iwlan.ipsec.ap=1
+
+### Debug
+persist.dbg.ims_volte_enable=1
+persist.dbg.volte_avail_ovr=1
+persist.dbg.vt_avail_ovr=1
+persist.dbg.wfc_avail_ovr=1
+
 ### DISPLAY
 # Skip HDR Tone map on Lilac
 sys.hwc_disable_hdr=1
@@ -9,10 +20,20 @@ sys.hwc_disable_hdr=1
 # This will be set by loading
 # /oem/system-properties/config.prop
 # ro.telephony.default_network=9
+persist.radio.volte.dan_support=true
+persist.radio.rat_on=combine
+persist.radio.data_ltd_sys_ind=1
+persist.radio.data_con_rprt=1
+persist.radio.calls.on.ims=1
+persist.radio.VT_ENABLE=1
 
 ### API
 # First released API level
 ro.product.first_api_level=26
+
+### Other Options
+persist.sys.cust.lte_config=true
+persist.rcs.supported=1
 
 ##### Add values MiscTA #####
 # /system/etc/prop.default
