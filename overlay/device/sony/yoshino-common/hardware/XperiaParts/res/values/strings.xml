@@ -1,0 +1,48 @@
+<!--
+  ~ Copyright (c) 2020, Shashank Verma (shank03) <shashank.verma2002@gmail.com>
+  ~
+  ~ Permission is hereby granted, free of charge, to any person obtaining a copy
+  ~ of this software and associated documentation files (the "Software"), to deal
+  ~ in the Software without restriction, including without limitation the rights
+  ~ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  ~ copies of the Software, and to permit persons to whom the Software is
+  ~ furnished to do so, subject to the following conditions:
+  ~
+  ~ The above copyright notice and this permission notice shall be included in all
+  ~ copies or substantial portions of the Software.
+  -->
+<resources>
+    <string name="device_settings_title">Xperia Parts</string>
+    <string name="device_settings_summary">Extra Settings</string>
+
+    <string name="app_name">XperiaParts</string>
+
+    <string name="gesture">Gesture</string>
+    <string name="glove_mode">Glove Mode</string>
+    <string name="glove_mode_summary">Allow screen to respond to touch with gloves on</string>
+    <string name="smart_stamina_mode">Smart-Stamina Mode</string>
+    <string name="smart_stamina_summary">Increases the time range in which the clearpad driver scans if there are new inputs</string>
+    <string name="network_switcher">Network Switcher</string>
+    <string name="status">Status</string>
+    <string name="sony_modem_notification">Sony Modem Notification</string>
+    <string name="sony_modem_notification_summary">Show notification on boot</string>
+    <string name="logs">Logs</string>
+    <string name="logs_summary">/data/user_de/0/com.sonymobile.customizationselector/files/cs.log</string>
+    <string name="customization_selector">Customization Selector</string>
+    <string name="modem_switcher_activity">Modem Switcher Activity</string>
+    <string name="modem_switcher_activity_summary">Select your carrier specific modem if incorrect modem is in use</string>
+    <string name="network_switcher_service">Service</string>
+    <string name="ns_summary">If your sim is not working until you switch to lower network modes (like 3G), enable this service as it will automatically do it for you.\nIt will boot your device with 3G and switch to LTE (based on preference if LTE was enabled) after sim is in service.</string>
+    <string name="lower_network">Lower network</string>
+    <string name="lower_network_summary">Select the network the service should temporarily switch to.\nSelected: </string>
+    <string name="sim_slot">Sim Slot</string>
+    <string name="sim_slot_summary">Select the sim slot you want network switcher to work for.\nSelected Slot: </string>
+    <string name="ims_title">IMS Features</string>
+    <string name="ims_summary">Enables features such as IMS, VoLTE, VoWiFi or WiFi calling <b>if they worked on stock</b>.</string>
+    <string name="modem_title">Re-apply Modem</string>
+    <string name="modem_summary">With enabled IMS, the modem crashes for some carriers if the mbn is not applied at every boot. Use this option to potentially fix such issues.</string>
+    <string name="ultra_dim_name">Ultra-Dim</string>
+    <string name="ultra_dim_label_unsupported">Unsupported on this device</string>
+    <string name="ultra_dim_label_enabled">Restore screen brightness</string>
+    <string name="ultra_dim_label_disabled">Reduce screen brightness</string>
+</resources>

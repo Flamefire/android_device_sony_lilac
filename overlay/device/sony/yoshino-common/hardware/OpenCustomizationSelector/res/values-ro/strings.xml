@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="customization_restart_desc_txt">Dispozitivul va reporni pentru optimizarea rețelei mobile.</string>
+    <string name="back_button_label">Înapoi</string>
+    <string name="more_button_label">Mai mult</string>
+    <string name="next_button_label">Înainte</string>
+</resources>
