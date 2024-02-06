@@ -159,7 +159,7 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.-->
         <boolean name="carrier_wfc_ims_available_bool" value="true" />
     </carrier_config>
    <!-- Carrier-specific DIGI Mobil RO -->
-    <carrier_config mcc="226" mnc="5" spn="Digi.Mobil">
+    <carrier_config mcc="226" mnc="05" spn="Digi.Mobil">
         <boolean name="carrier_volte_available_bool" value="true" />
         <boolean name="carrier_wfc_ims_available_bool" value="true" />
     </carrier_config>
