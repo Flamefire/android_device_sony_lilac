@@ -345,15 +345,4 @@
         <sim_config_id>S8760.1</sim_config_id>
         <sim_config_id>S8760.2</sim_config_id>
     </configuration>
-
-    <!--Orange Romania -->
-    <configuration config_id="930">
-        <sim_config_id>S230.1</sim_config_id>
-        <sim_config_id>S230.2</sim_config_id>
-    </configuration>
-
-    <!--DIGI Romania -->
-    <configuration config_id="931">
-        <sim_config_id>S9138.1</sim_config_id>
-    </configuration>
 </configurations>

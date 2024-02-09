@@ -61,12 +61,17 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.-->
 
     
     <carrier_config>
-       <!-- Enable VoLTE, VoWiFi, Video Calls, VoWiFi Call Quality UI and Video Call Quality UI, in this order -->
-        <boolean name="carrier_volte_available_bool" value="true" />
-        <boolean name="carrier_wfc_ims_available_bool" value="true" />
-        <boolean name="carrier_vt_available_bool" value="true" />
-        <boolean name="vowifi_call_quality" value="true" />
-        <boolean name="show_video_quality_ui" value="true" />
+	<!-- Require provisioning for VoLTE, VoWiFi and Video Telephony. -->
+	<boolean name="carrier_volte_provisioning_required_bool" value="true" />
+	<boolean name="carrier_volte_provisioned_bool" value="true" />
+
+	<!-- Try to avoid reaching the end of the world by Video Telephony. -->
+	<boolean name="support_downgrade_vt_to_audio_bool" value="true" />
+	<boolean name="allow_video_calling_fallback_bool" value="true" />
+
+	<!-- Enable VoWiFi Call Quality UI and Video Call Quality UI. -->
+	<boolean name="vowifi_call_quality" value="true" />
+	<boolean name="show_video_quality_ui" value="true" />
     </carrier_config>
 
 </carrier_config_list>
