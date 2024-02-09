@@ -1,4 +1,0 @@
-c 1 0 part0
-p 0 0 part1
-c 1 0 part2
-c 1 0 part3
