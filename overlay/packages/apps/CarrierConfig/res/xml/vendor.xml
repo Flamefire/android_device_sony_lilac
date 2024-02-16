@@ -59,13 +59,27 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.-->
         <boolean name="carrier_supports_ss_over_ut_bool" value="true" />
     </carrier_config>
 
+    <!--
+        Removed all custom CarrierConfigs to provide a single, universally functional one. We cannot
+        be expected to make CarrierConfigs for all providers in the world, but we do want our phone
+        to work with as many of them as possible. So, we keep Custom Modems and enable required provisioning,
+        since, for carriers that need this functionality, Android will go through provisioning, while,
+        for carriers that do not need / offer this functionality, they will register a compatible
+        phone inside IMS regardless, providing us with the possibility of setting the provisioning
+        complete this way.
+    -->
     
     <carrier_config>
-	<!-- Require provisioning for VoLTE, VoWiFi and Video Telephony. -->
+	<!-- Make VoLTE, VoWiFi and Video Telephony "available" or "enabled by platform". -->	
+	<boolean name="carrier_volte_available_bool" value="true" />
+	<boolean name="carrier_wfc_ims_available_bool" value="true" />
+	<boolean name="carrier_vt_available_bool" value="true" />
+	<boolean name="use_rcs_presence_bool" value="true" />
+	
+	<!-- Enable provisioning, so we do not reach 'the end of the world' by unavailable features. -->
 	<boolean name="carrier_volte_provisioning_required_bool" value="true" />
-	<boolean name="carrier_volte_provisioned_bool" value="true" />
 
-	<!-- Try to avoid reaching the end of the world by Video Telephony. -->
+	<!-- Try to avoid reaching 'the end of the world' by Video Telephony. -->
 	<boolean name="support_downgrade_vt_to_audio_bool" value="true" />
 	<boolean name="allow_video_calling_fallback_bool" value="true" />
 
