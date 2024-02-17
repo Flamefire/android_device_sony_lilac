@@ -177,10 +177,10 @@ index 69e09e20f4..2be7b83541 100644
      <string name="directly_show_lock">Közvetlen feloldás</string>
      <string name="directly_show_lock_summary">Kihagyja a csúsztatásos feloldóképernyőt és azonnal a kódos belépéssel kezdi</string>
 diff --git a/res/values-in/cm_strings.xml b/res/values-in/cm_strings.xml
-index 7b77212203..cb8bc4b9bb 100644
+index 1c911407d37..b4c11ed5bb2 100644
 --- a/res/values-in/cm_strings.xml
 +++ b/res/values-in/cm_strings.xml
-@@ -55,6 +55,7 @@
+@@ -56,6 +56,7 @@
      <string name="app_notification_sound_timeout_value_30_minutes">30 menit</string>
      <string name="unlock_scramble_pin_layout_title">Tata letak acak</string>
      <string name="unlock_scramble_pin_layout_summary">Acak tata letak PIN saat membuka perangkat</string>
@@ -192,14 +192,16 @@ diff --git a/res/values-is/cm_strings.xml b/res/values-is/cm_strings.xml
 index 9eee66cbc6..ce2cfd1673 100644
 --- a/res/values-is/cm_strings.xml
 +++ b/res/values-is/cm_strings.xml
-@@ -23,4 +23,7 @@
-     <string name="adb_over_network_warning">AÐVÖRUN: Þegar valið er ADB í gegnum netkerfi, er síminn þinn óvarinn fyrir innrásum á öllum tengdum netkerfum!\n\nNotaðu þennan eiginleika eingöngu þegar þú ert tengdur á netkerfum sem þú treystir.\n\nErtu alveg viss um að þú viljir virkja þennan eiginleika?</string>
-     <string name="status_bar_double_tap_to_sleep_summary">Tvíbankaðu á stöðustikuna eða læsiskjáinn til að slökkva á skjánum</string>
-     <string name="update_recovery_title">Uppfæra endurheimtingu</string>
+@@ -60,6 +60,9 @@
+     <string name="app_notification_sound_timeout_value_30_minutes">30 mínútur</string>
+     <string name="unlock_scramble_pin_layout_title">Rugla framsetningu</string>
+     <string name="unlock_scramble_pin_layout_summary">Rugla PIN-framsetningu þegar tæki er aflæst</string>
 +    <string name="fingerprint_wake_unlock_title">Ýttu á fingrafaraskanna til að taka úr lás</string>
 +    <string name="fingerprint_wake_unlock_touch">Vaktar atburði á meðan slökkt er á skjánum</string>
 +    <string name="fingerprint_wake_unlock_press">Vaktar atburði einungis á meðan kveikt er á skjánum</string>
- </resources>
+     <string name="volume_link_notification_title">Tengja hljóðstyrk hringitóns og tilkynningahljóðs</string>
+     <string name="directly_show_lock">Bein aflæsing</string>
+     <string name="directly_show_lock_summary">Sleppa að strjúka til að aflæsa skjá og fara beint í innsetningu á lykli</string>
 diff --git a/res/values-it/cm_strings.xml b/res/values-it/cm_strings.xml
 index c5fb4bca67..4cb8dd062f 100644
 --- a/res/values-it/cm_strings.xml
@@ -232,8 +234,8 @@ diff --git a/res/values-ka/cm_strings.xml b/res/values-ka/cm_strings.xml
 index 4896152cad..b381f53ce3 100644
 --- a/res/values-ka/cm_strings.xml
 +++ b/res/values-ka/cm_strings.xml
-@@ -30,4 +30,7 @@
-     <string name="update_recovery_off_warning">ᲧᲣᲠᲐᲓᲦᲔᲑᲐ: ამ შესაძლებლობის გამორთვის შედეგად, თქვენ მიერ დაყენებული აღმდგენი გარსი არ განახლდება სისტემის განახლებისას.\n\nსისტემის მომდევნო განახლებები, შეიძლება ვეღარ ჩაიდგას ვადაგასული ან ხელით დაყენებული აღმდგენი გარსებით.\n\nნამდვილად გსურთ, ამ შესაძლებლობის გამორთვა?</string>
+@@ -112,4 +112,7 @@
+     <string name="backup_transport_title">აირჩიეთ მარქაფის მომსახურება</string>
      <string name="fast_charging_title">სწრაფი დამუხტვა</string>
      <string name="fast_charging_summary">გამორთეთ გამოყოფილი სითბოს შესამცირებლად მოწყობილობის დამუხტვისას ან ბატარეის სიცოცხლის გასახანგრძლივებლად.</string>
 +    <string name="fingerprint_wake_unlock_title">თითის ანაბეჭდით გახსნა</string>
@@ -339,10 +341,10 @@ index b4196dd689..750ac52375 100644
      <string name="directly_show_lock">Neposredni odklep</string>
      <string name="directly_show_lock_summary">Preskoči poteg za odklepanje zaslona in takoj začni z vnosom ključa</string>
 diff --git a/res/values-sq/cm_strings.xml b/res/values-sq/cm_strings.xml
-index 84ba0c412a..03301923cf 100644
+index 744eefd9041..4d9c38a0bb1 100644
 --- a/res/values-sq/cm_strings.xml
 +++ b/res/values-sq/cm_strings.xml
-@@ -107,4 +107,7 @@
+@@ -112,4 +112,7 @@
      <string name="backup_transport_title">Zgjidhni siguruesin e rezervës</string>
      <string name="fast_charging_title">Karikim i shpejtë</string>
      <string name="fast_charging_summary">Çaktivizoni për të zvogëluar nxehtësinë e prodhuar nga pajisja gjatë karikimit ose për të zgjatur jetëgjatësinë e baterisë</string>
@@ -365,10 +367,10 @@ index 412205b964..1d97e86b46 100644
      <string name="directly_show_lock">Doğrudan kilit aç</string>
      <string name="directly_show_lock_summary">Ekranın kilidini açmak için kaydırmayı atlayın ve hemen tuşlamaya başlayın</string>
 diff --git a/res/values-vi/cm_strings.xml b/res/values-vi/cm_strings.xml
-index 13134b72e7..818e5995a6 100644
+index c2d03921133..22293d1c346 100644
 --- a/res/values-vi/cm_strings.xml
 +++ b/res/values-vi/cm_strings.xml
-@@ -53,6 +53,9 @@
+@@ -59,6 +59,9 @@
      <string name="app_notification_sound_timeout_value_30_minutes">30 phút</string>
      <string name="unlock_scramble_pin_layout_title">Bố trí linh tinh</string>
      <string name="unlock_scramble_pin_layout_summary">Bố trí PIN linh tinh khi mở khóa thiết bị</string>
