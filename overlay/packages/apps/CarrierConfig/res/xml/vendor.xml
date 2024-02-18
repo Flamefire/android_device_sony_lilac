@@ -70,25 +70,25 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.-->
     -->
     
     <carrier_config>
-		<!-- Make VoLTE, VoWiFi and Video Telephony "available" or "enabled by platform". -->
-		<boolean name="carrier_volte_available_bool" value="true" />
-		<boolean name="carrier_wfc_ims_available_bool" value="true" />
-		<boolean name="carrier_vt_available_bool" value="true" />
-		<boolean name="use_rcs_presence_bool" value="true" />
+        <!-- Make VoLTE, VoWiFi and Video Telephony "available" or "enabled by platform". -->
+        <boolean name="carrier_volte_available_bool" value="true" />
+        <boolean name="carrier_wfc_ims_available_bool" value="true" />
+        <boolean name="carrier_vt_available_bool" value="true" />
+        <boolean name="use_rcs_presence_bool" value="true" />
 	
-		<!-- Enable provisioning, so we do not reach 'the end of the world' by unavailable features. -->
-		<boolean name="carrier_volte_provisioning_required_bool" value="true" />
+        <!-- Enable provisioning, so we do not reach 'the end of the world' by unavailable features. -->
+        <boolean name="carrier_volte_provisioning_required_bool" value="true" />
 
-		<!-- Try to avoid reaching 'the end of the world' by Video Telephony. -->
-		<boolean name="support_downgrade_vt_to_audio_bool" value="true" />
-		<boolean name="allow_video_calling_fallback_bool" value="true" />
+        <!-- Try to avoid reaching 'the end of the world' by Video Telephony. -->
+        <boolean name="support_downgrade_vt_to_audio_bool" value="true" />
+        <boolean name="allow_video_calling_fallback_bool" value="true" />
 
-		<!-- Enable VoWiFi Call Quality UI and Video Call Quality UI. -->
-		<boolean name="vowifi_call_quality" value="true" />
-		<boolean name="show_video_quality_ui" value="true" />
+        <!-- Enable VoWiFi Call Quality UI and Video Call Quality UI. -->
+        <boolean name="vowifi_call_quality" value="true" />
+        <boolean name="show_video_quality_ui" value="true" />
     </carrier_config>
 	
-	<carrier_config mcc="405" mnc="840">
+    <carrier_config mcc="405" mnc="840">
         <boolean name="video_call_use_ext" value="false" />
         <boolean name="use_custom_video_ui" value="true" />
         <boolean name="config_hide_preview_in_vt_confcall" value="true" />
