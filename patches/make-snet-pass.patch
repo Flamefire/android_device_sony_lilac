@@ -4,7 +4,10 @@ Based on work from ProtonAOSP: https://protonaosp.org/developers/details/safetyn
 Squash of:
     "Spoof build fingerprint for Google Play Services" https://github.com/ProtonAOSP/android_frameworks_base/commit/14cadef1690f
     "keystore: Block key attestation for SafetyNet" https://github.com/ProtonAOSP/android_frameworks_base/commit/13dc7d28c12d
-
+Combined with code from:
+    https://github.com/chiteroman/PlayIntegrityFix
+    https://github.com/osm0sis/PlayIntegrityFork
+Code is licensed under Apache License, Version 2.0 & GPLv3 respectively
 diff --git a/core/java/android/app/Instrumentation.java b/core/java/android/app/Instrumentation.java
 index fd6fa57b9e8d..05d840dca223 100644
 --- a/core/java/android/app/Instrumentation.java
@@ -36,10 +39,10 @@ index fd6fa57b9e8d..05d840dca223 100644
  
 diff --git a/core/java/com/android/internal/gmscompat/AttestationHooks.java b/core/java/com/android/internal/gmscompat/AttestationHooks.java
 new file mode 100644
-index 000000000000..2a713d2461eb
+index 000000000000..ef1442eb0f42
 --- /dev/null
 +++ b/core/java/com/android/internal/gmscompat/AttestationHooks.java
-@@ -0,0 +1,83 @@
+@@ -0,0 +1,199 @@
 +/*
 + * Copyright (C) 2021 The Android Open Source Project
 + *
@@ -63,8 +66,19 @@ index 000000000000..2a713d2461eb
 +import android.os.SystemProperties;
 +import android.util.Log;
 +
++import libcore.io.IoUtils;
++
++import java.io.IOException;
++import java.io.File;
 +import java.lang.reflect.Field;
++import java.lang.SecurityException;
 +import java.util.Arrays;
++import java.util.HashMap;
++import java.util.Iterator;
++import java.util.Map;
++
++import org.json.JSONException;
++import org.json.JSONObject;
 +
 +/** @hide */
 +public final class AttestationHooks {
@@ -73,41 +87,146 @@ index 000000000000..2a713d2461eb
 +    private static final String PACKAGE_GMS = "com.google.android.gms";
 +    private static final String PROCESS_UNSTABLE = "com.google.android.gms.unstable";
 +
-+    private static final String PRODUCT_STOCK_FINGERPRINT =
-+            SystemProperties.get("ro.build.stock_fingerprint");
++    private static final String PIF_FILEPATH = "/data/adb/pif.json";
++    private static final String PIF_FILEPATH_PROP = "ro.vendor.pif_path";
 +
 +    private static volatile boolean sIsGms = false;
 +
 +    private AttestationHooks() { }
 +
-+    private static void setBuildField(String key, String value) {
++    private static File getPIFConfigPath() {
++        File path = new File(PIF_FILEPATH);
 +        try {
-+            // Unlock
-+            Field field = Build.class.getDeclaredField(key);
-+            field.setAccessible(true);
-+
-+            // Edit
-+            field.set(null, value);
-+
-+            // Lock
-+            field.setAccessible(false);
-+        } catch (NoSuchFieldException | IllegalAccessException e) {
-+            Log.e(TAG, "Failed to spoof Build." + key, e);
++            if (path.isFile())
++                return path;
++        } catch (SecurityException e) {
++            Log.e(TAG, String.format("Failed to check PIF file at %s: %s", path.getPath(), e));
 +        }
++        String path_from_prop = SystemProperties.get(PIF_FILEPATH_PROP);
++        if (path_from_prop.isEmpty()) {
++            Log.w(TAG, String.format("Property %s is not set and file %s is not found, skipping PI spoof",
++                                     PIF_FILEPATH_PROP, PIF_FILEPATH));
++            return null;
++        }
++        path = new File(path_from_prop);
++        try {
++            if (path.isFile())
++                return path;
++        } catch (SecurityException e) {
++            Log.e(TAG, String.format("Failed to check PIF file at %s: %s", path.getPath(), e));
++        }
++        Log.w(TAG, String.format("PIF file not found at %s or %s, skipping PI spoof", PIF_FILEPATH, path_from_prop));
++        return null;
 +    }
 +
-+    private static void spoofBuildGms() {
-+        // Set fingerprint for SafetyNet CTS profile
-+        if (PRODUCT_STOCK_FINGERPRINT.length() > 0) {
-+            setBuildField("FINGERPRINT", PRODUCT_STOCK_FINGERPRINT);
++    private static Map<String, String> getFieldsToSpoof() {
++        File pifPath = getPIFConfigPath();
++        if (pifPath == null)
++            return null;
++        Map<String, String> result = new HashMap<String, String>();
++        try {
++            JSONObject json = new JSONObject(IoUtils.readFileAsString(pifPath.getAbsolutePath()));
++            Iterator<String> iter = json.keys();
++            while (iter.hasNext()) {
++                String key = iter.next();
++                if (key.matches("[A-Z_]+"))
++                    result.put(key, json.getString(key));
++            }
++        } catch (IOException | JSONException e) {
++            Log.e(TAG, "Failed to read PIF file: " + e);
++            return null;
++        }
++        // For compatibility across Android versions set all if any is set
++        String[] apiLevelNames = {"DEVICE_INITIAL_SDK_INT", "FIRST_SDK_INT", "FIRST_API_LEVEL"};
++        String firstApiLevel = "";
++        for (String name : apiLevelNames)
++            firstApiLevel = result.getOrDefault(name, firstApiLevel);
++        if (!firstApiLevel.isEmpty()) {
++            for (String name : apiLevelNames)
++                result.putIfAbsent(name, firstApiLevel);
++        }
++        // Derive missing fields from the fingerprint
++        String[] fpFields = {"BRAND", "PRODUCT", "DEVICE", "RELEASE", "ID", "INCREMENTAL", "TYPE", "TAGS"};
++        String fp = result.getOrDefault("FINGERPRINT", "");
++        if (!fp.isEmpty() && !Arrays.stream(fpFields).allMatch(name -> result.containsKey(name))) {
++            Log.d(TAG, "Deriving fields from fingerprint");
++            String[] parts = fp.split("[:/]");
++            for (int i = 0; i < parts.length && i < fpFields.length; i++)
++                result.putIfAbsent(fpFields[i], parts[i]);
++        }
++        return result;
++    }
++
++    private static void setField(Field field, String value) {
++        String oldValue;
++        try {
++            oldValue = String.valueOf(field.get(null));
++        } catch (IllegalAccessException e) {
++            Log.e(TAG, String.format("Couldn't access '%s' field value: " + e, field.getName()));
++            return;
++        }
++        if (value.equals(oldValue)) {
++            Log.e(TAG, String.format("[%s]: %s (unchanged)", field.getName(), value));
++            return;
++        }
++        Object newValue = null;
++        Class<?> fieldType = field.getType();
++        if (fieldType == String.class)
++            newValue = value;
++        else if (fieldType == int.class)
++            newValue = Integer.parseInt(value);
++        else if (fieldType == long.class)
++            newValue = Long.parseLong(value);
++        else if (fieldType == boolean.class)
++            newValue = Boolean.parseBoolean(value);
++        else {
++            Log.e(TAG, String.format("Couldn't convert '%s' to '%s' type", value, fieldType));
++            return;
++        }
++        try {
++            field.set(null, newValue);
++        } catch (IllegalAccessException e) {
++            Log.e(TAG, String.format("Couldn't modify '%s' field value: " + e, field.getName()));
++            return;
++        }
++        Log.i(TAG, String.format("[%s]: %s -> %s", field.getName(), oldValue, value));
++    }
++
++    private static void setField(String name, String value) {
++        if (value.isEmpty()) {
++            Log.i(TAG, String.format("%s is empty, skipping", name));
++            return;
++        }
++
++        Field field;
++        try {
++            field = Build.class.getDeclaredField(name);
++        } catch (NoSuchFieldException e1) {
++            try {
++                field = Build.VERSION.class.getDeclaredField(name);
++            } catch (NoSuchFieldException e2) {
++                Log.e(TAG, String.format("Couldn't determine '%s' class name", name));
++                return;
++            }
++        }
++        field.setAccessible(true);
++        setField(field, value);
++        field.setAccessible(false);
++    }
++
++    private static void spoofPlayIntegrity() {
++        // Set properties for PlayIntegrity / CTS profile
++        Map<String, String> fields = getFieldsToSpoof();
++        if (fields != null) {
++            for (String key : fields.keySet())
++                setField(key, fields.get(key));
 +        }
 +    }
 +
 +    public static void initApplicationBeforeOnCreate(Application app) {
-+        if (PACKAGE_GMS.equals(app.getPackageName()) &&
-+                PROCESS_UNSTABLE.equals(Application.getProcessName())) {
++        if (PACKAGE_GMS.equals(app.getPackageName()) && PROCESS_UNSTABLE.equals(Application.getProcessName())) {
 +            sIsGms = true;
-+            spoofBuildGms();
++            spoofPlayIntegrity();
 +        }
 +    }
 +

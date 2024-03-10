@@ -25,9 +25,6 @@ PRODUCT_BRAND := Sony
 PRODUCT_MODEL := G8441
 PRODUCT_MANUFACTURER := Sony
 
-# From MagiskHideProps, Stock FP doesn't seem to work
-PRODUCT_PRODUCT_PROPERTIES += ro.build.stock_fingerprint=Sony/G8441/G8441:9/47.2.A.11.228/3311891731:user/release-keys
-
 PRODUCT_GMS_CLIENTID_BASE := android-sony-mobile
 
 ifneq ($(LINEAGE_DEV_CERTIFICATE),)
