@@ -87,3 +87,7 @@ PRODUCT_COPY_FILES += \
 ### POWER
 PRODUCT_COPY_FILES += \
     $(DEVICE_PATH)/config/power/powerhint.json:$(TARGET_COPY_OUT_VENDOR)/etc/powerhint.json
+
+### PIF
+PRODUCT_COPY_FILES += \
+    $(DEVICE_PATH)/config/pif.json:$(TARGET_COPY_OUT_VENDOR)/etc/pif.json
