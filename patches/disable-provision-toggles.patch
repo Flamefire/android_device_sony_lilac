@@ -1,0 +1,46 @@
+# PWD: packages/apps/Settings
+From 907d5897ed90bf1e210c6c42bd958eac388e6c5d Mon Sep 17 00:00:00 2001
+From: antoniu200 <33966771+antoniu200@users.noreply.github.com>
+Date: Sun, 18 Feb 2024 00:23:33 +0200
+Subject: [PATCH] Always keep provision toggles to off: RadioInfo.java
+
+No matter if ROM is built as User, Userdebug or whatever else.
+---
+ src/com/android/settings/RadioInfo.java | 12 ++++--------
+ 1 file changed, 4 insertions(+), 8 deletions(-)
+
+diff --git a/src/com/android/settings/RadioInfo.java b/src/com/android/settings/RadioInfo.java
+index 249db58d335..e5843122a86 100644
+--- a/src/com/android/settings/RadioInfo.java
++++ b/src/com/android/settings/RadioInfo.java
+@@ -1540,26 +1540,22 @@ private void updateImsProvisionedState() {
+         imsVolteProvisionedSwitch.setOnCheckedChangeListener(null);
+         imsVolteProvisionedSwitch.setChecked(isImsVolteProvisioned());
+         imsVolteProvisionedSwitch.setOnCheckedChangeListener(mImsVolteCheckedChangeListener);
+-        imsVolteProvisionedSwitch.setEnabled(!Build.IS_USER
+-                && mImsManager.isVolteEnabledByPlatform(mPhone.getContext()));
++        imsVolteProvisionedSwitch.setEnabled(false);
+ 
+         imsVtProvisionedSwitch.setOnCheckedChangeListener(null);
+         imsVtProvisionedSwitch.setChecked(isImsVtProvisioned());
+         imsVtProvisionedSwitch.setOnCheckedChangeListener(mImsVtCheckedChangeListener);
+-        imsVtProvisionedSwitch.setEnabled(!Build.IS_USER
+-                && mImsManager.isVtEnabledByPlatform(mPhone.getContext()));
++        imsVtProvisionedSwitch.setEnabled(false);
+ 
+         imsWfcProvisionedSwitch.setOnCheckedChangeListener(null);
+         imsWfcProvisionedSwitch.setChecked(isImsWfcProvisioned());
+         imsWfcProvisionedSwitch.setOnCheckedChangeListener(mImsWfcCheckedChangeListener);
+-        imsWfcProvisionedSwitch.setEnabled(!Build.IS_USER
+-                && mImsManager.isWfcEnabledByPlatform(mPhone.getContext()));
++        imsWfcProvisionedSwitch.setEnabled(false);
+ 
+         eabProvisionedSwitch.setOnCheckedChangeListener(null);
+         eabProvisionedSwitch.setChecked(isEabProvisioned());
+         eabProvisionedSwitch.setOnCheckedChangeListener(mEabCheckedChangeListener);
+-        eabProvisionedSwitch.setEnabled(!Build.IS_USER
+-                && isEabEnabledByPlatform(mPhone.getContext()));
++        eabProvisionedSwitch.setEnabled(false);
+     }
+ 
+     OnClickListener mDnsCheckButtonHandler = new OnClickListener() {
