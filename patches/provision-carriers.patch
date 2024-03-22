@@ -1,0 +1,78 @@
+# PWD: frameworks/opt/telephony
+From 959dcadfec2f7a44f8d884c28f9fa5321ddf6ee0 Mon Sep 17 00:00:00 2001
+From: antoniu200 <33966771+antoniu200@users.noreply.github.com>
+Date: Sun, 18 Feb 2024 00:29:33 +0200
+Subject: [PATCH] Correctly provision carriers that do not offer provisioning:
+ ImsPhoneCallTracker.java
+
+Otherwise, we end up either enabling more features than available, or none.
+
+Flamefire: Use isImsCapabilityAvailable and reuse imsManager
+	   Updated for LOS 19
+---
+
+diff --git a/src/java/com/android/internal/telephony/imsphone/ImsPhoneCallTracker.java b/src/java/com/android/internal/telephony/imsphone/ImsPhoneCallTracker.java
+index 16edd0be22..4e60383ca9 100755
+--- a/src/java/com/android/internal/telephony/imsphone/ImsPhoneCallTracker.java
++++ b/src/java/com/android/internal/telephony/imsphone/ImsPhoneCallTracker.java
+@@ -4521,28 +4521,48 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
+         }
+     }
+ 
++    private ImsManager getImsManager() {
++        return ImsManager.getInstance(mPhone.getContext(), mPhone.getPhoneId());
++    }
++
+     /**
+      * @return {@code true} if voice over cellular is enabled.
+      */
+     public boolean isVoiceOverCellularImsEnabled() {
+-        return isImsCapabilityInCacheAvailable(MmTelFeature.MmTelCapabilities.CAPABILITY_TYPE_VOICE,
+-                ImsRegistrationImplBase.REGISTRATION_TECH_LTE)
+-                || isImsCapabilityInCacheAvailable(
+-                        MmTelFeature.MmTelCapabilities.CAPABILITY_TYPE_VOICE,
+-                        ImsRegistrationImplBase.REGISTRATION_TECH_NR);
++        boolean isVolteEnabled = isImsCapabilityInCacheAvailable(MmTelFeature.MmTelCapabilities.CAPABILITY_TYPE_VOICE,
++                                                                 ImsRegistrationImplBase.REGISTRATION_TECH_LTE)
++                              || isImsCapabilityInCacheAvailable(MmTelFeature.MmTelCapabilities.CAPABILITY_TYPE_VOICE,
++                                                                 ImsRegistrationImplBase.REGISTRATION_TECH_NR);
++        if (isVolteEnabled) {
++            ImsManager imsManager = getImsManager();
++            if (!imsManager.isVolteProvisionedOnDevice()) // Not provisioned, but registered? Carrier probably needs no provisioning.
++                imsManager.setVolteProvisioned(true);
++        }
++        return isVolteEnabled;
+     }
+ 
+     public boolean isVowifiEnabled() {
+-        return isImsCapabilityInCacheAvailable(MmTelFeature.MmTelCapabilities.CAPABILITY_TYPE_VOICE,
+-                ImsRegistrationImplBase.REGISTRATION_TECH_IWLAN)
+-                || isImsCapabilityInCacheAvailable(
+-                        MmTelFeature.MmTelCapabilities.CAPABILITY_TYPE_VOICE,
+-                        ImsRegistrationImplBase.REGISTRATION_TECH_CROSS_SIM);
++        boolean isVowifiEnabled = isImsCapabilityInCacheAvailable(MmTelFeature.MmTelCapabilities.CAPABILITY_TYPE_VOICE,
++                                                                  ImsRegistrationImplBase.REGISTRATION_TECH_IWLAN)
++                               || isImsCapabilityInCacheAvailable(MmTelFeature.MmTelCapabilities.CAPABILITY_TYPE_VOICE,
++                                                                  ImsRegistrationImplBase.REGISTRATION_TECH_CROSS_SIM);
++        if (isVowifiEnabled) {
++            ImsManager imsManager = getImsManager();
++            if (!imsManager.isWfcProvisionedOnDevice()) // Not provisioned, but registered? Carrier probably needs no provisioning.
++                imsManager.setWfcProvisioned(true);
++        }
++        return isVowifiEnabled;
+     }
+ 
+     public boolean isVideoCallEnabled() {
+         // Currently no reliance on transport technology.
+-        return mMmTelCapabilities.isCapable(MmTelFeature.MmTelCapabilities.CAPABILITY_TYPE_VIDEO);
++        boolean isVideoCallEnabled = mMmTelCapabilities.isCapable(MmTelFeature.MmTelCapabilities.CAPABILITY_TYPE_VIDEO);
++        if (isVideoCallEnabled) {
++            ImsManager imsManager = getImsManager();
++            if (!imsManager.isVtProvisionedOnDevice()) // Not provisioned, but registered? Carrier probably needs no provisioning.
++                imsManager.setVtProvisioned(true);
++        }
++        return isVideoCallEnabled;
+     }
+ 
+     private boolean isImsCapabilityInCacheAvailable(int capability, int regTech) {
+
