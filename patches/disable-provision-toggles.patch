@@ -13,7 +13,7 @@ diff --git a/src/com/android/settings/RadioInfo.java b/src/com/android/settings/
 index 249db58d335..e5843122a86 100644
 --- a/src/com/android/settings/RadioInfo.java
 +++ b/src/com/android/settings/RadioInfo.java
-@@ -1540,26 +1540,22 @@ private void updateImsProvisionedState() {
+@@ -1540,20 +1540,17 @@ private void updateImsProvisionedState() {
          imsVolteProvisionedSwitch.setOnCheckedChangeListener(null);
          imsVolteProvisionedSwitch.setChecked(isImsVolteProvisioned());
          imsVolteProvisionedSwitch.setOnCheckedChangeListener(mImsVolteCheckedChangeListener);
@@ -37,10 +37,3 @@ index 249db58d335..e5843122a86 100644
  
          eabProvisionedSwitch.setOnCheckedChangeListener(null);
          eabProvisionedSwitch.setChecked(isEabProvisioned());
-         eabProvisionedSwitch.setOnCheckedChangeListener(mEabCheckedChangeListener);
--        eabProvisionedSwitch.setEnabled(!Build.IS_USER
--                && isEabEnabledByPlatform(mPhone.getContext()));
-+        eabProvisionedSwitch.setEnabled(false);
-     }
- 
-     OnClickListener mDnsCheckButtonHandler = new OnClickListener() {
