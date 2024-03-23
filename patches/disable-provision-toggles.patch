@@ -11,7 +11,7 @@ diff --git a/src/com/android/phone/settings/RadioInfo.java b/src/com/android/pho
 index d4c926e3a..d29f687ca 100644
 --- a/src/com/android/phone/settings/RadioInfo.java
 +++ b/src/com/android/phone/settings/RadioInfo.java
-@@ -1588,20 +1588,17 @@ public class RadioInfo extends AppCompatActivity {
+@@ -1588,8 +1588,7 @@ public class RadioInfo extends AppCompatActivity {
          mImsVolteProvisionedSwitch.setOnCheckedChangeListener(null);
          mImsVolteProvisionedSwitch.setChecked(isImsVolteProvisioned());
          mImsVolteProvisionedSwitch.setOnCheckedChangeListener(mImsVolteCheckedChangeListener);
@@ -21,11 +21,7 @@ index d4c926e3a..d29f687ca 100644
  
          mImsVtProvisionedSwitch.setOnCheckedChangeListener(null);
          mImsVtProvisionedSwitch.setChecked(isImsVtProvisioned());
-         mImsVtProvisionedSwitch.setOnCheckedChangeListener(mImsVtCheckedChangeListener);
--        mImsVtProvisionedSwitch.setEnabled(!IS_USER_BUILD
--                && mImsManager.isVtEnabledByPlatform());
-+        mImsVtProvisionedSwitch.setEnabled(false);
- 
+@@ -1600,8 +1599,7 @@ public class RadioInfo extends AppCompatActivity {
          mImsWfcProvisionedSwitch.setOnCheckedChangeListener(null);
          mImsWfcProvisionedSwitch.setChecked(isImsWfcProvisioned());
          mImsWfcProvisionedSwitch.setOnCheckedChangeListener(mImsWfcCheckedChangeListener);
