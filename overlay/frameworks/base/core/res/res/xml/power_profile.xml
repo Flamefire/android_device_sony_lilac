@@ -3,6 +3,9 @@
     <item name="none">0</item>
     <item name="screen.on.display0">29.93</item>
     <item name="bluetooth.active">37.68</item>
+    <item name="bluetooth.controller.idle">1</item>
+    <item name="bluetooth.controller.rx">25</item>
+    <item name="bluetooth.controller.tx">25</item>
     <item name="bluetooth.controller.voltage">3300</item>
     <item name="bluetooth.on">0.89</item>
     <item name="screen.full.display0">247.57</item>
@@ -174,8 +177,4 @@
         <value>.2</value>
         <value>2</value>
     </array>
-    <item name="bluetooth.controller.idle">1</item>
-    <item name="bluetooth.controller.rx">25</item>
-    <item name="bluetooth.controller.tx">25</item>
-    <item name="bluetooth.controller.voltage">3600</item>
 </device>
