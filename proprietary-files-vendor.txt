@@ -743,8 +743,6 @@ vendor/firmware/ipa_fws.mdt
 vendor/bin/irsc_util|121deb2d6fd21b122c6a8ca8b30ef167f6b90f61
 
 # KEYPROVD
-vendor/bin/keyprovd
-vendor/etc/init/init.keyprovd.rc
 vendor/lib/libFidoCrypto_vendor.so
 vendor/lib/libQTEEConnector_vendor.so
 vendor/lib64/libFidoCrypto_vendor.so
