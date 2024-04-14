@@ -54,33 +54,31 @@ if [ -z "${SRC}" ]; then
 fi
 
 
+function blob_fixup() {
+    case "$1" in
+	product/etc/permissions/vendor.qti.hardware.data.connection-V1.[0-1]-java.xml)
+            # Change xml version from 2.0 to 1.0
+            sed -i 's/version\=\"2\.0\"/version\=\"1\.0\"/g' "$2"
+	    ;;
+	vendor/bin/ffu)
+            # Let ffu load ufs firmare files from /etc
+            sed -i 's/\/lib\/firmware\/ufs/\/etc\/firmware\/ufs/g' "$2"
+	    ;;
+	vendor/etc/init/taimport_vendor.rc)
+            # Add a restorecon for /persist/wlan to taimport_vendor.rc
+            sed -i '4 a\    restorecon /persist/wlan' "$2"
+	    ;;
+	vendor/lib/hw/audio.primary.msm8998.so)
+            # Fix referenced set_sched_policy for stock audio hal
+	    "${PATCHELF}" --replace-needed "libcutils.so" "libprocessgroup.so" "$2"
+	    ;;
+    esac
+}
+
 # Initialize the helper
 setup_vendor "${DEVICE}" "${VENDOR}" "${ANDROID_ROOT}" true "${CLEAN_VENDOR}"
 
 extract "${MY_DIR}/proprietary-files.txt" "${SRC}" "${KANG}" --section "${SECTION}"
 extract "${MY_DIR}/proprietary-files-vendor.txt" "${SRC}" "${KANG}" --section "${SECTION}"
-
-#
-# Blobs fixup start
-#
-
-DEVICE_ROOT="${ANDROID_ROOT}"/vendor/"${VENDOR}"/"${DEVICE}"/proprietary
-
-# Fix referenced set_sched_policy for stock audio hal
-"${PATCHELF}" --replace-needed "libcutils.so" "libprocessgroup.so" "${DEVICE_ROOT}"/vendor/lib/hw/audio.primary.msm8998.so
-
-# Let ffu load ufs firmare files from /etc
-sed -i 's/\/lib\/firmware\/ufs/\/etc\/firmware\/ufs/g' "${DEVICE_ROOT}"/vendor/bin/ffu
-
-# Add a restorecon for /persist/wlan to taimport_vendor.rc
-sed -i '4 a\    restorecon /persist/wlan' "${DEVICE_ROOT}"/vendor/etc/init/taimport_vendor.rc
-
-# Change xml version from 2.0 to 1.0
-sed -i 's/version\=\"2\.0\"/version\=\"1\.0\"/g' "${DEVICE_ROOT}"/product/etc/permissions/vendor.qti.hardware.data.connection-V1.0-java.xml
-sed -i 's/version\=\"2\.0\"/version\=\"1\.0\"/g' "${DEVICE_ROOT}"/product/etc/permissions/vendor.qti.hardware.data.connection-V1.1-java.xml
-
-#
-# Blobs fixup end
-#
 
 "${MY_DIR}"/setup-makefiles.sh
