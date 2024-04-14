@@ -1,34 +1,24 @@
 # PWD: packages/services/Telephony
-From 907d5897ed90bf1e210c6c42bd958eac388e6c5d Mon Sep 17 00:00:00 2001
-From: antoniu200 <33966771+antoniu200@users.noreply.github.com>
-Date: Sun, 18 Feb 2024 00:23:33 +0200
-Subject: [PATCH] Always keep provision toggles to off: RadioInfo.java
-
-No matter if ROM is built as User, Userdebug or whatever else.
----
-
-diff --git a/src/com/android/phone/settings/RadioInfo.java b/src/com/android/phone/settings/RadioInfo.java
-index d4c926e3a..d29f687ca 100644
 --- a/src/com/android/phone/settings/RadioInfo.java
 +++ b/src/com/android/phone/settings/RadioInfo.java
-@@ -1588,8 +1588,7 @@ public class RadioInfo extends AppCompatActivity {
+@@ -1740,8 +1740,7 @@ public class RadioInfo extends AppCompatActivity {
          mImsVolteProvisionedSwitch.setOnCheckedChangeListener(null);
-         mImsVolteProvisionedSwitch.setChecked(isImsVolteProvisioned());
+         mImsVolteProvisionedSwitch.setChecked(isProvisioned);
          mImsVolteProvisionedSwitch.setOnCheckedChangeListener(mImsVolteCheckedChangeListener);
 -        mImsVolteProvisionedSwitch.setEnabled(!IS_USER_BUILD
--                && mImsManager.isVolteEnabledByPlatform());
+-                && isEnabledByPlatform && isImsVolteProvisioningRequired());
 +        mImsVolteProvisionedSwitch.setEnabled(false);
+     }
  
-         mImsVtProvisionedSwitch.setOnCheckedChangeListener(null);
-         mImsVtProvisionedSwitch.setChecked(isImsVtProvisioned());
-@@ -1600,8 +1599,7 @@ public class RadioInfo extends AppCompatActivity {
+     private void updateVtProvisionedSwitch(boolean isEnabledByPlatform) {
+@@ -1762,8 +1761,7 @@ public class RadioInfo extends AppCompatActivity {
          mImsWfcProvisionedSwitch.setOnCheckedChangeListener(null);
-         mImsWfcProvisionedSwitch.setChecked(isImsWfcProvisioned());
+         mImsWfcProvisionedSwitch.setChecked(isProvisioned);
          mImsWfcProvisionedSwitch.setOnCheckedChangeListener(mImsWfcCheckedChangeListener);
 -        mImsWfcProvisionedSwitch.setEnabled(!IS_USER_BUILD
--                && mImsManager.isWfcEnabledByPlatform());
+-                && isEnabledByPlatform && isImsWfcProvisioningRequired());
 +        mImsWfcProvisionedSwitch.setEnabled(false);
+     }
  
-         mEabProvisionedSwitch.setOnCheckedChangeListener(null);
-         mEabProvisionedSwitch.setChecked(isEabProvisioned());
+     private void updateEabProvisionedSwitch(boolean isEnabledByPlatform) {
 

@@ -1,31 +1,32 @@
 # PWD: packages/apps/Messaging
 
-diff --git a/Android.mk b/Android.mk
-index bd4063c..618a3ff 100644
---- a/Android.mk
-+++ b/Android.mk
-@@ -74,17 +74,6 @@ LOCAL_MODULE_PATH := $(TARGET_OUT_PRODUCT_APPS)
+diff --git a/Android.bp b/Android.bp
+index 9982616..09e4ad1 100644
+--- a/Android.bp
++++ b/Android.bp
+@@ -89,7 +89,6 @@ android_app {
+     required: [
+         "libframesequence",
+         "libgiftranscode",
+-        "com.android.messaging.allowlist",
+     ],
+     optimize: {
+         obfuscate: true,
+@@ -102,10 +101,3 @@ android_app {
+     product_specific: true,
+ }
  
- LOCAL_COMPATIBILITY_SUITE := general-tests
- 
--LOCAL_REQUIRED_MODULES += com.android.messaging_whitelist.xml
--
- include $(BUILD_PACKAGE)
- 
--include $(CLEAR_VARS)
--LOCAL_MODULE := com.android.messaging_whitelist.xml
--LOCAL_MODULE_CLASS := ETC
--LOCAL_MODULE_TAGS := optional
--LOCAL_MODULE_PATH := $(TARGET_OUT_PRODUCT_ETC)/sysconfig
--LOCAL_PRODUCT_MODULE := true
--LOCAL_SRC_FILES := $(LOCAL_MODULE)
--include $(BUILD_PREBUILT)
--
- include $(call all-makefiles-under, $(LOCAL_PATH))
-diff --git a/com.android.messaging_whitelist.xml b/com.android.messaging_whitelist.xml
+-prebuilt_etc {
+-    name: "com.android.messaging.allowlist",
+-    product_specific: true,
+-    sub_dir: "sysconfig",
+-    src: "com.android.messaging.allowlist.xml",
+-    filename_from_src: true,
+-}
+diff --git a/com.android.messaging.allowlist.xml b/com.android.messaging.allowlist.xml
 deleted file mode 100644
 index 6bc77a8..0000000
---- a/com.android.messaging_whitelist.xml
+--- a/com.android.messaging.allowlist.xml
 +++ /dev/null
 @@ -1,19 +0,0 @@
 -<?xml version="1.0" encoding="utf-8"?>
@@ -60,3 +61,4 @@ index d78bdc0..172e792 100644
                          SystemClock.elapsedRealtime() + delayMs, pendingIntent);
              } else {
                  mgr.cancel(pendingIntent);
+
