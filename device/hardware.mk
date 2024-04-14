@@ -16,4 +16,7 @@
 PRODUCT_PACKAGES += \
     android.hardware.nfc@1.1-service
 
+### IMS
+PRODUCT_PACKAGES += libgui_shim
+
 TARGET_USE_YOSHINO_LIGHT_SERVICE := true

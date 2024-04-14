@@ -60,6 +60,9 @@ function blob_fixup() {
             # Change xml version from 2.0 to 1.0
             sed -i 's/version\=\"2\.0\"/version\=\"1\.0\"/g' "$2"
 	    ;;
+	system_ext/lib64/lib-imsvideocodec.so)
+            grep -q "libgui_shim.so" "${2}" || "${PATCHELF}" --add-needed "libgui_shim.so" "${2}"
+            ;;
 	vendor/bin/ffu)
             # Let ffu load ufs firmare files from /etc
             sed -i 's/\/lib\/firmware\/ufs/\/etc\/firmware\/ufs/g' "$2"
