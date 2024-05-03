@@ -1,0 +1,51 @@
+From 2489739abfa6afb34e67cd7bbe3be3cbbd8cd9fb Mon Sep 17 00:00:00 2001
+From: "Kevin F. Haggerty" <haggertk@lineageos.org>
+Date: Fri, 8 Mar 2024 14:07:20 -0700
+Subject: [PATCH] Bump Security String to 2024-03-05
+
+Implemented:
+============
+CVE:            References:    Type:  Severity:  Updated AOSP versions:
+CVE-2024-0039   A-295887535    RCE    Critical   12, 12L, 13, 14
+CVE-2024-0044   A-307532206    EoP    High       12, 12L, 13, 14
+CVE-2024-0045   A-300903400    ID     High       12, 12L, 13, 14
+CVE-2024-0046   A-299441833    EoP    High       12, 12L, 13, 14
+CVE-2024-0048   A-316893159    EoP    High       12, 12L, 13, 14
+CVE-2024-0049   A-273936274    EoP    High       12, 12L, 13, 14
+CVE-2024-0050   A-273935108    EoP    High       12, 12L, 13, 14
+CVE-2024-0051   A-276442130    EoP    High       12, 12L, 13, 14
+CVE-2024-0053   A-281525042    ID     High       12, 12L, 13, 14
+CVE-2024-23717  A-318374503    EoP    Critical   12, 12L, 13, 14
+
+Not Implemented:
+================
+None
+
+Not Applicable (platform source):
+=================================
+CVE:            References:    Type:  Severity:  Updated AOSP versions:
+CVE-2023-40081  A-284297452    ID     High       12, 12L, 13, 14
+CVE-2024-0047   A-311687929    DoS    High       14
+CVE-2024-0052   A-303871379    ID     High       14
+
+Change-Id: Ic64f84f619ad08a026e6b8b46d7b421c5e3a1208
+---
+ core/version_defaults.mk | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/core/version_defaults.mk b/core/version_defaults.mk
+index 6da2a17def..b43d76a542 100644
+--- a/core/version_defaults.mk
++++ b/core/version_defaults.mk
+@@ -250,7 +250,7 @@ ifndef PLATFORM_SECURITY_PATCH
+     #  It must be of the form "YYYY-MM-DD" on production devices.
+     #  It must match one of the Android Security Patch Level strings of the Public Security Bulletins.
+     #  If there is no $PLATFORM_SECURITY_PATCH set, keep it empty.
+-      PLATFORM_SECURITY_PATCH := 2024-02-05
++    PLATFORM_SECURITY_PATCH := 2024-03-05
+ endif
+ .KATI_READONLY := PLATFORM_SECURITY_PATCH
+ 
+-- 
+2.40.1
+
