@@ -23,6 +23,7 @@ if [ ! -d "$repo_root/device/sony/lilac/patches" ]; then
   showError "Failed to find repository root at $repo_root"
 fi
 
+clean_patch_dirs=0
 patch_set=all
 script_name=$(basename "$0")
 for arg in "$@"; do
@@ -54,7 +55,7 @@ function applyPatch {
         showError "Faulty patch: $patch"
     fi
 
-    if [ "${clean_patch_dirs:-}" ]; then
+    if [ "$clean_patch_dirs" = 1 ]; then
         if ! git -C "$patch_dir" diff --quiet; then
             echo -n "Cleaning ${patch_dir}: "
             git -C "$patch_dir" reset --hard --quiet
