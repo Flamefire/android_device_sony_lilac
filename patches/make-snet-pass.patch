@@ -39,10 +39,10 @@ index fd6fa57b9e8d..05d840dca223 100644
  
 diff --git a/core/java/com/android/internal/gmscompat/AttestationHooks.java b/core/java/com/android/internal/gmscompat/AttestationHooks.java
 new file mode 100644
-index 000000000000..ef1442eb0f42
+index 000000000000..b5ee8c4c5c27
 --- /dev/null
 +++ b/core/java/com/android/internal/gmscompat/AttestationHooks.java
-@@ -0,0 +1,199 @@
+@@ -0,0 +1,201 @@
 +/*
 + * Copyright (C) 2021 The Android Open Source Project
 + *
@@ -123,6 +123,8 @@ index 000000000000..ef1442eb0f42
 +        File pifPath = getPIFConfigPath();
 +        if (pifPath == null)
 +            return null;
++        Log.i(TAG, String.format("Using PIF file at %s", pifPath.getPath()));
++
 +        Map<String, String> result = new HashMap<String, String>();
 +        try {
 +            JSONObject json = new JSONObject(IoUtils.readFileAsString(pifPath.getAbsolutePath()));
