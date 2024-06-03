@@ -1,10 +1,10 @@
 {
-    "MANUFACTURER": "motorola",
-    "BRAND": "motorola",
-    "DEVICE": "griffin",
-    "PRODUCT": "griffin_retcn",
-    "MODEL": "XT1650-05",
-    "FINGERPRINT": "motorola/griffin_retcn/griffin:6.0.1/MCC24.246-37/42:user/release-keys",
-    "SECURITY_PATCH": "2016-07-01",
-    "FIRST_API_LEVEL": "25"
+  "MANUFACTURER": "Google",
+  "BRAND": "google",
+  "DEVICE": "sailfish",
+  "PRODUCT": "sailfish",
+  "MODEL": "Pixel",
+  "FINGERPRINT": "google/sailfish/sailfish:8.1.0/OPM1.171019.011/4448085:user/release-keys",
+  "SECURITY_PATCH": "2017-12-05",
+  "FIRST_API_LEVEL": "25"
 }
