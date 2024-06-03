@@ -1,0 +1,157 @@
+# PWD: external/sonivox
+diff --git a/arm-wt-22k/lib_src/eas_wtengine.c b/arm-wt-22k/lib_src/eas_wtengine.c
+index e02ffa2..7965b40 100644
+--- a/arm-wt-22k/lib_src/eas_wtengine.c
++++ b/arm-wt-22k/lib_src/eas_wtengine.c
+@@ -91,14 +91,18 @@ void WT_VoiceGain (S_WT_VOICE *pWTVoice, S_WT_INT_FRAME *pWTIntFrame)
+ 
+     /* initialize some local variables */
+     numSamples = pWTIntFrame->numSamples;
+     if (numSamples <= 0) {
+         ALOGE("b/26366256");
+         android_errorWriteLog(0x534e4554, "26366256");
+         return;
++    } else if (numSamples > BUFFER_SIZE_IN_MONO_SAMPLES) {
++        ALOGE("b/317780080 clip numSamples %ld -> %d", numSamples, BUFFER_SIZE_IN_MONO_SAMPLES);
++        android_errorWriteLog(0x534e4554, "317780080");
++        numSamples = BUFFER_SIZE_IN_MONO_SAMPLES;
+     }
+     pMixBuffer = pWTIntFrame->pMixBuffer;
+     pInputBuffer = pWTIntFrame->pAudioBuffer;
+ 
+     /*lint -e{703} <avoid multiply for performance>*/
+     gainIncrement = (pWTIntFrame->frame.gainTarget - pWTIntFrame->prevGain) << (16 - SYNTH_UPDATE_PERIOD_IN_BITS);
+     if (gainIncrement < 0)
+@@ -190,14 +194,18 @@ void WT_Interpolate (S_WT_VOICE *pWTVoice, S_WT_INT_FRAME *pWTIntFrame)
+ 
+     /* initialize some local variables */
+     numSamples = pWTIntFrame->numSamples;
+     if (numSamples <= 0) {
+         ALOGE("b/26366256");
+         android_errorWriteLog(0x534e4554, "26366256");
+         return;
++    } else if (numSamples > BUFFER_SIZE_IN_MONO_SAMPLES) {
++        ALOGE("b/317780080 clip numSamples %ld -> %d", numSamples, BUFFER_SIZE_IN_MONO_SAMPLES);
++        android_errorWriteLog(0x534e4554, "317780080");
++        numSamples = BUFFER_SIZE_IN_MONO_SAMPLES;
+     }
+     pOutputBuffer = pWTIntFrame->pAudioBuffer;
+ 
+     loopEnd = (const EAS_SAMPLE*) pWTVoice->loopEnd + 1;
+     pSamples = (const EAS_SAMPLE*) pWTVoice->phaseAccum;
+     /*lint -e{713} truncation is OK */
+     phaseFrac = pWTVoice->phaseFrac;
+@@ -289,14 +297,18 @@ void WT_InterpolateNoLoop (S_WT_VOICE *pWTVoice, S_WT_INT_FRAME *pWTIntFrame)
+ 
+     /* initialize some local variables */
+     numSamples = pWTIntFrame->numSamples;
+     if (numSamples <= 0) {
+         ALOGE("b/26366256");
+         android_errorWriteLog(0x534e4554, "26366256");
+         return;
++    } else if (numSamples > BUFFER_SIZE_IN_MONO_SAMPLES) {
++        ALOGE("b/317780080 clip numSamples %ld -> %d", numSamples, BUFFER_SIZE_IN_MONO_SAMPLES);
++        android_errorWriteLog(0x534e4554, "317780080");
++        numSamples = BUFFER_SIZE_IN_MONO_SAMPLES;
+     }
+     pOutputBuffer = pWTIntFrame->pAudioBuffer;
+ 
+     phaseInc = pWTIntFrame->frame.phaseIncrement;
+     bufferEndP1 = (const EAS_SAMPLE*) pWTVoice->loopEnd + 1;
+     pSamples = (const EAS_SAMPLE*) pWTVoice->phaseAccum;
+     phaseFrac = (EAS_I32)(pWTVoice->phaseFrac & PHASE_FRAC_MASK);
+@@ -389,14 +401,18 @@ void WT_VoiceFilter (S_FILTER_CONTROL *pFilter, S_WT_INT_FRAME *pWTIntFrame)
+ 
+     /* initialize some local variables */
+     numSamples = pWTIntFrame->numSamples;
+     if (numSamples <= 0) {
+         ALOGE("b/26366256");
+         android_errorWriteLog(0x534e4554, "26366256");
+         return;
++    } else if (numSamples > BUFFER_SIZE_IN_MONO_SAMPLES) {
++        ALOGE("b/317780080 clip numSamples %ld -> %d", numSamples, BUFFER_SIZE_IN_MONO_SAMPLES);
++        android_errorWriteLog(0x534e4554, "317780080");
++        numSamples = BUFFER_SIZE_IN_MONO_SAMPLES;
+     }
+     pAudioBuffer = pWTIntFrame->pAudioBuffer;
+ 
+     z1 = pFilter->z1;
+     z2 = pFilter->z2;
+     b1 = -pWTIntFrame->frame.b1;
+ 
+@@ -457,14 +473,18 @@ void WT_VoiceFilter (S_FILTER_CONTROL *pFilter, S_WT_INT_FRAME *pWTIntFrame)
+ 
+     /* initialize some local variables */
+     numSamples = pWTIntFrame->numSamples;
+     if (numSamples <= 0) {
+         ALOGE("b/26366256");
+         android_errorWriteLog(0x534e4554, "26366256");
+         return;
++    } else if (numSamples > BUFFER_SIZE_IN_MONO_SAMPLES) {
++        ALOGE("b/317780080 clip numSamples %ld -> %d", numSamples, BUFFER_SIZE_IN_MONO_SAMPLES);
++        android_errorWriteLog(0x534e4554, "317780080");
++        numSamples = BUFFER_SIZE_IN_MONO_SAMPLES;
+     }
+     pOutputBuffer = pWTIntFrame->pAudioBuffer;
+     phaseInc = pWTIntFrame->frame.phaseIncrement;
+ 
+     /* get last two samples generated */
+     /*lint -e{704} <avoid divide for performance>*/
+     tmp0 = (EAS_I32) (pWTVoice->phaseAccum) >> 18;
+@@ -605,14 +625,18 @@ void WT_InterpolateMono (S_WT_VOICE *pWTVoice, S_WT_INT_FRAME *pWTIntFrame)
+     EAS_I8 *pLoopStart;
+ 
+     numSamples = pWTIntFrame->numSamples;
+     if (numSamples <= 0) {
+         ALOGE("b/26366256");
+         android_errorWriteLog(0x534e4554, "26366256");
+         return;
++    } else if (numSamples > BUFFER_SIZE_IN_MONO_SAMPLES) {
++        ALOGE("b/317780080 clip numSamples %ld -> %d", numSamples, BUFFER_SIZE_IN_MONO_SAMPLES);
++        android_errorWriteLog(0x534e4554, "317780080");
++        numSamples = BUFFER_SIZE_IN_MONO_SAMPLES;
+     }
+     pMixBuffer = pWTIntFrame->pMixBuffer;
+ 
+     /* calculate gain increment */
+     gainIncrement = (pWTIntFrame->gainTarget - pWTIntFrame->prevGain) << (16 - SYNTH_UPDATE_PERIOD_IN_BITS);
+     if (gainIncrement < 0)
+         gainIncrement++;
+diff --git a/arm-wt-22k/lib_src/eas_wtsynth.c b/arm-wt-22k/lib_src/eas_wtsynth.c
+index 987170b..18d1c6b 100644
+--- a/arm-wt-22k/lib_src/eas_wtsynth.c
++++ b/arm-wt-22k/lib_src/eas_wtsynth.c
+@@ -480,22 +480,32 @@ EAS_BOOL WT_CheckSampleEnd (S_WT_VOICE *pWTVoice, S_WT_INT_FRAME *pWTIntFrame, E
+ #if defined (_16_BIT_SAMPLES)
+         numSamples >>= 1;        // Divide by 2 for 16 bit processing module implementation
+ #endif
+         /* now account for the fractional portion */
+         /*lint -e{703} use shift for performance */
+         numSamples = (EAS_I32) ((numSamples << NUM_PHASE_FRAC_BITS) - pWTVoice->phaseFrac);
+         if (pWTIntFrame->frame.phaseIncrement) {
+-            pWTIntFrame->numSamples = 1 + (numSamples / pWTIntFrame->frame.phaseIncrement);
++            EAS_I32 oldMethod = 1 + (numSamples / pWTIntFrame->frame.phaseIncrement);
++            pWTIntFrame->numSamples =
++                (numSamples + pWTIntFrame->frame.phaseIncrement - 1) / pWTIntFrame->frame.phaseIncrement;
++            if (oldMethod != pWTIntFrame->numSamples) {
++                ALOGE("b/317780080 old %ld new %ld", oldMethod, pWTIntFrame->numSamples);
++            }
+         } else {
+             pWTIntFrame->numSamples = numSamples;
+         }
+         if (pWTIntFrame->numSamples < 0) {
+             ALOGE("b/26366256");
+             android_errorWriteLog(0x534e4554, "26366256");
+             pWTIntFrame->numSamples = 0;
++        } else if (pWTIntFrame->numSamples > BUFFER_SIZE_IN_MONO_SAMPLES) {
++            ALOGE("b/317780080 clip numSamples %ld -> %d",
++                  pWTIntFrame->numSamples, BUFFER_SIZE_IN_MONO_SAMPLES);
++            android_errorWriteLog(0x534e4554, "317780080");
++            pWTIntFrame->numSamples = BUFFER_SIZE_IN_MONO_SAMPLES;
+         }
+ 
+         /* sound will be done this frame */
+         done = EAS_TRUE;
+     }
+ 
+     /* update data for off-chip synth */
