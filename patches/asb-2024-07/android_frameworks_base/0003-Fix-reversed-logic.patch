@@ -1,4 +1,21 @@
-# PWD: frameworks/base
+From 425dde85bc6f5b6d734b4e2f2e9017b10ee9fc35 Mon Sep 17 00:00:00 2001
+From: Yi Kong <yikong@google.com>
+Date: Thu, 29 Aug 2019 19:03:36 -0700
+Subject: [PATCH 3/3] Fix reversed logic
+
+To check if a value falls in a range, it should be
+  a >= MIN && a <= MAX
+instead of
+  a >= MIN || a <= MAX
+
+Found by an experimental Clang warning change,
+https://reviews.llvm.org/D66044.
+
+Test: presubmit
+Change-Id: I91e2a04687285d9311fd831197c73af38ec8379c
+---
+ libs/androidfw/ResourceTypes.cpp | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/libs/androidfw/ResourceTypes.cpp b/libs/androidfw/ResourceTypes.cpp
 index 66fdb8c09a9c..d794227ba00e 100644
@@ -19,3 +36,6 @@ index 66fdb8c09a9c..d794227ba00e 100644
          printf("(int) 0x%08x or %d\n", value.data, value.data);
      } else {
          printf("(unknown type) t=0x%02x d=0x%08x (s=0x%04x r=0x%02x)\n",
+-- 
+2.40.1
+
