@@ -6486,7 +6486,7 @@ index 73f5cb8326ea..03d1c362c3c6 100644
                      final ArrayList<Pair<Integer, InternalTransformation>> batchTransformations =
                              batchUpdates.getTransformations();
 diff --git a/services/companion/java/com/android/server/companion/CompanionDeviceManagerService.java b/services/companion/java/com/android/server/companion/CompanionDeviceManagerService.java
-index d8827aafeb69..73b8ff7067ef 100644
+index d8827aafeb69..4377ee6145d8 100644
 --- a/services/companion/java/com/android/server/companion/CompanionDeviceManagerService.java
 +++ b/services/companion/java/com/android/server/companion/CompanionDeviceManagerService.java
 @@ -105,14 +105,16 @@ public class CompanionDeviceManagerService extends SystemService implements Bind
@@ -6524,6 +6524,26 @@ index d8827aafeb69..73b8ff7067ef 100644
                          NotificationAccessConfirmationActivityContract.launcherIntent(
                                  getContext(), userId, component),
                          PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_ONE_SHOT
+@@ -357,14 +362,19 @@ public class CompanionDeviceManagerService extends SystemService implements Bind
+                     + " in manifest to use this API");
+         }
+ 
+         @Override
+         public void onShellCommand(FileDescriptor in, FileDescriptor out, FileDescriptor err,
+                 String[] args, ShellCallback callback, ResultReceiver resultReceiver)
+                 throws RemoteException {
++            final int callingUid = Binder.getCallingUid();
++            if (callingUid != Process.ROOT_UID && callingUid != Process.SHELL_UID) {
++                resultReceiver.send(-1, null);
++                throw new RemoteException("Shell commands are only callable by ADB");
++            }
+             new ShellCmd().exec(this, in, out, err, args, callback, resultReceiver);
+         }
+     }
+ 
+     private static int getCallingUserId() {
+         return UserHandle.getUserId(Binder.getCallingUid());
+     }
 diff --git a/services/core/java/com/android/server/AlarmManagerService.java b/services/core/java/com/android/server/AlarmManagerService.java
 index a65603cb4020..d82b435b4612 100644
 --- a/services/core/java/com/android/server/AlarmManagerService.java
@@ -10162,6 +10182,31 @@ index e0a9af543f99..39962216483c 100644
          mInstrumenting = instrumenting;
          mInstrumentingWithBackgroundActivityStartPrivileges = hasBackgroundActivityStartPrivileges;
      }
+diff --git a/services/core/java/com/android/server/wm/WindowState.java b/services/core/java/com/android/server/wm/WindowState.java
+index 18cdc943b8c8..cca14d884cdd 100644
+--- a/services/core/java/com/android/server/wm/WindowState.java
++++ b/services/core/java/com/android/server/wm/WindowState.java
+@@ -2694,16 +2694,18 @@ class WindowState extends WindowContainer<WindowState> implements WindowManagerP
+         boolean current =
+                 doAnimation ? mLegacyPolicyVisibilityAfterAnim : isLegacyPolicyVisibility();
+         if (!current) {
+             // Already hiding.
+             return false;
+         }
+         if (doAnimation) {
+-            mWinAnimator.applyAnimationLocked(TRANSIT_EXIT, false);
+-            if (!isAnimating()) {
++            // If a hide animation is applied, then let onAnimationFinished
++            // -> checkPolicyVisibilityChange hide the window. Otherwise make doAnimation false
++            // to commit invisible immediately.
++            if (!mWinAnimator.applyAnimationLocked(TRANSIT_EXIT, false /* isEntrance */)) {
+                 doAnimation = false;
+             }
+         }
+         mLegacyPolicyVisibilityAfterAnim = false;
+         final boolean isFocused = isFocused();
+         if (!doAnimation) {
+             if (DEBUG_VISIBILITY) Slog.v(TAG, "Policy visibility false: " + this);
 diff --git a/services/devicepolicy/java/com/android/server/devicepolicy/DevicePolicyManagerService.java b/services/devicepolicy/java/com/android/server/devicepolicy/DevicePolicyManagerService.java
 index b2e23da08e2d..56b2cb8f3a0b 100644
 --- a/services/devicepolicy/java/com/android/server/devicepolicy/DevicePolicyManagerService.java
@@ -11814,6 +11859,45 @@ index 2cede07de257..dfb62999be5f 100644
 +        assertNull(mHelper.getNotificationChannelGroup(extraGroup1, PKG_O, UID_O));
 +    }
  }
+diff --git a/services/tests/wmtests/src/com/android/server/wm/WindowStateTests.java b/services/tests/wmtests/src/com/android/server/wm/WindowStateTests.java
+index 3a8d3b74c08f..15d0fd90ef77 100644
+--- a/services/tests/wmtests/src/com/android/server/wm/WindowStateTests.java
++++ b/services/tests/wmtests/src/com/android/server/wm/WindowStateTests.java
+@@ -209,14 +209,34 @@ public class WindowStateTests extends WindowTestsBase {
+     @Test
+     public void testIsOnScreen_hiddenByPolicy() {
+         final WindowState window = createWindow(null, TYPE_APPLICATION, "window");
+         window.setHasSurface(true);
+         assertTrue(window.isOnScreen());
+         window.hideLw(false /* doAnimation */);
+         assertFalse(window.isOnScreen());
++
++        // Verifies that a window without animation can be hidden even if its parent is animating.
++        window.show(false /* doAnimation */, false /* requestAnim */);
++        assertTrue(window.isVisibleByPolicy());
++        window.getParent().startAnimation(mTransaction, mock(AnimationAdapter.class),
++                false /* hidden */, SurfaceAnimator.ANIMATION_TYPE_WINDOW_ANIMATION);
++        window.mAttrs.windowAnimations = 0;
++        window.hide(true /* doAnimation */, true /* requestAnim */);
++        assertFalse(window.isSelfAnimating(0, SurfaceAnimator.ANIMATION_TYPE_WINDOW_ANIMATION));
++        assertFalse(window.isVisibleByPolicy());
++        assertFalse(window.isOnScreen());
++
++        // Verifies that a window with animation can be hidden after the hide animation is finished.
++        window.show(false /* doAnimation */, false /* requestAnim */);
++        window.mAttrs.windowAnimations = android.R.style.Animation_Dialog;
++        window.hide(true /* doAnimation */, true /* requestAnim */);
++        assertTrue(window.isSelfAnimating(0, SurfaceAnimator.ANIMATION_TYPE_WINDOW_ANIMATION));
++        assertTrue(window.isVisibleByPolicy());
++        window.cancelAnimation();
++        assertFalse(window.isVisibleByPolicy());
+     }
+ 
+     @Test
+     public void testCanBeImeTarget() {
+         final WindowState appWindow = createWindow(null, TYPE_APPLICATION, "appWindow");
+         final WindowState imeWindow = createWindow(null, TYPE_INPUT_METHOD, "imeWindow");
+ 
 diff --git a/telecomm/java/android/telecom/ParcelableConference.java b/telecomm/java/android/telecom/ParcelableConference.java
 index ede05943772e..4759acf612a9 100644
 --- a/telecomm/java/android/telecom/ParcelableConference.java

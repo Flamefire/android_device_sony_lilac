@@ -1,7 +1,7 @@
 From 3c2f186cb27ba2bfad1639deabccc82bf4593654 Mon Sep 17 00:00:00 2001
 From: Valentin Iftime <valiiftime@google.com>
 Date: Thu, 1 Feb 2024 13:58:49 +0100
-Subject: [PATCH 03/15] Verify URI permission for channel sound update from
+Subject: [PATCH 03/17] Verify URI permission for channel sound update from
  NotificationListenerService
 
  Check that a privileged NotificationListenerService (CDM) has the permission to access the sound URI

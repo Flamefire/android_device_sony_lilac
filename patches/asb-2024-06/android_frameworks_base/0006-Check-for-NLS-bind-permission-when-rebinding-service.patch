@@ -1,7 +1,7 @@
 From c2cf66ca1d5a676a8b29049c54c5117f1e2a5c72 Mon Sep 17 00:00:00 2001
 From: Valentin Iftime <valiiftime@google.com>
 Date: Thu, 22 Feb 2024 10:51:58 +0100
-Subject: [PATCH 06/15] Check for NLS bind permission when rebinding services
+Subject: [PATCH 06/17] Check for NLS bind permission when rebinding services
 
  Also, after updating packages with NLS components, check
  the approved services and remove from approved list if missing permissions.

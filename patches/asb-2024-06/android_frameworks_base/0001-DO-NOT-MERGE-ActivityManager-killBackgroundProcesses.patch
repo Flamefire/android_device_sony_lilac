@@ -1,7 +1,7 @@
 From 3ec9c56bd4ac40cf11f00866639b37a955eabc8b Mon Sep 17 00:00:00 2001
 From: Jing Ji <jji@google.com>
 Date: Tue, 25 Oct 2022 22:39:52 -0700
-Subject: [PATCH 01/15] DO NOT MERGE: ActivityManager#killBackgroundProcesses
+Subject: [PATCH 01/17] DO NOT MERGE: ActivityManager#killBackgroundProcesses
  can kill caller's own app only
 
 unless it's a system app.

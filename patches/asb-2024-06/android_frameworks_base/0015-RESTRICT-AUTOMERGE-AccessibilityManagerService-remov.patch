@@ -1,7 +1,7 @@
 From 7b923d459cadbe1ab11cfd1b552d9bf9725f0506 Mon Sep 17 00:00:00 2001
 From: Ameer Armaly <aarmaly@google.com>
 Date: Fri, 8 Mar 2024 19:41:06 +0000
-Subject: [PATCH 15/15] [RESTRICT AUTOMERGE] AccessibilityManagerService:
+Subject: [PATCH 15/17] [RESTRICT AUTOMERGE] AccessibilityManagerService:
  remove uninstalled services from enabled list after service update.
 
 Bug: 326485767

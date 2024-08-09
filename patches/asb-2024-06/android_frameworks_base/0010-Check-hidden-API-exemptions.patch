@@ -1,7 +1,7 @@
 From 19820317cc73a78c8141d8e3cbc435bdf1c0f503 Mon Sep 17 00:00:00 2001
 From: Hans Boehm <hboehm@google.com>
 Date: Tue, 2 Jan 2024 16:53:13 -0800
-Subject: [PATCH 10/15] Check hidden API exemptions
+Subject: [PATCH 10/17] Check hidden API exemptions
 
 Refuse to deal with newlines and null characters in
 HiddenApiSettings.update(). Also disallow nulls in process start

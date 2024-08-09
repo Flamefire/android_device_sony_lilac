@@ -1,7 +1,7 @@
 From 2614bceca6ee68a8c0d8d7d6a6267ef740622148 Mon Sep 17 00:00:00 2001
 From: Pinyao Ting <pinyaoting@google.com>
 Date: Thu, 30 Nov 2023 23:12:39 +0000
-Subject: [PATCH 04/15] Added throttle when reporting shortcut usage
+Subject: [PATCH 04/17] Added throttle when reporting shortcut usage
 
 Bug: 304290201
 Test: manual

@@ -1,7 +1,7 @@
 From a948eaf29141a1f176a9345fb9ec72502c2a8953 Mon Sep 17 00:00:00 2001
 From: Jing Ji <jji@google.com>
 Date: Thu, 19 Oct 2023 14:22:58 -0700
-Subject: [PATCH 02/15] DO NOT MERGE: Fix
+Subject: [PATCH 02/17] DO NOT MERGE: Fix
  ActivityManager#killBackgroundProcesses permissions
 
 In the pevious CL, we incorrectly added the permission check in the

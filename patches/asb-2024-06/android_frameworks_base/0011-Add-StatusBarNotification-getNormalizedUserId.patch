@@ -1,7 +1,7 @@
 From a76b0a0c26bc16a98840757e9c999a10101c565a Mon Sep 17 00:00:00 2001
 From: Julia Reynolds <juliacr@google.com>
 Date: Mon, 13 Apr 2020 11:03:44 -0400
-Subject: [PATCH 11/15] Add StatusBarNotification::getNormalizedUserId
+Subject: [PATCH 11/17] Add StatusBarNotification::getNormalizedUserId
 
 Required for ASB 2024-06
 

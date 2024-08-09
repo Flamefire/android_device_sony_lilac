@@ -1,7 +1,7 @@
 From 8e3b69bbd4ae5f918dd783b190e298c74584e45c Mon Sep 17 00:00:00 2001
 From: Dmitry Dementyev <dementyev@google.com>
 Date: Tue, 26 Mar 2024 10:31:44 -0700
-Subject: [PATCH 08/15] Add more checkKeyIntent checks to
+Subject: [PATCH 08/17] Add more checkKeyIntent checks to
  AccountManagerService.
 
 Another verification is needed after Bundle modification.

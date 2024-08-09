@@ -1,4 +1,4 @@
-From 425dde85bc6f5b6d734b4e2f2e9017b10ee9fc35 Mon Sep 17 00:00:00 2001
+From d8a01cc859b178ff980bbcb39211d98e86a8c7e9 Mon Sep 17 00:00:00 2001
 From: Yi Kong <yikong@google.com>
 Date: Thu, 29 Aug 2019 19:03:36 -0700
 Subject: [PATCH 3/3] Fix reversed logic

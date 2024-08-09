@@ -1,7 +1,7 @@
 From a8d8d9bb68570d395ddb20449ee466e2b468840c Mon Sep 17 00:00:00 2001
 From: Pinyao Ting <pinyaoting@google.com>
 Date: Tue, 20 Jul 2021 00:01:29 +0000
-Subject: [PATCH 05/15] Prevend user spoofing in isRequestPinItemSupported
+Subject: [PATCH 05/17] Prevend user spoofing in isRequestPinItemSupported
 
 This CL ensure the caller process is from the same user when calling
 ShortcutService#isRequestPinItemSupported.
