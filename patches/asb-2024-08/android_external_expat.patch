@@ -1,0 +1,103 @@
+# PWD: external/expat
+diff --git a/lib/xmlparse.c b/lib/xmlparse.c
+index 074c841..a891f5a 100644
+--- a/lib/xmlparse.c
++++ b/lib/xmlparse.c
+@@ -1965,14 +1965,20 @@ enum XML_Status XMLCALL
+ XML_ParseBuffer(XML_Parser parser, int len, int isFinal)
+ {
+   const char *start;
+   enum XML_Status result = XML_STATUS_OK;
+ 
+   if (parser == NULL)
+     return XML_STATUS_ERROR;
++
++  if (len < 0) {
++    parser->m_errorCode = XML_ERROR_INVALID_ARGUMENT;
++    return XML_STATUS_ERROR;
++  }
++
+   switch (parser->m_parsingStatus.parsing) {
+   case XML_SUSPENDED:
+     parser->m_errorCode = XML_ERROR_SUSPENDED;
+     return XML_STATUS_ERROR;
+   case XML_FINISHED:
+     parser->m_errorCode = XML_ERROR_FINISHED;
+     return XML_STATUS_ERROR;
+@@ -2952,24 +2958,24 @@ doContent(XML_Parser parser,
+     case XML_TOK_END_TAG:
+       if (parser->m_tagLevel == startTagLevel)
+         return XML_ERROR_ASYNC_ENTITY;
+       else {
+         int len;
+         const char *rawName;
+         TAG *tag = parser->m_tagStack;
+-        parser->m_tagStack = tag->parent;
+-        tag->parent = parser->m_freeTagList;
+-        parser->m_freeTagList = tag;
+         rawName = s + enc->minBytesPerChar*2;
+         len = XmlNameLength(enc, rawName);
+         if (len != tag->rawNameLength
+             || memcmp(tag->rawName, rawName, len) != 0) {
+           *eventPP = rawName;
+           return XML_ERROR_TAG_MISMATCH;
+         }
++        parser->m_tagStack = tag->parent;
++        tag->parent = parser->m_freeTagList;
++        parser->m_freeTagList = tag;
+         --parser->m_tagLevel;
+         if (parser->m_endElementHandler) {
+           const XML_Char *localPart;
+           const XML_Char *prefix;
+           XML_Char *uri;
+           localPart = tag->name.localPart;
+           if (parser->m_ns && localPart) {
+@@ -6629,14 +6635,24 @@ dtdCopy(XML_Parser oldParser, DTD *newDtd, const DTD *oldDtd, const XML_Memory_H
+     if (!name)
+       return 0;
+     newE = (ELEMENT_TYPE *)lookup(oldParser, &(newDtd->elementTypes), name,
+                                   sizeof(ELEMENT_TYPE));
+     if (!newE)
+       return 0;
+     if (oldE->nDefaultAtts) {
++      /* Detect and prevent integer overflow.
++       * The preprocessor guard addresses the "always false" warning
++       * from -Wtype-limits on platforms where
++       * sizeof(int) < sizeof(size_t), e.g. on x86_64. */
++#if UINT_MAX >= SIZE_MAX
++      if ((size_t)oldE->nDefaultAtts
++          > ((size_t)(-1) / sizeof(DEFAULT_ATTRIBUTE))) {
++        return 0;
++      }
++#endif
+       newE->defaultAtts = (DEFAULT_ATTRIBUTE *)
+           ms->malloc_fcn(oldE->nDefaultAtts * sizeof(DEFAULT_ATTRIBUTE));
+       if (!newE->defaultAtts) {
+         return 0;
+       }
+     }
+     if (oldE->idAtt)
+@@ -7201,14 +7217,23 @@ static int FASTCALL
+ nextScaffoldPart(XML_Parser parser)
+ {
+   DTD * const dtd = parser->m_dtd;  /* save one level of indirection */
+   CONTENT_SCAFFOLD * me;
+   int next;
+ 
+   if (!dtd->scaffIndex) {
++    /* Detect and prevent integer overflow.
++     * The preprocessor guard addresses the "always false" warning
++     * from -Wtype-limits on platforms where
++     * sizeof(unsigned int) < sizeof(size_t), e.g. on x86_64. */
++#if UINT_MAX >= SIZE_MAX
++    if (parser->m_groupSize > ((size_t)(-1) / sizeof(int))) {
++      return -1;
++    }
++#endif
+     dtd->scaffIndex = (int *)MALLOC(parser, parser->m_groupSize * sizeof(int));
+     if (!dtd->scaffIndex)
+       return -1;
+     dtd->scaffIndex[0] = 0;
+   }
+ 
+   if (dtd->scaffCount >= dtd->scaffSize) {
