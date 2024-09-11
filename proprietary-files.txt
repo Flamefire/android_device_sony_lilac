@@ -25,7 +25,7 @@ lib/libimageprocessorjni.so
 lib64/libimageprocessorjni.so
 -priv-app/ArtFilterCamera-xhdpi-release/ArtFilterCamera-xhdpi-release.apk
 -priv-app/CameraCommon/CameraCommon.apk
--priv-app/CameraPanorama-release/CameraPanorama-release.apk
+-priv-app/CameraPanorama-release/CameraPanorama-release.apk|211b4cf5222f52dc5fe70ec8ddce1a4d0ff5258b
 -priv-app/SemcCameraUI-xxhdpi-release/SemcCameraUI-xxhdpi-release.apk|863b862703e208c8d39c5c84bc40f075577b3430
 -priv-app/SomcMovieCreator-release/SomcMovieCreator-release.apk
 -priv-app/SoundPhotoCamera-xhdpi-release/SoundPhotoCamera-xhdpi-release.apk
