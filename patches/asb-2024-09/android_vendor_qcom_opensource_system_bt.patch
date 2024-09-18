@@ -1,0 +1,2397 @@
+# PWD: vendor/qcom/opensource/commonsys/system/bt
+diff --git a/bta/av/bta_av_act.cc b/bta/av/bta_av_act.cc
+index ea823ad75..9582b7897 100644
+--- a/bta/av/bta_av_act.cc
++++ b/bta/av/bta_av_act.cc
+@@ -1306,15 +1306,18 @@ void bta_av_rc_msg(tBTA_AV_CB* p_cb, tBTA_AV_DATA* p_data) {
+     (*p_cb->p_cback)(evt, &av);
+     if((p_data->rc_msg.opcode == AVRC_OP_BROWSE) &&
+             (p_data->rc_msg.msg.browse.p_browse_data == NULL)) {
+       APPL_TRACE_DEBUG("%s : AVRC_OP_BROWSE with data NULL skip buffer clear", __func__);
+       return;
+     }
+     /* If browsing message, then free the browse message buffer */
+-    bta_av_rc_free_browse_msg(p_cb, p_data);
++    if (p_data->rc_msg.opcode == AVRC_OP_BROWSE &&
++        p_data->rc_msg.msg.browse.p_browse_pkt != NULL) {
++      bta_av_rc_free_browse_msg(p_cb, p_data);
++    }
+   }
+ }
+ 
+ /*******************************************************************************
+  *
+  * Function         bta_av_rc_close
+  *
+diff --git a/btif/src/bluetooth.cc b/btif/src/bluetooth.cc
+index 47667abd7..584d4c5db 100644
+--- a/btif/src/bluetooth.cc
++++ b/btif/src/bluetooth.cc
+@@ -312,14 +312,15 @@ static int get_connection_state(const RawAddress* bd_addr) {
+ }
+ 
+ static int pin_reply(const RawAddress* bd_addr, uint8_t accept, uint8_t pin_len,
+                      bt_pin_code_t* pin_code) {
+   bt_pin_code_t tmp_pin_code;
+   /* sanity check */
+   if (interface_ready() == false) return BT_STATUS_NOT_READY;
++  if (pin_code == nullptr || pin_len > PIN_CODE_LEN) return BT_STATUS_FAIL;
+ 
+   memcpy(&tmp_pin_code, pin_code, pin_len);
+   return btif_dm_pin_reply(bd_addr, accept, pin_len, &tmp_pin_code);
+ }
+ 
+ static int ssp_reply(const RawAddress* bd_addr, bt_ssp_variant_t variant,
+                      uint8_t accept, uint32_t passkey) {
+diff --git a/btif/src/btif_gatt_util.cc b/btif/src/btif_gatt_util.cc
+index 6be1cb238..5b101450d 100644
+--- a/btif/src/btif_gatt_util.cc
++++ b/btif/src/btif_gatt_util.cc
+@@ -14,14 +14,16 @@
+  *  See the License for the specific language governing permissions and
+  *  limitations under the License.
+  *
+  ******************************************************************************/
+ 
+ #define LOG_TAG "bt_btif_gatt"
+ 
++#include <algorithm>
++
+ #include "btif_gatt_util.h"
+ 
+ #include <errno.h>
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include <string.h>
+ 
+@@ -44,17 +46,17 @@ using bluetooth::Uuid;
+ 
+ /*******************************************************************************
+  * BTIF -> BTA conversion functions
+  ******************************************************************************/
+ void btif_to_bta_response(tGATTS_RSP* p_dest, btgatt_response_t* p_src) {
+   p_dest->attr_value.auth_req = p_src->attr_value.auth_req;
+   p_dest->attr_value.handle = p_src->attr_value.handle;
+-  p_dest->attr_value.len = p_src->attr_value.len;
++  p_dest->attr_value.len = std::min<uint16_t>(p_src->attr_value.len, GATT_MAX_ATTR_LEN);
+   p_dest->attr_value.offset = p_src->attr_value.offset;
+-  memcpy(p_dest->attr_value.value, p_src->attr_value.value, GATT_MAX_ATTR_LEN);
++  memcpy(p_dest->attr_value.value, p_src->attr_value.value, p_dest->attr_value.len);
+ }
+ 
+ /*******************************************************************************
+  * Encrypted link map handling
+  ******************************************************************************/
+ 
+ #if (BLE_DELAY_REQUEST_ENC == FALSE)
+diff --git a/btif/src/btif_hh.cc b/btif/src/btif_hh.cc
+index 1b770ddb1..b5135ff2f 100644
+--- a/btif/src/btif_hh.cc
++++ b/btif/src/btif_hh.cc
+@@ -1123,52 +1123,92 @@ static void btif_hh_upstreams_evt(uint16_t event, char* p_param) {
+ 
+     default:
+       BTIF_TRACE_WARNING("%s: Unhandled event: %d", __func__, event);
+       break;
+   }
+ }
+ 
++/*******************************************************************************
++ *
++ * Function         btif_hh_hsdata_rpt_copy_cb
++ *
++ * Description      Deep copies the tBTA_HH_HSDATA structure
++ *
++ * Returns          void
++ *
++ ******************************************************************************/
++
++static void btif_hh_hsdata_rpt_copy_cb(uint16_t event, char* p_dest,
++                                       char* p_src) {
++  tBTA_HH_HSDATA* p_dst_data = (tBTA_HH_HSDATA*)p_dest;
++  tBTA_HH_HSDATA* p_src_data = (tBTA_HH_HSDATA*)p_src;
++  BT_HDR* hdr;
++
++  if (!p_src) {
++    BTIF_TRACE_ERROR("%s: Nothing to copy", __func__);
++    return;
++  }
++
++  memcpy(p_dst_data, p_src_data, sizeof(tBTA_HH_HSDATA));
++
++  hdr = p_src_data->rsp_data.p_rpt_data;
++  if (hdr != NULL) {
++    uint8_t* p_data = ((uint8_t*)p_dst_data) + sizeof(tBTA_HH_HSDATA);
++    memcpy(p_data, hdr, BT_HDR_SIZE + hdr->offset + hdr->len);
++
++    p_dst_data->rsp_data.p_rpt_data = (BT_HDR*)p_data;
++  }
++}
++
+ /*******************************************************************************
+  *
+  * Function         bte_hh_evt
+  *
+  * Description      Switches context from BTE to BTIF for all HH events
+  *
+  * Returns          void
+  *
+  ******************************************************************************/
+ 
+ void bte_hh_evt(tBTA_HH_EVT event, tBTA_HH* p_data) {
+   bt_status_t status;
+   int param_len = 0;
++  tBTIF_COPY_CBACK* p_copy_cback = NULL;
+ 
+   if (BTA_HH_ENABLE_EVT == event)
+     param_len = sizeof(tBTA_HH_STATUS);
+   else if (BTA_HH_OPEN_EVT == event)
+     param_len = sizeof(tBTA_HH_CONN);
+   else if (BTA_HH_DISABLE_EVT == event)
+     param_len = sizeof(tBTA_HH_STATUS);
+   else if (BTA_HH_CLOSE_EVT == event)
+     param_len = sizeof(tBTA_HH_CBDATA);
+   else if (BTA_HH_GET_DSCP_EVT == event)
+     param_len = sizeof(tBTA_HH_DEV_HANDLE_DSCP_INFO);
+-  else if ((BTA_HH_GET_PROTO_EVT == event) || (BTA_HH_GET_RPT_EVT == event) ||
+-           (BTA_HH_GET_IDLE_EVT == event))
++  else if ((BTA_HH_GET_PROTO_EVT == event) || (BTA_HH_GET_IDLE_EVT == event))
++    param_len = sizeof(tBTA_HH_HSDATA);
++  else if (BTA_HH_GET_RPT_EVT == event) {
++    BT_HDR* hdr = p_data->hs_data.rsp_data.p_rpt_data;
+     param_len = sizeof(tBTA_HH_HSDATA);
+-  else if ((BTA_HH_SET_PROTO_EVT == event) || (BTA_HH_SET_RPT_EVT == event) ||
+-           (BTA_HH_VC_UNPLUG_EVT == event) || (BTA_HH_SET_IDLE_EVT == event))
++
++    if (hdr != NULL) {
++      p_copy_cback = btif_hh_hsdata_rpt_copy_cb;
++      param_len += BT_HDR_SIZE + hdr->offset + hdr->len;
++    }
++  } else if ((BTA_HH_SET_PROTO_EVT == event) || (BTA_HH_SET_RPT_EVT == event) ||
++             (BTA_HH_VC_UNPLUG_EVT == event) || (BTA_HH_SET_IDLE_EVT == event))
+     param_len = sizeof(tBTA_HH_CBDATA);
+   else if ((BTA_HH_ADD_DEV_EVT == event) || (BTA_HH_RMV_DEV_EVT == event))
+     param_len = sizeof(tBTA_HH_DEV_INFO);
+   else if (BTA_HH_API_ERR_EVT == event)
+     param_len = 0;
+   /* switch context to btif task context (copy full union size for convenience)
+    */
+   status = btif_transfer_context(btif_hh_upstreams_evt, (uint16_t)event,
+-                                 (char*)p_data, param_len, NULL);
++                                 (char*)p_data, param_len, p_copy_cback);
+ 
+   /* catch any failed context transfers */
+   ASSERTC(status == BT_STATUS_SUCCESS, "context transfer failed", status);
+ }
+ 
+ /*******************************************************************************
+  *
+diff --git a/btif/src/btif_rc.cc b/btif/src/btif_rc.cc
+index 0b34f7c36..41fd73485 100644
+--- a/btif/src/btif_rc.cc
++++ b/btif/src/btif_rc.cc
+@@ -3133,14 +3133,19 @@ static bt_status_t register_notification_rsp(
+                                                p_param,
+                                                bd_addr));
+   }
+   BTIF_TRACE_IMP("%s: event_id: %s", __func__,
+                    dump_rc_notification_event_id(event_id));
+   std::unique_lock<std::mutex> lock(btif_rc_cb.lock);
+ 
++  if (event_id > MAX_RC_NOTIFICATIONS) {
++    BTIF_TRACE_ERROR("Invalid event id");
++    return BT_STATUS_PARM_INVALID;
++  }
++
+   memset(&(avrc_rsp.reg_notif), 0, sizeof(tAVRC_REG_NOTIF_RSP));
+ 
+   avrc_rsp.reg_notif.event_id = event_id;
+   avrc_rsp.reg_notif.pdu = AVRC_PDU_REGISTER_NOTIFICATION;
+   avrc_rsp.reg_notif.opcode = opcode_from_pdu(AVRC_PDU_REGISTER_NOTIFICATION);
+   avrc_rsp.get_play_status.status = AVRC_STS_NO_ERROR;
+ 
+@@ -5063,44 +5068,44 @@ static void handle_app_attr_txt_response(tBTA_AV_META_MSG* pmeta_msg,
+     BTIF_TRACE_ERROR("%s: Error fetching attribute text: 0x%02X", __func__,
+                      p_rsp->status);
+     /* Not able to fetch Text for extended Menu, skip the process
+      * and cleanup used memory. Proceed to get the current settings
+      * for standard attributes.
+      */
+     p_app_settings->num_ext_attrs = 0;
+-    for (xx = 0; xx < p_app_settings->ext_attr_index; xx++) {
++    for (xx = 0; xx < p_app_settings->ext_attr_index && xx < AVRC_MAX_APP_ATTR_SIZE; xx++) {
+       osi_free_and_reset((void**)&p_app_settings->ext_attrs[xx].p_str);
+     }
+     p_app_settings->ext_attr_index = 0;
+ 
+     if (p_dev) {
+-      for (xx = 0; xx < p_app_settings->num_attrs; xx++) {
++      for (xx = 0; xx < p_app_settings->num_attrs && xx < AVRC_MAX_APP_ATTR_SIZE; xx++) {
+         attrs[xx] = p_app_settings->attrs[xx].attr_id;
+       }
+ 
+       HAL_CBACK(bt_rc_ctrl_callbacks, playerapplicationsetting_cb, &rc_addr,
+                 p_app_settings->num_attrs, p_app_settings->attrs, 0, NULL);
+       get_player_app_setting_cmd(xx, attrs, p_dev);
+     }
+     return;
+   }
+ 
+   for (xx = 0; xx < p_rsp->num_attr; xx++) {
+     uint8_t x;
+-    for (x = 0; x < p_app_settings->num_ext_attrs; x++) {
++    for (x = 0; x < p_app_settings->num_ext_attrs && x < AVRC_MAX_APP_ATTR_SIZE; x++) {
+       if (p_app_settings->ext_attrs[x].attr_id == p_rsp->p_attrs[xx].attr_id) {
+         p_app_settings->ext_attrs[x].charset_id = p_rsp->p_attrs[xx].charset_id;
+         p_app_settings->ext_attrs[x].str_len = p_rsp->p_attrs[xx].str_len;
+         p_app_settings->ext_attrs[x].p_str = p_rsp->p_attrs[xx].p_str;
+         break;
+       }
+     }
+   }
+ 
+-  for (xx = 0; xx < p_app_settings->ext_attrs[0].num_val; xx++) {
++  for (xx = 0; xx < p_app_settings->ext_attrs[0].num_val && xx < BTRC_MAX_APP_ATTR_SIZE; xx++) {
+     vals[xx] = p_app_settings->ext_attrs[0].ext_attr_val[xx].val;
+   }
+   get_player_app_setting_value_text_cmd(vals, xx, p_dev);
+ }
+ 
+ /***************************************************************************
+  *
+@@ -5137,19 +5142,19 @@ static void handle_app_attr_val_txt_response(
+                      __func__, p_rsp->status);
+ 
+     /* Not able to fetch Text for extended Menu, skip the process
+      * and cleanup used memory. Proceed to get the current settings
+      * for standard attributes.
+      */
+     p_app_settings->num_ext_attrs = 0;
+-    for (xx = 0; xx < p_app_settings->ext_attr_index; xx++) {
++    for (xx = 0; xx < p_app_settings->ext_attr_index && xx < AVRC_MAX_APP_ATTR_SIZE; xx++) {
+       int x;
+       btrc_player_app_ext_attr_t* p_ext_attr = &p_app_settings->ext_attrs[xx];
+ 
+-      for (x = 0; x < p_ext_attr->num_val; x++)
++      for (x = 0; x < p_ext_attr->num_val && x < BTRC_MAX_APP_ATTR_SIZE; x++)
+         osi_free_and_reset((void**)&p_ext_attr->ext_attr_val[x].p_str);
+       p_ext_attr->num_val = 0;
+       osi_free_and_reset((void**)&p_app_settings->ext_attrs[xx].p_str);
+     }
+     p_app_settings->ext_attr_index = 0;
+ 
+     for (xx = 0; xx < p_app_settings->num_attrs && xx < AVRC_MAX_APP_ATTR_SIZE; xx++) {
+@@ -5158,19 +5163,25 @@ static void handle_app_attr_val_txt_response(
+     HAL_CBACK(bt_rc_ctrl_callbacks, playerapplicationsetting_cb, &rc_addr,
+               p_app_settings->num_attrs, p_app_settings->attrs, 0, NULL);
+ 
+     get_player_app_setting_cmd(xx, attrs, p_dev);
+     return;
+   }
+ 
++  if (p_app_settings->ext_val_index >= AVRC_MAX_APP_ATTR_SIZE) {
++    BTIF_TRACE_ERROR("%s: ext_val_index is 0x%02x, overflow!",
++                     __func__, p_app_settings->ext_val_index);
++    return;
++  }
++
+   for (xx = 0; xx < p_rsp->num_attr; xx++) {
+     uint8_t x;
+     btrc_player_app_ext_attr_t* p_ext_attr;
+     p_ext_attr = &p_app_settings->ext_attrs[p_app_settings->ext_val_index];
+-    for (x = 0; x < p_rsp->num_attr; x++) {
++    for (x = 0; x < p_rsp->num_attr && x < BTRC_MAX_APP_ATTR_SIZE; x++) {
+       if (p_ext_attr->ext_attr_val[x].val == p_rsp->p_attrs[xx].attr_id) {
+         p_ext_attr->ext_attr_val[x].charset_id = p_rsp->p_attrs[xx].charset_id;
+         p_ext_attr->ext_attr_val[x].str_len = p_rsp->p_attrs[xx].str_len;
+         p_ext_attr->ext_attr_val[x].p_str = p_rsp->p_attrs[xx].p_str;
+         break;
+       }
+     }
+@@ -5200,19 +5211,19 @@ static void handle_app_attr_val_txt_response(
+     } else {
+       get_player_app_setting_cmd(xx + x, attrs, p_dev);
+     }
+ 
+     /* Free the application settings information after sending to
+      * application.
+      */
+-    for (xx = 0; xx < p_app_settings->ext_attr_index; xx++) {
++    for (xx = 0; xx < p_app_settings->ext_attr_index && xx < AVRC_MAX_APP_ATTR_SIZE; xx++) {
+       int x;
+       btrc_player_app_ext_attr_t* p_ext_attr = &p_app_settings->ext_attrs[xx];
+ 
+-      for (x = 0; x < p_ext_attr->num_val; x++)
++      for (x = 0; x < p_ext_attr->num_val && x < BTRC_MAX_APP_ATTR_SIZE; x++)
+         osi_free_and_reset((void**)&p_ext_attr->ext_attr_val[x].p_str);
+       p_ext_attr->num_val = 0;
+       osi_free_and_reset((void**)&p_app_settings->ext_attrs[xx].p_str);
+     }
+     p_app_settings->num_attrs = 0;
+   }
+ }
+diff --git a/btif/src/btif_sock_rfc.cc b/btif/src/btif_sock_rfc.cc
+index c2a0bc868..ea706e55b 100644
+--- a/btif/src/btif_sock_rfc.cc
++++ b/btif/src/btif_sock_rfc.cc
+@@ -167,23 +167,23 @@ static rfc_slot_t* find_rfc_slot_by_id(uint32_t id) {
+ 
+   LOG_ERROR(LOG_TAG, "%s unable to find RFCOMM slot id: %u", __func__, id);
+   return NULL;
+ }
+ 
+ static rfc_slot_t* find_rfc_slot_by_pending_sdp(void) {
+   uint32_t min_id = UINT32_MAX;
+-  int slot = -1;
++  rfc_slot_t* slot = NULL;
+   for (size_t i = 0; i < ARRAY_SIZE(rfc_slots); ++i)
+     if (rfc_slots[i].id && rfc_slots[i].f.pending_sdp_request &&
+-        rfc_slots[i].id < min_id) {
++        rfc_slots[i].id <= min_id) {
+       min_id = rfc_slots[i].id;
+-      slot = i;
++      slot = &rfc_slots[i];
+     }
+ 
+-  return (slot == -1) ? NULL : &rfc_slots[slot];
++  return slot;
+ }
+ 
+ static bool is_requesting_sdp(void) {
+   for (size_t i = 0; i < ARRAY_SIZE(rfc_slots); ++i)
+     if (rfc_slots[i].id && rfc_slots[i].f.doing_sdp_request) return true;
+   return false;
+ }
+@@ -211,15 +211,19 @@ static rfc_slot_t* alloc_rfc_slot(const RawAddress* addr, const char* name,
+   if (socketpair(AF_LOCAL, SOCK_STREAM, 0, fds) == -1) {
+     LOG_ERROR(LOG_TAG, "%s error creating socketpair: %s", __func__,
+               strerror(errno));
+     return NULL;
+   }
+ 
+   // Increment slot id and make sure we don't use id=0.
+-  if (++rfc_slot_id == 0) rfc_slot_id = 1;
++  if (UINT32_MAX == rfc_slot_id) {
++    rfc_slot_id = 1;
++  } else {
++    ++rfc_slot_id;
++  }
+ 
+   slot->fd = fds[0];
+   slot->app_fd = fds[1];
+   slot->security = security;
+   slot->scn = channel;
+   slot->app_uid = -1;
+ 
+diff --git a/btif/src/btif_storage.cc b/btif/src/btif_storage.cc
+index c4a1d218e..a62d9da6d 100644
+--- a/btif/src/btif_storage.cc
++++ b/btif/src/btif_storage.cc
+@@ -82,15 +82,18 @@ using bluetooth::Uuid;
+ #define BTIF_STORAGE_PATH_REMOTE_ALIASE "Aliase"
+ #define BTIF_STORAGE_PATH_REMOTE_SERVICE "Service"
+ #define BTIF_STORAGE_PATH_REMOTE_HIDINFO "HidInfo"
+ #define BTIF_STORAGE_KEY_ADAPTER_NAME "Name"
+ #define BTIF_STORAGE_KEY_ADAPTER_SCANMODE "ScanMode"
+ #define BTIF_STORAGE_KEY_LOCAL_IO_CAPS "LocalIOCaps"
+ #define BTIF_STORAGE_KEY_LOCAL_IO_CAPS_BLE "LocalIOCapsBLE"
++#define BTIF_STORAGE_KEY_MAX_SESSION_KEY_SIZE "MaxSessionKeySize"
+ #define BTIF_STORAGE_KEY_ADAPTER_DISC_TIMEOUT "DiscoveryTimeout"
++#define BTIF_STORAGE_KEY_SECURE_CONNECTIONS_SUPPORTED \
++  "SecureConnectionsSupported"
+ 
+ /* This is a local property to add a device found */
+ #define BT_PROPERTY_REMOTE_DEVICE_TIMESTAMP 0xFF
+ 
+ // TODO: This macro should be converted to a function
+ #define BTIF_STORAGE_GET_ADAPTER_PROP(s, t, v, l, p) \
+   do {                                               \
+@@ -265,14 +268,22 @@ static bool prop_upd(const RawAddress* remote_bd_addr, bt_property_t *prop)
+                     info->manufacturer);
+         btif_config_set_int(bdstr, BTIF_STORAGE_PATH_REMOTE_VER_VER,
+                     info->version);
+         btif_config_set_int(bdstr, BTIF_STORAGE_PATH_REMOTE_VER_SUBVER,
+                     info->sub_ver);
+       }
+       break;
++    case BT_PROPERTY_REMOTE_SECURE_CONNECTIONS_SUPPORTED:
++      btif_config_set_int(bdstr, BTIF_STORAGE_KEY_SECURE_CONNECTIONS_SUPPORTED,
++                          *(uint8_t*)prop->val);
++      break;
++    case BT_PROPERTY_REMOTE_MAX_SESSION_KEY_SIZE:
++      btif_config_set_int(bdstr, BTIF_STORAGE_KEY_MAX_SESSION_KEY_SIZE,
++                          *(uint8_t*)prop->val);
++      break;
+     default:
+       BTIF_TRACE_ERROR("%s: Unknown prop type:%d", __func__, prop->type);
+       ret = false;
+       break;
+   }
+ 
+   return ret;
+@@ -444,14 +455,33 @@ static int cfg2prop(const RawAddress* remote_bd_addr, bt_property_t* prop) {
+                                     &info->version);
+ 
+         if (ret == true)
+           ret = btif_config_get_int(bdstr, BTIF_STORAGE_PATH_REMOTE_VER_SUBVER,
+                                     &info->sub_ver);
+       }
+     } break;
++    case BT_PROPERTY_REMOTE_SECURE_CONNECTIONS_SUPPORTED: {
++      int val;
++
++      if (prop->len >= (int)sizeof(uint8_t)) {
++        ret = btif_config_get_int(
++            bdstr, BTIF_STORAGE_KEY_SECURE_CONNECTIONS_SUPPORTED, &val);
++        *(uint8_t*)prop->val = (uint8_t)val;
++      }
++    } break;
++
++    case BT_PROPERTY_REMOTE_MAX_SESSION_KEY_SIZE: {
++      int val;
++
++      if (prop->len >= (int)sizeof(uint8_t)) {
++        ret = btif_config_get_int(bdstr, BTIF_STORAGE_KEY_MAX_SESSION_KEY_SIZE,
++                                  &val);
++        *(uint8_t*)prop->val = (uint8_t)val;
++      }
++    } break;
+ 
+     default:
+       BTIF_TRACE_ERROR("Unknow prop type:%d", prop->type);
+       return false;
+   }
+   return ret;
+ }
+diff --git a/include/hardware/bluetooth.h b/include/hardware/bluetooth.h
+index 64b13e48c..a4d82f9e7 100644
+--- a/include/hardware/bluetooth.h
++++ b/include/hardware/bluetooth.h
+@@ -271,14 +271,28 @@ typedef enum {
+   /**
+    * Description - Local Input/Output Capabilities for BLE
+    * Access mode - GET and SET
+    * Data Type - bt_io_cap_t.
+    */
+   BT_PROPERTY_LOCAL_IO_CAPS_BLE,
+ 
++  /**
++   * Description - Whether remote device supports Secure Connections mode
++   * Access mode - GET and SET.
++   * Data Type - uint8_t.
++   */
++  BT_PROPERTY_REMOTE_SECURE_CONNECTIONS_SUPPORTED,
++
++  /**
++   * Description - Maximum observed session key for remote device
++   * Access mode - GET and SET.
++   * Data Type - uint8_t.
++   */
++  BT_PROPERTY_REMOTE_MAX_SESSION_KEY_SIZE,
++
+   BT_PROPERTY_REMOTE_DEVICE_TIMESTAMP = 0xFF,
+ } bt_property_type_t;
+ 
+ /** Bluetooth Adapter Property data structure */
+ typedef struct
+ {
+     bt_property_type_t type;
+diff --git a/service/logging_helpers.cc b/service/logging_helpers.cc
+index 39706ecb3..abfec3527 100644
+--- a/service/logging_helpers.cc
++++ b/service/logging_helpers.cc
+@@ -113,14 +113,16 @@ const char* BtPropertyText(const bt_property_type_t prop) {
+     CASE_RETURN_TEXT(BT_PROPERTY_ADAPTER_BONDED_DEVICES);
+     CASE_RETURN_TEXT(BT_PROPERTY_ADAPTER_DISCOVERY_TIMEOUT);
+     CASE_RETURN_TEXT(BT_PROPERTY_REMOTE_FRIENDLY_NAME);
+     CASE_RETURN_TEXT(BT_PROPERTY_REMOTE_RSSI);
+     CASE_RETURN_TEXT(BT_PROPERTY_REMOTE_VERSION_INFO);
+     CASE_RETURN_TEXT(BT_PROPERTY_LOCAL_LE_FEATURES);
+     CASE_RETURN_TEXT(BT_PROPERTY_REMOTE_DEVICE_TIMESTAMP);
++    CASE_RETURN_TEXT(BT_PROPERTY_REMOTE_SECURE_CONNECTIONS_SUPPORTED);
++    CASE_RETURN_TEXT(BT_PROPERTY_REMOTE_MAX_SESSION_KEY_SIZE);
+     default:
+       return "Invalid property";
+   }
+ }
+ 
+ const char* BtEventText(const bt_cb_thread_evt evt) {
+   switch (evt) {
+diff --git a/stack/Android.bp b/stack/Android.bp
+index 696cd6cd2..fcd002a93 100644
+--- a/stack/Android.bp
++++ b/stack/Android.bp
+@@ -181,14 +181,15 @@ cc_library_static {
+         "libFraunhoferAAC",
+         "libbtdevice_ext",
+         "libbt-stack_ext",
+     ],
+     shared_libs: [
+         "libcutils",
+          "liblog",
++         "libcrypto",
+     ],
+     required: [
+         "libldacBT_enc",
+         "libldacBT_abr",
+     ],
+ }
+ 
+@@ -247,15 +248,16 @@ cc_test {
+         "smp/smp_main.cc",
+         "smp/smp_utils.cc",
+         "test/crypto_toolbox_test.cc",
+         "test/stack_smp_test.cc",
+     ],
+     shared_libs: [
+         "libcutils",
+-		"liblog"
++         "liblog",
++         "libcrypto",
+     ],
+     static_libs: [
+         "liblog",
+         "libgmock",
+         "libosi_qti",
+     ],
+ }
+diff --git a/stack/a2dp/a2dp_sbc.cc b/stack/a2dp/a2dp_sbc.cc
+index 623ecfac1..393a17ee5 100644
+--- a/stack/a2dp/a2dp_sbc.cc
++++ b/stack/a2dp/a2dp_sbc.cc
+@@ -877,14 +877,19 @@ bool A2DP_GetPacketTimestampSbc(UNUSED_ATTR const uint8_t* p_codec_info,
+   return true;
+ }
+ 
+ bool A2DP_BuildCodecHeaderSbc(UNUSED_ATTR const uint8_t* p_codec_info,
+                               BT_HDR* p_buf, uint16_t frames_per_packet) {
+   uint8_t* p;
+ 
++  // there is a timestamp right following p_buf
++  if (p_buf->offset < 4 + A2DP_SBC_MPL_HDR_LEN) {
++    return false;
++  }
++
+   p_buf->offset -= A2DP_SBC_MPL_HDR_LEN;
+   p = (uint8_t*)(p_buf + 1) + p_buf->offset;
+   p_buf->len += A2DP_SBC_MPL_HDR_LEN;
+   A2DP_BuildMediaPayloadHeaderSbc(p, false, false, false,
+                                   (uint8_t)frames_per_packet);
+ 
+   return true;
+diff --git a/stack/avdt/avdt_msg.cc b/stack/avdt/avdt_msg.cc
+index af8d7014e..a98d59d4b 100644
+--- a/stack/avdt/avdt_msg.cc
++++ b/stack/avdt/avdt_msg.cc
+@@ -1289,22 +1289,22 @@ BT_HDR* avdt_msg_asmbl(tAVDT_CCB* p_ccb, BT_HDR* p_buf) {
+       p_ret = NULL;
+     } else {
+       /* get size of buffer holding assembled message */
+       /*
+        * NOTE: The buffer is allocated above at the beginning of the
+        * reassembly, and is always of size BT_DEFAULT_BUFFER_SIZE.
+        */
+-      uint16_t buf_len = BT_DEFAULT_BUFFER_SIZE - sizeof(BT_HDR);
++      size_t buf_len = BT_DEFAULT_BUFFER_SIZE - sizeof(BT_HDR);
+ 
+       /* adjust offset and len of fragment for header byte */
+       p_buf->offset += AVDT_LEN_TYPE_CONT;
+       p_buf->len -= AVDT_LEN_TYPE_CONT;
+ 
+       /* verify length */
+-      if ((p_ccb->p_rx_msg->offset + p_buf->len) > buf_len) {
++      if (((size_t) p_ccb->p_rx_msg->offset + (size_t) p_buf->len) > buf_len) {
+         /* won't fit; free everything */
+         AVDT_TRACE_WARNING("%s: Fragmented message too big!", __func__);
+         osi_free_and_reset((void**)&p_ccb->p_rx_msg);
+         osi_free(p_buf);
+         p_ret = NULL;
+       } else {
+         /* copy contents of p_buf to p_rx_msg */
+diff --git a/stack/avdt/avdt_scb_act.cc b/stack/avdt/avdt_scb_act.cc
+index 130f44ab1..568575458 100644
+--- a/stack/avdt/avdt_scb_act.cc
++++ b/stack/avdt/avdt_scb_act.cc
+@@ -273,27 +273,32 @@ void avdt_scb_hdl_pkt_no_frag(tAVDT_SCB* p_scb, tAVDT_SCB_EVT* p_data) {
+ 
+   /* check for and skip over extension header */
+   if (o_x) {
+     offset += 4;
+     if (offset > len) goto length_error;
+     p += 2;
+     BE_STREAM_TO_UINT16(ex_len, p);
+-    offset += ex_len * 4;
+     p += ex_len * 4;
+   }
+ 
++  if ((p - p_start) > len) {
++    android_errorWriteLog(0x534e4554, "142546355");
++    osi_free_and_reset((void**)&p_data->p_pkt);
++    return;
++  }
++  offset = p - p_start;
++
+   /* adjust length for any padding at end of packet */
+   if (o_p) {
+     /* padding length in last byte of packet */
+-    pad_len = *(p_start + p_data->p_pkt->len);
++    pad_len = *(p_start + len);
+   }
+ 
+   /* do sanity check */
+-  if ((offset > p_data->p_pkt->len) ||
+-      ((pad_len + offset) > p_data->p_pkt->len)) {
++  if (pad_len > (len - offset)) {
+     AVDT_TRACE_WARNING("Got bad media packet");
+     osi_free_and_reset((void**)&p_data->p_pkt);
+   }
+   /* adjust offset and length and send it up */
+   else {
+     p_data->p_pkt->len -= (offset + pad_len);
+     p_data->p_pkt->offset += offset;
+diff --git a/stack/btm/btm_acl.cc b/stack/btm/btm_acl.cc
+index 57c5c479a..5f637fd46 100644
+--- a/stack/btm/btm_acl.cc
++++ b/stack/btm/btm_acl.cc
+@@ -315,16 +315,21 @@ void btm_acl_created(const RawAddress& bda, DEV_CLASS dc, BD_NAME bdn,
+             (p_dev_rec->num_read_pages <= (HCI_EXT_FEATURES_PAGE_MAX + 1))) {
+           memcpy(p->peer_lmp_feature_pages, p_dev_rec->feature_pages,
+                  (HCI_FEATURE_BYTES_PER_PAGE * p_dev_rec->num_read_pages));
+           p->num_read_pages = p_dev_rec->num_read_pages;
+ 
+           const uint8_t req_pend = (p_dev_rec->sm4 & BTM_SM4_REQ_PEND);
+ 
+-          /* Store the Peer Security Capabilites (in SM4 and rmt_sec_caps) */
+-          btm_sec_set_peer_sec_caps(p, p_dev_rec);
++          bool ssp_supported =
++              HCI_SSP_HOST_SUPPORTED(p->peer_lmp_feature_pages[1]);
++          bool secure_connections_supported =
++              HCI_SC_HOST_SUPPORTED(p->peer_lmp_feature_pages[1]);
++          btm_sec_set_peer_sec_caps(hci_handle, ssp_supported,
++                                    secure_connections_supported);
++
+ 
+           BTM_TRACE_API("%s: pend:%d", __func__, req_pend);
+           if (req_pend) {
+             /* Request for remaining Security Features (if any) */
+             l2cu_resubmit_pending_sec_req(&p_dev_rec->bd_addr);
+           }
+           btm_establish_continue(p);
+@@ -1105,16 +1110,20 @@ void btm_process_remote_ext_features(tACL_CONN* p_acl_cb,
+   if (!(p_dev_rec->sec_flags & BTM_SEC_NAME_KNOWN) || p_dev_rec->is_originator) {
+     BTM_TRACE_DEBUG ("Calling Next Security Procedure");
+     if ((status = btm_sec_execute_procedure (p_dev_rec)) != BTM_CMD_STARTED)
+     btm_sec_dev_rec_cback_event (p_dev_rec, status , FALSE);
+   }
+   const uint8_t req_pend = (p_dev_rec->sm4 & BTM_SM4_REQ_PEND);
+ 
+-  /* Store the Peer Security Capabilites (in SM4 and rmt_sec_caps) */
+-  btm_sec_set_peer_sec_caps(p_acl_cb, p_dev_rec);
++  bool ssp_supported =
++      HCI_SSP_HOST_SUPPORTED(p_acl_cb->peer_lmp_feature_pages[1]);
++  bool secure_connections_supported =
++      HCI_SC_HOST_SUPPORTED(p_acl_cb->peer_lmp_feature_pages[1]);
++  btm_sec_set_peer_sec_caps(handle, ssp_supported,
++                            secure_connections_supported);
+ 
+   BTM_TRACE_API("%s: pend:%d", __func__, req_pend);
+   if (req_pend) {
+     /* Request for remaining Security Features (if any) */
+     l2cu_resubmit_pending_sec_req(&p_dev_rec->bd_addr);
+   }
+ }
+diff --git a/stack/btm/btm_ble.cc b/stack/btm/btm_ble.cc
+index 7fd154d2d..56f4fa1cd 100644
+--- a/stack/btm/btm_ble.cc
++++ b/stack/btm/btm_ble.cc
+@@ -37,14 +37,15 @@
+ #include "btu.h"
+ #include "device/include/controller.h"
+ #include "gap_api.h"
+ #include "gatt_api.h"
+ #include "hcimsgs.h"
+ #include "log/log.h"
+ #include "l2c_int.h"
++#include "openssl/mem.h"
+ #include "osi/include/log.h"
+ #include "osi/include/osi.h"
+ #include "stack/crypto_toolbox/crypto_toolbox.h"
+ #include "btif/include/btif_storage.h"
+ #include "stack_config.h"
+ #include "stack/gatt/connection_manager.h"
+ 
+@@ -2179,15 +2180,15 @@ bool BTM_BleVerifySignature(const RawAddress& bd_addr, uint8_t* p_orig,
+     BTM_TRACE_ERROR("No signature to verify");
+   } else {
+     BTM_TRACE_DEBUG("%s rcv_cnt=%d >= expected_cnt=%d", __func__, counter,
+                     p_rec->ble.keys.counter);
+ 
+     crypto_toolbox::aes_cmac(p_rec->ble.keys.pcsrk, p_orig, len,
+                              BTM_CMAC_TLEN_SIZE, p_mac);
+-    if (memcmp(p_mac, p_comp, BTM_CMAC_TLEN_SIZE) == 0) {
++    if (CRYPTO_memcmp(p_mac, p_comp, BTM_CMAC_TLEN_SIZE) == 0) {
+       btm_ble_increment_sign_ctr(bd_addr, false);
+       verified = true;
+     }
+   }
+   return verified;
+ }
+ 
+diff --git a/stack/btm/btm_ble_gap.cc b/stack/btm/btm_ble_gap.cc
+index 1bd5b73c7..84af4eefa 100644
+--- a/stack/btm/btm_ble_gap.cc
++++ b/stack/btm/btm_ble_gap.cc
+@@ -1873,27 +1873,35 @@ void btm_ble_process_adv_addr(RawAddress& bda, uint8_t* addr_type) {
+ void btm_ble_process_ext_adv_pkt(uint8_t data_len, uint8_t* data) {
+   RawAddress bda, direct_address;
+   uint8_t* p = data;
+   uint8_t addr_type, num_reports, pkt_data_len, primary_phy, secondary_phy,
+       advertising_sid;
+   int8_t rssi, tx_power;
+   uint16_t event_type, periodic_adv_int, direct_address_type;
++  size_t bytes_to_process;
+ 
+   /* Only process the results if the inquiry is still active */
+   if (!BTM_BLE_IS_SCAN_ACTIVE(btm_cb.ble_ctr_cb.scan_activity)) return;
+ 
++  bytes_to_process = 1;
++
++  if (data_len < bytes_to_process) {
++    LOG(ERROR) << "Malformed LE extended advertising packet: not enough room "
++                  "for num reports";
++    return;
++  }
++
+   /* Extract the number of reports in this event. */
+   STREAM_TO_UINT8(num_reports, p);
+ 
+   while (num_reports--) {
+-    if (p > data + data_len) {
+-      // TODO(jpawlowski): we should crash the stack here
+-      BTM_TRACE_ERROR(
+-          "Malformed LE Extended Advertising Report Event from controller - "
+-          "can't loop the data");
++    bytes_to_process += 24;
++    if (data_len < bytes_to_process) {
++      LOG(ERROR) << "Malformed LE extended advertising packet: not enough room "
++                    "for metadata";
+       return;
+     }
+ 
+     /* Extract inquiry results */
+     STREAM_TO_UINT16(event_type, p);
+     STREAM_TO_UINT8(addr_type, p);
+     STREAM_TO_BDADDR(bda, p);
+@@ -1905,16 +1913,19 @@ void btm_ble_process_ext_adv_pkt(uint8_t data_len, uint8_t* data) {
+     STREAM_TO_UINT16(periodic_adv_int, p);
+     STREAM_TO_UINT8(direct_address_type, p);
+     STREAM_TO_BDADDR(direct_address, p);
+     STREAM_TO_UINT8(pkt_data_len, p);
+ 
+     uint8_t* pkt_data = p;
+     p += pkt_data_len; /* Advance to the the next packet*/
+-    if (p > data + data_len) {
+-      LOG(ERROR) << "Invalid pkt_data_len: " << +pkt_data_len;
++
++    bytes_to_process += pkt_data_len;
++    if (data_len < bytes_to_process) {
++      LOG(ERROR) << "Malformed LE extended advertising packet: not enough room "
++                    "for packet data";
+       return;
+     }
+ 
+     if (rssi >= 21 && rssi <= 126) {
+       BTM_TRACE_ERROR("%s: bad rssi value in advertising report: %d", __func__,
+                       rssi);
+     }
+@@ -1938,38 +1949,53 @@ void btm_ble_process_ext_adv_pkt(uint8_t data_len, uint8_t* data) {
+  * discarded.
+  */
+ void btm_ble_process_adv_pkt(uint8_t data_len, uint8_t* data) {
+   RawAddress bda;
+   uint8_t* p = data;
+   uint8_t legacy_evt_type, addr_type, num_reports, pkt_data_len;
+   int8_t rssi;
++  size_t bytes_to_process;
+ 
+   /* Only process the results if the inquiry is still active */
+   if (!BTM_BLE_IS_SCAN_ACTIVE(btm_cb.ble_ctr_cb.scan_activity)) return;
+ 
++  bytes_to_process = 1;
++
++  if (data_len < bytes_to_process) {
++    LOG(ERROR)
++        << "Malformed LE advertising packet: not enough room for num reports";
++    return;
++  }
++
+   /* Extract the number of reports in this event. */
+   STREAM_TO_UINT8(num_reports, p);
+ 
+   while (num_reports--) {
+-    if (p > data + data_len) {
+-      // TODO(jpawlowski): we should crash the stack here
+-      BTM_TRACE_ERROR("Malformed LE Advertising Report Event from controller");
++    bytes_to_process += 9;
++
++    if (data_len < bytes_to_process) {
++      LOG(ERROR)
++          << "Malformed LE advertising packet: not enough room for metadata";
+       return;
+     }
+ 
+     /* Extract inquiry results */
+     STREAM_TO_UINT8(legacy_evt_type, p);
+     STREAM_TO_UINT8(addr_type, p);
+     STREAM_TO_BDADDR(bda, p);
+     STREAM_TO_UINT8(pkt_data_len, p);
+ 
+     uint8_t* pkt_data = p;
+     p += pkt_data_len; /* Advance to the the rssi byte */
+-    if (p > data + data_len - sizeof(rssi)) {
+-      LOG(ERROR) << "Invalid pkt_data_len: " << +pkt_data_len;
++
++    // include rssi for this check
++    bytes_to_process += pkt_data_len + 1;
++    if (data_len < bytes_to_process) {
++      LOG(ERROR) << "Malformed LE advertising packet: not enough room for "
++                    "packet data and/or RSSI";
+       return;
+     }
+ 
+     STREAM_TO_INT8(rssi, p);
+ 
+     if (rssi >= 21 && rssi <= 126) {
+       BTM_TRACE_ERROR("%s: bad rssi value in advertising report: ", __func__,
+diff --git a/stack/btm/btm_int.h b/stack/btm/btm_int.h
+index 6262d89b9..7cc9541d4 100644
+--- a/stack/btm/btm_int.h
++++ b/stack/btm/btm_int.h
+@@ -247,14 +247,16 @@ extern void btm_read_inq_tx_power_complete(uint8_t* p);
+ 
+ extern void btm_sec_init(uint8_t sec_mode);
+ extern void btm_sec_dev_reset(void);
+ extern void btm_sec_abort_access_req(const RawAddress& bd_addr);
+ extern void btm_sec_auth_complete(uint16_t handle, uint8_t status);
+ extern void btm_sec_encrypt_change(uint16_t handle, uint8_t status,
+                                    uint8_t encr_enable);
++bool btm_sec_is_session_key_size_downgrade(uint16_t hci_handle,
++                                           uint8_t key_size);
+ extern void btm_sec_connected(const RawAddress& bda, uint16_t handle,
+                               uint8_t status, uint8_t enc_mode);
+ extern tBTM_STATUS btm_sec_disconnect(uint16_t handle, uint8_t reason);
+ extern void btm_sec_disconnected(uint16_t handle, uint8_t reason);
+ extern void btm_sec_rmt_name_request_complete(const RawAddress* bd_addr,
+                                               uint8_t* bd_name, uint8_t status);
+ extern void btm_sec_rmt_host_support_feat_evt(uint8_t* p);
+@@ -265,18 +267,19 @@ extern void btm_keypress_notif_evt(uint8_t* p);
+ extern void btm_simple_pair_complete(uint8_t* p);
+ extern void btm_sec_link_key_notification(const RawAddress& p_bda,
+                                           const Octet16& link_key,
+                                           uint8_t key_type);
+ extern void btm_sec_link_key_request(const RawAddress& p_bda);
+ extern void btm_sec_pin_code_request(const RawAddress& p_bda);
+ extern void btm_sec_update_clock_offset(uint16_t handle, uint16_t clock_offset);
++void btm_sec_update_session_key_size(uint16_t hci_handle, uint8_t key_size);
+ extern void btm_sec_dev_rec_cback_event(tBTM_SEC_DEV_REC* p_dev_rec,
+                                         uint8_t res, bool is_le_trasnport);
+-extern void btm_sec_set_peer_sec_caps(tACL_CONN* p_acl_cb,
+-                                      tBTM_SEC_DEV_REC* p_dev_rec);
++extern void btm_sec_set_peer_sec_caps(uint16_t hci_handle, bool ssp_supported,
++                                      bool sc_supported);
+ 
+ extern void btm_sec_clear_ble_keys(tBTM_SEC_DEV_REC* p_dev_rec);
+ extern bool btm_sec_is_a_bonded_dev(const RawAddress& bda);
+ extern void btm_consolidate_dev(tBTM_SEC_DEV_REC* p_target_rec);
+ extern bool btm_sec_is_le_capable_dev(const RawAddress& bda);
+ extern bool btm_ble_init_pseudo_addr(tBTM_SEC_DEV_REC* p_dev_rec,
+                                      const RawAddress& new_pseudo_addr);
+diff --git a/stack/btm/btm_int_types.h b/stack/btm/btm_int_types.h
+index f22456244..433deaa00 100644
+--- a/stack/btm/btm_int_types.h
++++ b/stack/btm/btm_int_types.h
+@@ -506,14 +506,18 @@ typedef struct {
+   RawAddress bd_addr;      /* BD_ADDR of the device              */
+   RawAddress peer_eb_addr;    /* Peer Earbud ADDR of dev if exists  */
+ 
+   DEV_CLASS dev_class;     /* DEV_CLASS of the device            */
+   LinkKey link_key;        /* Device link key                    */
+   uint8_t pin_code_length; /* Length of the pin_code used for paring */
+ 
++ public:
++  RawAddress RemoteAddress() const { return bd_addr; }
++  uint16_t get_br_edr_hci_handle() const { return hci_handle; }
++
+ #define BTM_SEC_AUTHORIZED BTM_SEC_FLAG_AUTHORIZED       /* 0x01 */
+ #define BTM_SEC_AUTHENTICATED BTM_SEC_FLAG_AUTHENTICATED /* 0x02 */
+ #define BTM_SEC_ENCRYPTED BTM_SEC_FLAG_ENCRYPTED         /* 0x04 */
+ #define BTM_SEC_NAME_KNOWN 0x08
+ #define BTM_SEC_LINK_KEY_KNOWN BTM_SEC_FLAG_LKEY_KNOWN   /* 0x10 */
+ #define BTM_SEC_LINK_KEY_AUTHED BTM_SEC_FLAG_LKEY_AUTHED /* 0x20 */
+ #define BTM_SEC_ROLE_SWITCHED 0x40
+@@ -548,14 +552,45 @@ typedef struct {
+ #define BTM_SEC_STATE_DELAY_FOR_ENC \
+   7 /* delay to check for encryption to work around */
+     /* controller problems */
+ #define BTM_SEC_STATE_DISCONNECTING_BLE 8  /* disconnecting BLE */
+ #define BTM_SEC_STATE_DISCONNECTING_BOTH 9 /* disconnecting BR/EDR and BLE */
+ 
+   uint8_t sec_state;  /* Operating state                    */
++  bool is_security_state_idle() const {
++    return sec_state == BTM_SEC_STATE_IDLE;
++  }
++  bool is_security_state_authenticating() const {
++    return sec_state == BTM_SEC_STATE_AUTHENTICATING;
++  }
++  bool is_security_state_encrypting() const {
++    return sec_state == BTM_SEC_STATE_ENCRYPTING;
++  }
++  bool is_security_state_getting_name() const {
++    return sec_state == BTM_SEC_STATE_GETTING_NAME;
++  }
++  bool is_security_state_authorizing() const {
++    return sec_state == BTM_SEC_STATE_AUTHORIZING;
++  }
++  bool is_security_state_switching_role() const {
++    return sec_state == BTM_SEC_STATE_SWITCHING_ROLE;
++  }
++  bool is_security_state_disconnecting() const {
++    return sec_state == BTM_SEC_STATE_DISCONNECTING;
++  }
++  bool is_security_state_wait_for_encryption() const {
++    return sec_state == BTM_SEC_STATE_DELAY_FOR_ENC;
++  }
++  bool is_security_state_ble_disconnecting() const {
++    return sec_state == BTM_SEC_STATE_DISCONNECTING_BLE;
++  }
++  bool is_security_state_br_edr_and_ble() const {
++    return sec_state == BTM_SEC_STATE_DISCONNECTING_BOTH;
++  }
++
+   bool is_originator; /* true if device is originating connection */
+ #if (L2CAP_UCD_INCLUDED == TRUE)
+   bool is_ucd; /* true if device is sending or receiving UCD */
+                /* if incoming security failed, received UCD will be discarded */
+ #endif
+   bool role_master;           /* true if current mode is master     */
+   uint16_t security_required; /* Security required for connection   */
+@@ -579,32 +614,64 @@ typedef struct {
+   0x20 /* set this bit to indicate peer initiated dedicated bonding */
+ #define BTM_SM4_CONN_PEND                                               \
+   0x40 /* set this bit to indicate accepting acl conn; to be cleared on \
+           btm_acl_created */
+   uint8_t sm4;                /* BTM_SM4_TRUE, if the peer supports SM4 */
+   tBTM_IO_CAP rmt_io_caps;    /* IO capability of the peer device */
+   tBTM_AUTH_REQ rmt_auth_req; /* the auth_req flag as in the IO caps rsp evt */
++
+   bool remote_supports_secure_connections;
++  friend void btm_sec_set_peer_sec_caps(uint16_t hci_handle, bool ssp_supported,
++                                        bool sc_supported,
++                                        bool hci_role_switch_supported,
++                                        bool br_edr_supported,
++                                        bool le_supported);
++
++ public:
++  bool SupportsSecureConnections() const {
++    return remote_supports_secure_connections;
++  }
++
+   bool remote_features_needed; /* set to true if the local device is in */
+   /* "Secure Connections Only" mode and it receives */
+   /* HCI_IO_CAPABILITY_REQUEST_EVT from the peer before */
+   /* it knows peer's support for Secure Connections */
+ 
+   uint16_t ble_hci_handle; /* use in DUMO connection */
++  uint16_t get_ble_hci_handle() const { return ble_hci_handle; }
++
+   uint8_t enc_key_size;    /* current link encryption key size */
++  uint8_t get_encryption_key_size() const { return enc_key_size; }
++
+   tBT_DEVICE_TYPE device_type;
++  bool is_device_type_br_edr() const {
++    return device_type == BT_DEVICE_TYPE_BREDR;
++  }
++  bool is_device_type_ble() const { return device_type == BT_DEVICE_TYPE_BLE; }
++  bool is_device_type_dual_mode() const {
++    return device_type == BT_DEVICE_TYPE_DUMO;
++  }
++
+   bool new_encryption_key_is_p256; /* Set to true when the newly generated LK
+                                    ** is generated from P-256.
+                                    ** Link encrypted with such LK can be used
+                                    ** for SM over BR/EDR.
+                                    */
+   bool no_smp_on_br;        /* if set to true then SMP on BR/EDR doesn't */
+                             /* work, i.e. link keys crosspairing */
+                             /* SC BR/EDR->SC LE doesn't happen */
+   tBTM_BOND_TYPE bond_type; /* peering bond type */
++  bool is_bond_type_unknown() const { return bond_type == BOND_TYPE_UNKNOWN; }
++  bool is_bond_type_persistent() const {
++    return bond_type == BOND_TYPE_PERSISTENT;
++  }
++  bool is_bond_type_temporary() const {
++    return bond_type == BOND_TYPE_TEMPORARY;
++  }
++
+ 
+   tBTM_SEC_BLE ble;
+   tBTM_LE_CONN_PRAMS conn_params;
+ 
+ #define BTM_SEC_SMP_NO_PAIR_PENDING 0x00
+ #define BTM_SEC_SMP_PAIR_PENDING 0x01
+ #define BTM_SEC_LINK_KEY_TYPE_UNAUTH 0x02
+@@ -612,14 +679,23 @@ typedef struct {
+   uint8_t sec_smp_pair_pending;
+ 
+ #if (BTM_DISC_DURING_RS == TRUE)
+ #define BTM_SEC_RS_NOT_PENDING 0 /* Role Switch not in progress */
+ #define BTM_SEC_RS_PENDING 1     /* Role Switch in progress */
+ #define BTM_SEC_DISC_PENDING 2   /* Disconnect is pending */
+   uint8_t rs_disc_pending;
++  bool is_role_switch_idle() const {
++    return rs_disc_pending == BTM_SEC_RS_NOT_PENDING;
++  }
++  bool is_role_switch_pending() const {
++    return rs_disc_pending == BTM_SEC_RS_PENDING;
++  }
++  bool is_role_switch_disconnecting() const {
++    return rs_disc_pending == BTM_SEC_DISC_PENDING;
++  }
+   bool  process_existing_rnr; /* process the existing RNR */
+ #endif
+ #define BTM_SEC_NO_LAST_SERVICE_ID 0
+   uint8_t last_author_service_id; /* ID of last serviced authorized: Reset after
+                                      each l2cap connection */
+ #if (defined(BTM_SAFE_REATTEMPT_ROLE_SWITCH) && BTM_SAFE_REATTEMPT_ROLE_SWITCH == TRUE)
+ #define BTM_MAX_BL_SW_ROLE_ATTEMPTS 1
+diff --git a/stack/btm/btm_sec.cc b/stack/btm/btm_sec.cc
+index 2e4c0c196..973e248c4 100644
+--- a/stack/btm/btm_sec.cc
++++ b/stack/btm/btm_sec.cc
+@@ -98,15 +98,15 @@ tBTM_SEC_DEV_REC* btm_sec_find_dev_by_sec_state(uint8_t state);
+ 
+ static bool btm_sec_set_security_level(CONNECTION_TYPE conn_type,
+                                        const char* p_name, uint8_t service_id,
+                                        uint16_t sec_level, uint16_t psm,
+                                        uint32_t mx_proto_id,
+                                        uint32_t mx_chan_id);
+ 
+-static bool btm_dev_authenticated(tBTM_SEC_DEV_REC* p_dev_rec);
++static bool btm_dev_authenticated(const tBTM_SEC_DEV_REC* p_dev_rec);
+ static bool btm_dev_encrypted(tBTM_SEC_DEV_REC* p_dev_rec);
+ static bool btm_dev_authorized(tBTM_SEC_DEV_REC* p_dev_rec);
+ static bool btm_serv_trusted(tBTM_SEC_DEV_REC* p_dev_rec,
+                              tBTM_SEC_SERV_REC* p_serv_rec);
+ static bool btm_sec_is_serv_level0(uint16_t psm);
+ static uint16_t btm_sec_set_serv_level4_flags(uint16_t cur_security,
+                                               bool is_originator);
+@@ -140,15 +140,15 @@ static const bool btm_sec_io_map[BTM_IO_CAP_MAX][BTM_IO_CAP_MAX] = {
+  * Function         btm_dev_authenticated
+  *
+  * Description      check device is authenticated
+  *
+  * Returns          bool    true or false
+  *
+  ******************************************************************************/
+-static bool btm_dev_authenticated(tBTM_SEC_DEV_REC* p_dev_rec) {
++static bool btm_dev_authenticated(const tBTM_SEC_DEV_REC* p_dev_rec) {
+   if (p_dev_rec->sec_flags & BTM_SEC_AUTHENTICATED) {
+     return (true);
+   }
+   return (false);
+ }
+ 
+ /*******************************************************************************
+@@ -216,14 +216,135 @@ static bool btm_serv_trusted(tBTM_SEC_DEV_REC* p_dev_rec,
+     return (true);
+   }
+   else
+     BTM_TRACE_ERROR("BTM_Sec: Service Id: %d not found", p_serv_rec->service_id);
+   return (false);
+ }
+ 
++/*******************************************************************************
++ *
++ * Function         btm_sec_is_device_sc_downgrade
++ *
++ * Description      Check for a stored device record matching the candidate
++ *                  device, and return true if the stored device has reported
++ *                  that it supports Secure Connections mode and the candidate
++ *                  device reports that it does not.  Otherwise, return false.
++ *
++ * Returns          bool
++ *
++ ******************************************************************************/
++static bool btm_sec_is_device_sc_downgrade(uint16_t hci_handle,
++                                           bool secure_connections_supported) {
++  if (secure_connections_supported) return false;
++
++  tBTM_SEC_DEV_REC* p_dev_rec = btm_find_dev_by_handle(hci_handle);
++  if (p_dev_rec == nullptr) return false;
++
++  uint8_t property_val = 0;
++  bt_property_t property = {
++      .type = BT_PROPERTY_REMOTE_SECURE_CONNECTIONS_SUPPORTED,
++      .len = sizeof(uint8_t),
++      .val = &property_val};
++
++  bt_status_t cached =
++      btif_storage_get_remote_device_property(&p_dev_rec->bd_addr, &property);
++
++  if (cached == BT_STATUS_FAIL) return false;
++
++  return (bool)property_val;
++}
++
++/*******************************************************************************
++ *
++ * Function         btm_sec_store_device_sc_support
++ *
++ * Description      Save Secure Connections support for this device to file
++ *
++ ******************************************************************************/
++
++static void btm_sec_store_device_sc_support(uint16_t hci_handle,
++                                            bool secure_connections_supported) {
++  tBTM_SEC_DEV_REC* p_dev_rec = btm_find_dev_by_handle(hci_handle);
++  if (p_dev_rec == nullptr) return;
++
++  uint8_t property_val = (uint8_t)secure_connections_supported;
++  bt_property_t property = {
++      .type = BT_PROPERTY_REMOTE_SECURE_CONNECTIONS_SUPPORTED,
++      .len = sizeof(uint8_t),
++      .val = &property_val};
++
++  btif_storage_set_remote_device_property(&p_dev_rec->bd_addr, &property);
++}
++
++/*******************************************************************************
++ *
++ * Function         btm_sec_is_session_key_size_downgrade
++ *
++ * Description      Check if there is a stored device record matching this
++ *                  handle, and return true if the stored record has a lower
++ *                  session key size than the candidate device.
++ *
++ * Returns          bool
++ *
++ ******************************************************************************/
++bool btm_sec_is_session_key_size_downgrade(uint16_t hci_handle,
++                                           uint8_t key_size) {
++  tBTM_SEC_DEV_REC* p_dev_rec = btm_find_dev_by_handle(hci_handle);
++  if (p_dev_rec == nullptr) return false;
++
++  uint8_t property_val = 0;
++  bt_property_t property = {.type = BT_PROPERTY_REMOTE_MAX_SESSION_KEY_SIZE,
++                            .len = sizeof(uint8_t),
++                            .val = &property_val};
++
++  bt_status_t cached =
++      btif_storage_get_remote_device_property(&p_dev_rec->bd_addr, &property);
++
++  if (cached == BT_STATUS_FAIL) return false;
++
++  return property_val > key_size;
++}
++
++/*******************************************************************************
++ *
++ * Function         btm_sec_update_session_key_size
++ *
++ * Description      Store the max session key size to disk, if possible.
++ *
++ ******************************************************************************/
++void btm_sec_update_session_key_size(uint16_t hci_handle, uint8_t key_size) {
++  tBTM_SEC_DEV_REC* p_dev_rec = btm_find_dev_by_handle(hci_handle);
++  if (p_dev_rec == nullptr) return;
++
++  uint8_t property_val = key_size;
++  bt_property_t property = {.type = BT_PROPERTY_REMOTE_MAX_SESSION_KEY_SIZE,
++                            .len = sizeof(uint8_t),
++                            .val = &property_val};
++
++  btif_storage_set_remote_device_property(&p_dev_rec->bd_addr, &property);
++}
++
++/*******************************************************************************
++ *
++ * Function         access_secure_service_from_temp_bond
++ *
++ * Description      a utility function to test whether an access to
++ *                  secure service from temp bonding is happening
++ *
++ * Returns          true if the aforementioned condition holds,
++ *                  false otherwise
++ *
++ ******************************************************************************/
++static bool access_secure_service_from_temp_bond(const tBTM_SEC_DEV_REC* p_dev_rec,
++                                                 bool locally_initiated,
++                                                 uint16_t security_req) {
++  return !locally_initiated && (security_req & BTM_SEC_IN_AUTHENTICATE) &&
++         p_dev_rec->bond_type == BOND_TYPE_TEMPORARY;
++}
++
+ /*******************************************************************************
+  *
+  * Function         BTM_SecRegister
+  *
+  * Description      Application manager calls this function to register for
+  *                  security services.  There can be one and only one
+  *                  application saving link keys.  BTM allows only first
+@@ -604,15 +725,14 @@ static bool btm_sec_set_security_level(CONNECTION_TYPE conn_type,
+     /* Parameter validation.  Originator should not set requirements for
+      * incoming connections */
+     sec_level &=
+         ~(BTM_SEC_IN_AUTHORIZE | BTM_SEC_IN_ENCRYPT | BTM_SEC_IN_AUTHENTICATE |
+           BTM_SEC_IN_MITM | BTM_SEC_IN_MIN_16_DIGIT_PIN);
+ 
+     if (btm_cb.security_mode == BTM_SEC_MODE_SP ||
+-        btm_cb.security_mode == BTM_SEC_MODE_SP_DEBUG ||
+         btm_cb.security_mode == BTM_SEC_MODE_SC) {
+       if (sec_level & BTM_SEC_OUT_AUTHENTICATE) sec_level |= BTM_SEC_OUT_MITM;
+     }
+ 
+     /* Make sure the authenticate bit is set, when encrypt bit is set */
+     if (sec_level & BTM_SEC_OUT_ENCRYPT) sec_level |= BTM_SEC_OUT_AUTHENTICATE;
+ 
+@@ -651,15 +771,14 @@ static bool btm_sec_set_security_level(CONNECTION_TYPE conn_type,
+ 
+     /* Parameter validation.  Acceptor should not set requirements for outgoing
+      * connections */
+     sec_level &= ~(BTM_SEC_OUT_AUTHORIZE | BTM_SEC_OUT_ENCRYPT |
+                    BTM_SEC_OUT_AUTHENTICATE | BTM_SEC_OUT_MITM);
+ 
+     if (btm_cb.security_mode == BTM_SEC_MODE_SP ||
+-        btm_cb.security_mode == BTM_SEC_MODE_SP_DEBUG ||
+         btm_cb.security_mode == BTM_SEC_MODE_SC) {
+       if (sec_level & BTM_SEC_IN_AUTHENTICATE) sec_level |= BTM_SEC_IN_MITM;
+     }
+ 
+     /* Make sure the authenticate bit is set, when encrypt bit is set */
+     if (sec_level & BTM_SEC_IN_ENCRYPT) sec_level |= BTM_SEC_IN_AUTHENTICATE;
+   }
+@@ -1081,15 +1200,14 @@ tBTM_STATUS btm_sec_bond_by_transport(const RawAddress& bd_addr,
+ 
+   BTM_TRACE_DEBUG("sec mode: %d sm4:x%x", btm_cb.security_mode, p_dev_rec->sm4);
+   if (!controller_get_interface()->supports_simple_pairing() ||
+       (p_dev_rec->sm4 == BTM_SM4_KNOWN)) {
+     if (btm_sec_check_prefetch_pin(p_dev_rec)) return (BTM_CMD_STARTED);
+   }
+   if ((btm_cb.security_mode == BTM_SEC_MODE_SP ||
+-       btm_cb.security_mode == BTM_SEC_MODE_SP_DEBUG ||
+        btm_cb.security_mode == BTM_SEC_MODE_SC) &&
+       BTM_SEC_IS_SM4_UNKNOWN(p_dev_rec->sm4)) {
+     /* local is 2.1 and peer is unknown */
+     if ((p_dev_rec->sm4 & BTM_SM4_CONN_PEND) == 0) {
+       /* we are not accepting connection request from peer
+        * -> RNR (to learn if peer is 2.1)
+        * RNR when no ACL causes HCI_RMT_HOST_SUP_FEAT_NOTIFY_EVT */
+@@ -1835,15 +1953,15 @@ bool BTM_PeerSupportsSecureConnections(const RawAddress& bd_addr) {
+ 
+   p_dev_rec = btm_find_dev(bd_addr);
+   if (p_dev_rec == NULL) {
+     LOG(WARNING) << __func__ << ": unknown BDA: " << bd_addr;
+     return false;
+   }
+ 
+-  return (p_dev_rec->remote_supports_secure_connections);
++  return (p_dev_rec->SupportsSecureConnections());
+ }
+ 
+ /*******************************************************************************
+  *
+  * Function         BTM_ReadOobData
+  *
+  * Description      This function is called to parse the OOB data payload
+@@ -2180,20 +2298,19 @@ tBTM_STATUS btm_sec_l2cap_access_req(const RawAddress& bd_addr, uint16_t psm,
+       __func__, security_required, is_originator, psm);
+ 
+   if ((!is_originator) && (security_required & BTM_SEC_MODE4_LEVEL4)) {
+     bool local_supports_sc =
+         controller_get_interface()->supports_secure_connections();
+     /* acceptor receives L2CAP Channel Connect Request for Secure Connections
+      * Only service */
+-    if (!(local_supports_sc) ||
+-        !(p_dev_rec->remote_supports_secure_connections)) {
++    if (!(local_supports_sc) || !(p_dev_rec->SupportsSecureConnections())) {
+       BTM_TRACE_DEBUG("%s: SC only service, local_support_for_sc %d",
+-                      "rmt_support_for_sc : %d -> fail pairing", __func__,
++                      "rmt_support_for_sc : %s -> fail pairing", __func__,
+                       local_supports_sc,
+-                      p_dev_rec->remote_supports_secure_connections);
++                      logbool(p_dev_rec->SupportsSecureConnections()).c_str());
+       if (p_callback)
+         (*p_callback)(&bd_addr, transport, (void*)p_ref_data,
+                       BTM_MODE4_LEVEL4_NOT_SUPPORTED);
+ 
+       return (BTM_MODE4_LEVEL4_NOT_SUPPORTED);
+     }
+   }
+@@ -2205,18 +2322,15 @@ tBTM_STATUS btm_sec_l2cap_access_req(const RawAddress& bd_addr, uint16_t psm,
+       (btm_cb.pairing_state != BTM_PAIR_STATE_IDLE)) {
+     BTM_TRACE_EVENT("%s() - busy - PSM:%d delayed  state: %s mode:%d, sm4:0x%x",
+                     __func__, psm, btm_pair_state_descr(btm_cb.pairing_state),
+                     btm_cb.security_mode, p_dev_rec->sm4);
+     BTM_TRACE_EVENT("security_flags:x%x, sec_flags:x%x", security_required,
+                     p_dev_rec->sec_flags);
+     rc = BTM_CMD_STARTED;
+-    if ((btm_cb.security_mode == BTM_SEC_MODE_UNDEFINED ||
+-         btm_cb.security_mode == BTM_SEC_MODE_NONE ||
+-         btm_cb.security_mode == BTM_SEC_MODE_SERVICE ||
+-         btm_cb.security_mode == BTM_SEC_MODE_LINK) ||
++    if ((btm_cb.security_mode == BTM_SEC_MODE_SERVICE) ||
+         (BTM_SM4_KNOWN == p_dev_rec->sm4) ||
+         (BTM_SEC_IS_SM4(p_dev_rec->sm4) &&
+          (btm_sec_is_upgrade_possible(p_dev_rec, is_originator) == false))) {
+       /* legacy mode - local is legacy or local is lisbon/peer is legacy
+        * or SM4 with no possibility of link key upgrade */
+       if (is_originator) {
+         if (((security_required & BTM_SEC_OUT_FLAGS) == 0) ||
+@@ -2267,42 +2381,45 @@ tBTM_STATUS btm_sec_l2cap_access_req(const RawAddress& bd_addr, uint16_t psm,
+ 
+       if ((rc == BTM_SUCCESS) && (security_required & BTM_SEC_MODE4_LEVEL4) &&
+           (p_dev_rec->link_key_type != BTM_LKEY_TYPE_AUTH_COMB_P_256)) {
+         rc = BTM_CMD_STARTED;
+       }
+ 
+       if (rc == BTM_SUCCESS) {
++        if (access_secure_service_from_temp_bond(p_dev_rec, is_originator, security_required)) {
++          LOG_ERROR(LOG_TAG, "Trying to access a secure service from a temp bonding, rejecting");
++          rc = BTM_FAILED_ON_SECURITY;
++        }
+         if (p_callback)
+-          (*p_callback)(&bd_addr, transport, (void*)p_ref_data, BTM_SUCCESS);
+-        return (BTM_SUCCESS);
++          (*p_callback)(&bd_addr, transport, (void*)p_ref_data, rc);
++        return (rc);
+       }
+     }
+ 
+     btm_cb.sec_req_pending = true;
+     return (BTM_CMD_STARTED);
+   }
+ 
+   /* Save pointer to service record */
+   p_dev_rec->p_cur_service = p_serv_rec;
+ 
+   /* Modify security_required in btm_sec_l2cap_access_req for Lisbon */
+   if (btm_cb.security_mode == BTM_SEC_MODE_SP ||
+-      btm_cb.security_mode == BTM_SEC_MODE_SP_DEBUG ||
+       btm_cb.security_mode == BTM_SEC_MODE_SC) {
+     if (BTM_SEC_IS_SM4(p_dev_rec->sm4)) {
+       if (is_originator) {
+-        /* SM4 to SM4 -> always authenticate & encrypt */
+-        security_required |= (BTM_SEC_OUT_AUTHENTICATE | BTM_SEC_OUT_ENCRYPT);
++        /* SM4 to SM4 -> always encrypt */
++        security_required |= BTM_SEC_OUT_ENCRYPT;
+       } else /* acceptor */
+       {
+         /* SM4 to SM4: the acceptor needs to make sure the authentication is
+          * already done */
+         chk_acp_auth_done = true;
+-        /* SM4 to SM4 -> always authenticate & encrypt */
+-        security_required |= (BTM_SEC_IN_AUTHENTICATE | BTM_SEC_IN_ENCRYPT);
++        /* SM4 to SM4 -> always encrypt */
++        security_required |= BTM_SEC_IN_ENCRYPT;
+       }
+     } else if (!(BTM_SM4_KNOWN & p_dev_rec->sm4)) {
+       /* the remote features are not known yet */
+       BTM_TRACE_DEBUG("%s: (%s) remote features unknown!!sec_flags:0x%02x",
+                       __func__, (is_originator) ? "initiator" : "acceptor",
+                       p_dev_rec->sec_flags);
+ 
+@@ -2356,18 +2473,15 @@ tBTM_STATUS btm_sec_l2cap_access_req(const RawAddress& bd_addr, uint16_t psm,
+ 
+   /* if the originator is using dynamic PSM in legacy mode, do not start any
+    * security process now
+    * The layer above L2CAP needs to carry out the security requirement after
+    * L2CAP connect
+    * response is received */
+   if (is_originator &&
+-      ((btm_cb.security_mode == BTM_SEC_MODE_UNDEFINED ||
+-        btm_cb.security_mode == BTM_SEC_MODE_NONE ||
+-        btm_cb.security_mode == BTM_SEC_MODE_SERVICE ||
+-        btm_cb.security_mode == BTM_SEC_MODE_LINK) ||
++      ((btm_cb.security_mode == BTM_SEC_MODE_SERVICE) ||
+        !BTM_SEC_IS_SM4(p_dev_rec->sm4)) &&
+       (psm >= 0x1001)) {
+     BTM_TRACE_EVENT(
+         "dynamic PSM:0x%x in legacy mode - postponed for upper layer", psm);
+     /* restore the old settings */
+     p_dev_rec->security_required = old_security_required;
+     p_dev_rec->is_originator = old_is_originator;
+@@ -2524,18 +2638,15 @@ tBTM_STATUS btm_sec_mx_access_request(const RawAddress& bd_addr, uint16_t psm,
+       (btm_cb.pairing_state != BTM_PAIR_STATE_IDLE)) {
+     BTM_TRACE_EVENT("%s() service PSM:%d Proto:%d SCN:%d delayed  state: %s",
+                     __func__, psm, mx_proto_id, mx_chan_id,
+                     btm_pair_state_descr(btm_cb.pairing_state));
+ 
+     rc = BTM_CMD_STARTED;
+ 
+-    if ((btm_cb.security_mode == BTM_SEC_MODE_UNDEFINED ||
+-         btm_cb.security_mode == BTM_SEC_MODE_NONE ||
+-         btm_cb.security_mode == BTM_SEC_MODE_SERVICE ||
+-         btm_cb.security_mode == BTM_SEC_MODE_LINK) ||
++    if ((btm_cb.security_mode == BTM_SEC_MODE_SERVICE) ||
+         (BTM_SM4_KNOWN == p_dev_rec->sm4) ||
+         (BTM_SEC_IS_SM4(p_dev_rec->sm4) &&
+          (btm_sec_is_upgrade_possible(p_dev_rec, is_originator) == false))) {
+       /* legacy mode - local is legacy or local is lisbon/peer is legacy
+        * or SM4 with no possibility of link key upgrade */
+       if (is_originator) {
+         if (((security_required & BTM_SEC_OUT_FLAGS) == 0) ||
+@@ -2606,14 +2717,19 @@ tBTM_STATUS btm_sec_mx_access_request(const RawAddress& bd_addr, uint16_t psm,
+     }
+     if (rc == BTM_CMD_STARTED) {
+       BTM_TRACE_EVENT("%s: call btm_sec_queue_mx_request", __func__);
+       btm_sec_queue_mx_request(bd_addr, psm, is_originator, mx_proto_id,
+                                mx_chan_id, p_callback, p_ref_data);
+     } else /* rc == BTM_SUCCESS */
+     {
++      if (access_secure_service_from_temp_bond(p_dev_rec,
++          is_originator, security_required)) {
++        LOG_ERROR(LOG_TAG, "Trying to access a secure rfcomm service from a temp bonding, reject");
++        rc = BTM_FAILED_ON_SECURITY;
++      }
+       /* access granted */
+       if (p_callback) {
+         (*p_callback)(&bd_addr, transport, p_ref_data, (uint8_t)rc);
+       }
+     }
+ 
+     BTM_TRACE_EVENT("%s: return with rc = 0x%02x in delayed state %s", __func__,
+@@ -2623,34 +2739,31 @@ tBTM_STATUS btm_sec_mx_access_request(const RawAddress& bd_addr, uint16_t psm,
+ 
+   if ((!is_originator) && ((security_required & BTM_SEC_MODE4_LEVEL4) ||
+                            (btm_cb.security_mode == BTM_SEC_MODE_SC))) {
+     bool local_supports_sc =
+         controller_get_interface()->supports_secure_connections();
+     /* acceptor receives service connection establishment Request for */
+     /* Secure Connections Only service */
+-    if (!(local_supports_sc) ||
+-        !(p_dev_rec->remote_supports_secure_connections)) {
++    if (!(local_supports_sc) || !(p_dev_rec->SupportsSecureConnections())) {
+       BTM_TRACE_DEBUG("%s: SC only service,local_support_for_sc %d,",
+                       "remote_support_for_sc %d: fail pairing", __func__,
+                       local_supports_sc,
+-                      p_dev_rec->remote_supports_secure_connections);
+-
++                      p_dev_rec->SupportsSecureConnections());
+       if (p_callback)
+         (*p_callback)(&bd_addr, transport, (void*)p_ref_data,
+                       BTM_MODE4_LEVEL4_NOT_SUPPORTED);
+ 
+       return (BTM_MODE4_LEVEL4_NOT_SUPPORTED);
+     }
+   }
+ 
+   p_dev_rec->p_cur_service = p_serv_rec;
+   p_dev_rec->security_required = security_required;
+ 
+   if (btm_cb.security_mode == BTM_SEC_MODE_SP ||
+-      btm_cb.security_mode == BTM_SEC_MODE_SP_DEBUG ||
+       btm_cb.security_mode == BTM_SEC_MODE_SC) {
+     if (BTM_SEC_IS_SM4(p_dev_rec->sm4)) {
+       if ((p_dev_rec->security_required & BTM_SEC_MODE4_LEVEL4) &&
+           (p_dev_rec->link_key_type != BTM_LKEY_TYPE_AUTH_COMB_P_256)) {
+         /* BTM_LKEY_TYPE_AUTH_COMB_P_256 is the only acceptable key in this case
+          */
+         if ((p_dev_rec->sec_flags & BTM_SEC_LINK_KEY_KNOWN) != 0) {
+@@ -3440,20 +3553,19 @@ void btm_io_capabilities_req(const RawAddress& p) {
+     /* pairing is not allowed */
+     BTM_TRACE_DEBUG("%s: Pairing is not allowed -> fail pairing.", __func__);
+     err_code = HCI_ERR_PAIRING_NOT_ALLOWED;
+   } else if (btm_cb.security_mode == BTM_SEC_MODE_SC) {
+     bool local_supports_sc =
+         controller_get_interface()->supports_secure_connections();
+     /* device in Secure Connections Only mode */
+-    if (!(local_supports_sc) ||
+-        !(p_dev_rec->remote_supports_secure_connections)) {
++    if (!(local_supports_sc) || !(p_dev_rec->SupportsSecureConnections())) {
+       BTM_TRACE_DEBUG("%s: SC only service, local_support_for_sc %d,",
+                       " remote_support_for_sc 0x%02x -> fail pairing", __func__,
+                       local_supports_sc,
+-                      p_dev_rec->remote_supports_secure_connections);
++                      p_dev_rec->SupportsSecureConnections());
+ 
+       err_code = HCI_ERR_PAIRING_NOT_ALLOWED;
+     }
+   }
+ 
+   if (err_code != 0) {
+     LOG_INFO(LOG_TAG, "%s: btsnd_hcic_io_cap_req_neg_reply: err_code : %d" , __func__, err_code);
+@@ -4299,39 +4411,14 @@ void btm_sec_encrypt_change(uint16_t handle, uint8_t status,
+           BTM_TRACE_DEBUG("%s NO SM over BR/EDR", __func__);
+         } else {
+           BTM_TRACE_DEBUG("%s start SM over BR/EDR", __func__);
+           p_dev_rec->sec_smp_pair_pending = BTM_SEC_SMP_PAIR_PENDING;
+           SMP_BR_PairWith(p_dev_rec->bd_addr);
+         }
+       }
+-    } else {
+-      // BR/EDR is successfully encrypted. Correct LK type if needed
+-      // (BR/EDR LK derived from LE LTK was used for encryption)
+-      if ((encr_enable == 1) && /* encryption is ON for SSP */
+-          /* LK type is for BR/EDR SC */
+-          (p_dev_rec->link_key_type == BTM_LKEY_TYPE_UNAUTH_COMB_P_256 ||
+-           p_dev_rec->link_key_type == BTM_LKEY_TYPE_AUTH_COMB_P_256)) {
+-          if (p_dev_rec->sec_smp_pair_pending != BTM_SEC_SMP_PAIR_PENDING) {
+-            if (p_dev_rec->link_key_type == BTM_LKEY_TYPE_UNAUTH_COMB_P_256)
+-              p_dev_rec->link_key_type = BTM_LKEY_TYPE_UNAUTH_COMB;
+-            else /* BTM_LKEY_TYPE_AUTH_COMB_P_256 */
+-              p_dev_rec->link_key_type = BTM_LKEY_TYPE_AUTH_COMB;
+-
+-            BTM_TRACE_DEBUG("updated link key type to %d",
+-                        p_dev_rec->link_key_type);
+-            btm_send_link_key_notif(p_dev_rec);
+-          } else {
+-            BTM_TRACE_DEBUG("link key type to %d will update after SMP",
+-                        p_dev_rec->link_key_type);
+-            if (p_dev_rec->link_key_type == BTM_LKEY_TYPE_UNAUTH_COMB_P_256)
+-              p_dev_rec->sec_smp_pair_pending |= BTM_SEC_LINK_KEY_TYPE_UNAUTH;
+-            else
+-              p_dev_rec->sec_smp_pair_pending |= BTM_SEC_LINK_KEY_TYPE_AUTH;
+-          }
+-      }
+     }
+   }
+ 
+   if ((status == HCI_SUCCESS) && (p_dev_rec->sec_state == BTM_SEC_STATE_IDLE) &&
+       (alarm_is_scheduled(btm_cb.sec_collision_timer)) &&
+       (btm_cb.p_collided_dev_rec == p_dev_rec))  {
+       BTM_TRACE_DEBUG("incoming encryption succeded, cancel collision timer");
+@@ -4674,17 +4761,14 @@ void btm_sec_connected(const RawAddress& bda, uint16_t handle, uint8_t status,
+                              BTM_SEC_ENCRYPTED | BTM_SEC_ROLE_SWITCHED)
+                             << bit_shift);
+ 
+   if (enc_mode != HCI_ENCRYPT_MODE_DISABLED)
+     p_dev_rec->sec_flags |=
+         ((BTM_SEC_AUTHENTICATED | BTM_SEC_ENCRYPTED) << bit_shift);
+ 
+-  if (btm_cb.security_mode == BTM_SEC_MODE_LINK)
+-    p_dev_rec->sec_flags |= (BTM_SEC_AUTHENTICATED << bit_shift);
+-
+   if (p_dev_rec->pin_code_length >= 16 ||
+       p_dev_rec->link_key_type == BTM_LKEY_TYPE_AUTH_COMB ||
+       p_dev_rec->link_key_type == BTM_LKEY_TYPE_AUTH_COMB_P_256) {
+     p_dev_rec->sec_flags |= (BTM_SEC_16_DIGIT_PIN_AUTHED << bit_shift);
+   }
+ 
+   p_dev_rec->link_key_changed = false;
+@@ -4943,14 +5027,21 @@ void btm_sec_link_key_notification(const RawAddress& p_bda,
+         (p_dev_rec->link_key_type == BTM_LKEY_TYPE_AUTH_COMB_P_256)) {
+       p_dev_rec->new_encryption_key_is_p256 = true;
+       BTM_TRACE_DEBUG("%s set new_encr_key_256 to %d", __func__,
+                       p_dev_rec->new_encryption_key_is_p256);
+     }
+   }
+ 
++  if (p_dev_rec->is_bond_type_persistent() &&
++      (p_dev_rec->is_device_type_br_edr() ||
++       p_dev_rec->is_device_type_dual_mode())) {
++    btm_sec_store_device_sc_support(p_dev_rec->get_br_edr_hci_handle(),
++                                    p_dev_rec->SupportsSecureConnections());
++  }
++
+   /* If name is not known at this point delay calling callback until the name is
+    */
+   /* resolved. Unless it is a HID Device and we really need to send all link
+    * keys. */
+   if ((!(p_dev_rec->sec_flags & BTM_SEC_NAME_KNOWN) &&
+        ((p_dev_rec->dev_class[1] & BTM_COD_MAJOR_CLASS_MASK) !=
+         BTM_COD_MAJOR_PERIPHERAL)) &&
+@@ -5507,14 +5598,21 @@ extern tBTM_STATUS btm_sec_execute_procedure(tBTM_SEC_DEV_REC* p_dev_rec) {
+          (!p_dev_rec->is_originator &&
+           (p_dev_rec->security_required & BTM_SEC_IN_AUTHENTICATE))) {
+        btm_cb.sec_req_pending = true;
+        return (BTM_CMD_STARTED);
+      }
+   }
+ 
++  if (access_secure_service_from_temp_bond(p_dev_rec,
++                                           p_dev_rec->is_originator,
++                                           p_dev_rec->security_required)) {
++    LOG_ERROR(LOG_TAG, "Trying to access a secure service from a temp bonding, rejecting");
++    return (BTM_FAILED_ON_SECURITY);
++  }
++
+   /* All required  security procedures already established */
+   p_dev_rec->security_required &=
+       ~(BTM_SEC_OUT_AUTHORIZE | BTM_SEC_IN_AUTHORIZE |
+         BTM_SEC_OUT_AUTHENTICATE | BTM_SEC_IN_AUTHENTICATE |
+         BTM_SEC_OUT_ENCRYPT | BTM_SEC_IN_ENCRYPT | BTM_SEC_FORCE_MASTER |
+         BTM_SEC_ATTEMPT_MASTER | BTM_SEC_FORCE_SLAVE | BTM_SEC_ATTEMPT_SLAVE);
+ 
+@@ -5829,18 +5927,15 @@ uint32_t* BTM_ReadTrustedMask(const RawAddress& bd_addr) {
+  *
+  * Parameters:      void
+  *
+  ******************************************************************************/
+ static void btm_restore_mode(void) {
+   if (btm_cb.security_mode_changed) {
+     btm_cb.security_mode_changed = false;
+-    BTM_TRACE_DEBUG("%s() Auth enable -> %d", __func__,
+-                    (btm_cb.security_mode == BTM_SEC_MODE_LINK));
+-    btsnd_hcic_write_auth_enable(
+-        (uint8_t)(btm_cb.security_mode == BTM_SEC_MODE_LINK));
++    btsnd_hcic_write_auth_enable(false);
+   }
+ 
+   if (btm_cb.pin_type_changed) {
+     btm_cb.pin_type_changed = false;
+     btsnd_hcic_write_pin_type(btm_cb.cfg.pin_type);
+   }
+ }
+@@ -6127,31 +6222,42 @@ static bool btm_sec_queue_encrypt_request(const RawAddress& bd_addr,
+  *
+  * Description      This function is called to set sm4 and rmt_sec_caps fields
+  *                  based on the available peer device features.
+  *
+  * Returns          void
+  *
+  ******************************************************************************/
+-void btm_sec_set_peer_sec_caps(tACL_CONN* p_acl_cb,
+-                               tBTM_SEC_DEV_REC* p_dev_rec) {
++void btm_sec_set_peer_sec_caps(uint16_t hci_handle, bool ssp_supported,
++                               bool sc_supported) {
++  tBTM_SEC_DEV_REC* p_dev_rec = btm_find_dev_by_handle(hci_handle);
++  if (p_dev_rec == nullptr) return;
++
++  // Drop the connection here if the remote attempts to downgrade from Secure
++  // Connections mode.
++  if (btm_sec_is_device_sc_downgrade(hci_handle, sc_supported)) {
++    btm_cb.acl_disc_reason = HCI_ERR_HOST_REJECT_SECURITY;
++    btm_sec_send_hci_disconnect(p_dev_rec, HCI_ERR_AUTH_FAILURE, hci_handle);
++    LOG_WARN(LOG_TAG, "Remote attempted to downgrade from Secure Connections mode");
++    return;
++  }
++
++  /* Store the Peer Security Capabilites (in SM4 and rmt_sec_caps) */
+   if ((btm_cb.security_mode == BTM_SEC_MODE_SP ||
+-       btm_cb.security_mode == BTM_SEC_MODE_SP_DEBUG ||
+        btm_cb.security_mode == BTM_SEC_MODE_SC) &&
+-      HCI_SSP_HOST_SUPPORTED(p_acl_cb->peer_lmp_feature_pages[1])) {
++      ssp_supported) {
+     p_dev_rec->sm4 = BTM_SM4_TRUE;
+-    p_dev_rec->remote_supports_secure_connections =
+-        (HCI_SC_HOST_SUPPORTED(p_acl_cb->peer_lmp_feature_pages[1]));
++    p_dev_rec->remote_supports_secure_connections = sc_supported;
+   } else {
+     p_dev_rec->sm4 = BTM_SM4_KNOWN;
+     p_dev_rec->remote_supports_secure_connections = false;
+   }
+ 
+   BTM_TRACE_API("%s: sm4: 0x%02x, rmt_support_for_secure_connections %d",
+                 __func__, p_dev_rec->sm4,
+-                p_dev_rec->remote_supports_secure_connections);
++                p_dev_rec->SupportsSecureConnections());
+ 
+   if (p_dev_rec->remote_features_needed) {
+     BTM_TRACE_EVENT(
+         "%s: Now device in SC Only mode, waiting for peer remote features!",
+         __func__);
+     btm_io_capabilities_req(p_dev_rec->bd_addr);
+     p_dev_rec->remote_features_needed = false;
+diff --git a/stack/btu/btu_hcif.cc b/stack/btu/btu_hcif.cc
+index 6f16bff83..ffaa018ff 100644
+--- a/stack/btu/btu_hcif.cc
++++ b/stack/btu/btu_hcif.cc
+@@ -782,14 +782,25 @@ static void read_encryption_key_size_complete_after_encryption_change(
+         "%d",
+         __func__, handle, key_size);
+ 
+     btsnd_hcic_disconnect(handle, HCI_ERR_HOST_REJECT_SECURITY);
+     return;
+   }
+ 
++  if (btm_sec_is_session_key_size_downgrade(handle, key_size)) {
++    LOG_ERROR(LOG_TAG,
++        "encryption key size lower than cached value, disconnecting. "
++        "handle: 0x%x attempted key size: %d",
++        handle, key_size);
++    btsnd_hcic_disconnect(handle, HCI_ERR_HOST_REJECT_SECURITY);
++    return;
++  }
++
++  btm_sec_update_session_key_size(handle, key_size);
++
+   // good key size - succeed
+   btm_acl_encrypt_change(handle, status, 1 /* enable */);
+   btm_sec_encrypt_change(handle, status, 1 /* enable */);
+ }
+ /*******************************************************************************
+  *
+  * Function         btu_hcif_encryption_change_evt
+@@ -1919,14 +1930,20 @@ static void btu_ble_data_length_change_evt(uint8_t* p, uint16_t evt_len) {
+   uint16_t rx_data_len;
+ 
+   if (!controller_get_interface()->supports_ble_packet_extension()) {
+     HCI_TRACE_WARNING("%s, request not supported", __func__);
+     return;
+   }
+ 
++  // 2 bytes each for handle, tx_data_len, TxTimer, rx_data_len
++  if (evt_len < 8) {
++    LOG_ERROR(LOG_TAG, "Event packet too short");
++    return;
++  }
++
+   STREAM_TO_UINT16(handle, p);
+   STREAM_TO_UINT16(tx_data_len, p);
+   p += 2; /* Skip the TxTimer */
+   STREAM_TO_UINT16(rx_data_len, p);
+ 
+   l2cble_process_data_length_change_event(handle, tx_data_len, rx_data_len);
+ }
+diff --git a/stack/gatt/att_protocol.cc b/stack/gatt/att_protocol.cc
+index 2b800b716..41839b072 100644
+--- a/stack/gatt/att_protocol.cc
++++ b/stack/gatt/att_protocol.cc
+@@ -153,16 +153,22 @@ BT_HDR* attp_build_browse_cmd(uint8_t op_code, uint16_t s_hdl, uint16_t e_hdl,
+  * Returns          pointer to the command buffer.
+  *
+  ******************************************************************************/
+ BT_HDR* attp_build_read_by_type_value_cmd(uint16_t payload_size,
+                                           tGATT_FIND_TYPE_VALUE* p_value_type) {
+   uint8_t* p;
+   uint16_t len = p_value_type->value_len;
+-  BT_HDR* p_buf =
+-      (BT_HDR*)osi_malloc(sizeof(BT_HDR) + payload_size + L2CAP_MIN_OFFSET);
++  BT_HDR* p_buf = nullptr;
++
++  if (payload_size < 5) {
++    return nullptr;
++  }
++
++  p_buf =
++  (BT_HDR*)osi_malloc(sizeof(BT_HDR) + payload_size + L2CAP_MIN_OFFSET);
+ 
+   p = (uint8_t*)(p_buf + 1) + L2CAP_MIN_OFFSET;
+   p_buf->offset = L2CAP_MIN_OFFSET;
+   p_buf->len = 5; /* opcode + s_handle + e_handle */
+ 
+   UINT8_TO_STREAM(p, GATT_REQ_FIND_TYPE_VALUE);
+   UINT16_TO_STREAM(p, p_value_type->s_handle);
+@@ -268,54 +274,88 @@ BT_HDR* attp_build_opcode_cmd(uint8_t op_code) {
+  *
+  * Returns          None.
+  *
+  ******************************************************************************/
+ BT_HDR* attp_build_value_cmd(uint16_t payload_size, uint8_t op_code,
+                              uint16_t handle, uint16_t offset, uint16_t len,
+                              uint8_t* p_data) {
+-  uint8_t *p, *pp, pair_len, *p_pair_len;
++  uint8_t *p, *pp, *p_pair_len;
++  size_t pair_len;
++  size_t size_now = 1;
++
++#define CHECK_SIZE()                       \
++  do {                                     \
++    if (size_now > payload_size) {         \
++      LOG(ERROR) << "payload size too small"; \
++      osi_free(p_buf);                     \
++      return nullptr;                      \
++    }                                      \
++  } while (false)
++
+   BT_HDR* p_buf =
+       (BT_HDR*)osi_malloc(sizeof(BT_HDR) + payload_size + L2CAP_MIN_OFFSET);
+ 
+   p = pp = (uint8_t*)(p_buf + 1) + L2CAP_MIN_OFFSET;
++
++  CHECK_SIZE();
+   UINT8_TO_STREAM(p, op_code);
+   p_buf->offset = L2CAP_MIN_OFFSET;
+-  p_buf->len = 1;
+ 
+   if (op_code == GATT_RSP_READ_BY_TYPE) {
+-    p_pair_len = p;
++    p_pair_len = p++;
+     pair_len = len + 2;
+-    UINT8_TO_STREAM(p, pair_len);
+-    p_buf->len += 1;
++    size_now += 1;
++    CHECK_SIZE();
++    // this field will be backfilled in the end of this function
+   }
++
+   if (op_code != GATT_RSP_READ_BLOB && op_code != GATT_RSP_READ) {
++    size_now += 2;
++    CHECK_SIZE();
+     UINT16_TO_STREAM(p, handle);
+-    p_buf->len += 2;
+   }
+ 
+   if (op_code == GATT_REQ_PREPARE_WRITE || op_code == GATT_RSP_PREPARE_WRITE) {
++    size_now += 2;
++    CHECK_SIZE();
+     UINT16_TO_STREAM(p, offset);
+-    p_buf->len += 2;
+   }
+ 
+   if (len > 0 && p_data != NULL) {
+     /* ensure data not exceed MTU size */
+-    if (payload_size - p_buf->len < len) {
+-      len = payload_size - p_buf->len;
++    if (payload_size - size_now < len) {
++      len = payload_size - size_now;
+       /* update handle value pair length */
+-      if (op_code == GATT_RSP_READ_BY_TYPE) *p_pair_len = (len + 2);
++      if (op_code == GATT_RSP_READ_BY_TYPE) {
++        pair_len = (len + 2);
++      }
+ 
+       LOG(WARNING) << StringPrintf(
+           "attribute value too long, to be truncated to %d", len);
+     }
+ 
++    size_now += len;
++    CHECK_SIZE();
+     ARRAY_TO_STREAM(p, p_data, len);
+-    p_buf->len += len;
+   }
+ 
++  // backfill pair len field
++  if (op_code == GATT_RSP_READ_BY_TYPE) {
++    if (pair_len > UINT8_MAX) {
++      LOG(ERROR) << StringPrintf("pair_len greater than %d", UINT8_MAX);
++      osi_free(p_buf);
++      return nullptr;
++    }
++
++    *p_pair_len = (uint8_t)pair_len;
++  }
++
++#undef CHECK_SIZE
++
++  p_buf->len = (uint16_t)size_now;
+   return p_buf;
+ }
+ 
+ /*******************************************************************************
+  *
+  * Function         attp_send_msg_to_l2cap
+  *
+diff --git a/stack/gatt/gatt_cl.cc b/stack/gatt/gatt_cl.cc
+index 73a338b6d..ff4ac8aea 100644
+--- a/stack/gatt/gatt_cl.cc
++++ b/stack/gatt/gatt_cl.cc
+@@ -574,33 +574,39 @@ void gatt_process_prep_write_rsp(tGATT_TCB& tcb, tGATT_CLCB* p_clcb,
+   tGATT_VALUE value = {
+       .conn_id = p_clcb->conn_id, .auth_req = GATT_AUTH_REQ_NONE,
+   };
+ 
+   LOG(ERROR) << StringPrintf("value resp op_code = %s len = %d",
+                              gatt_dbg_op_name(op_code), len);
+ 
+-  if (len < GATT_PREP_WRITE_RSP_MIN_LEN) {
++  if (len < GATT_PREP_WRITE_RSP_MIN_LEN ||
++      len > GATT_PREP_WRITE_RSP_MIN_LEN + sizeof(value.value)) {
+     LOG(ERROR) << "illegal prepare write response length, discard";
+     gatt_end_operation(p_clcb, GATT_INVALID_PDU, &value);
+     return;
+   }
+ 
+   STREAM_TO_UINT16(value.handle, p);
+   STREAM_TO_UINT16(value.offset, p);
+ 
+-  value.len = len - 4;
++  value.len = len - GATT_PREP_WRITE_RSP_MIN_LEN;
+ 
+   memcpy(value.value, p, value.len);
+ 
++  bool subtype_is_write_prepare = (p_clcb->op_subtype == GATT_WRITE_PREPARE);
++
+   if (!gatt_check_write_long_terminate(tcb, p_clcb, &value)) {
+     gatt_send_prepare_write(tcb, p_clcb);
+     return;
+   }
+ 
+-  if (p_clcb->op_subtype == GATT_WRITE_PREPARE) {
++  // We now know that we have not terminated, or else we would have returned
++  // early.  We free the buffer only if the subtype is not equal to
++  // GATT_WRITE_PREPARE, so checking here is adequate to prevent UAF.
++  if (subtype_is_write_prepare) {
+     /* application should verify handle offset
+        and value are matched or not */
+     gatt_end_operation(p_clcb, p_clcb->status, &value);
+   }
+ }
+ /*******************************************************************************
+  *
+diff --git a/stack/gatt/gatt_sr.cc b/stack/gatt/gatt_sr.cc
+index 0f32cde37..ee5059b92 100644
+--- a/stack/gatt/gatt_sr.cc
++++ b/stack/gatt/gatt_sr.cc
+@@ -110,15 +110,16 @@ void gatt_dequeue_sr_cmd(tGATT_TCB& tcb) {
+  * Description      This function check the read multiple response.
+  *
+  * Returns          bool    if all replies have been received
+  *
+  ******************************************************************************/
+ static bool process_read_multi_rsp(tGATT_SR_CMD* p_cmd, tGATT_STATUS status,
+                                    tGATTS_RSP* p_msg, uint16_t mtu) {
+-  uint16_t ii, total_len, len;
++  uint16_t ii;
++  size_t total_len, len;
+   uint8_t* p;
+   bool is_overflow = false;
+ 
+   VLOG(1) << StringPrintf("%s status=%d mtu=%d", __func__, status, mtu);
+ 
+   if (p_cmd->multi_rsp_q == NULL)
+     p_cmd->multi_rsp_q = fixed_queue_new(SIZE_MAX);
+@@ -165,24 +166,30 @@ static bool process_read_multi_rsp(tGATT_SR_CMD* p_cmd, tGATT_STATUS status,
+           total_len = (p_buf->len + p_rsp->attr_value.len);
+ 
+           if (total_len > mtu) {
+             /* just send the partial response for the overflow case */
+             len = p_rsp->attr_value.len - (total_len - mtu);
+             is_overflow = true;
+             VLOG(1) << StringPrintf(
+-                "multi read overflow available len=%d val_len=%d", len,
++                "multi read overflow available len=%zu val_len=%d", len,
+                 p_rsp->attr_value.len);
+           } else {
+             len = p_rsp->attr_value.len;
+           }
+ 
+           if (p_rsp->attr_value.handle == p_cmd->multi_req.handles[ii]) {
+-            memcpy(p, p_rsp->attr_value.value, len);
+-            if (!is_overflow) p += len;
+-            p_buf->len += len;
++            // check for possible integer overflow
++            if (p_buf->len + len <= UINT16_MAX) {
++              memcpy(p, p_rsp->attr_value.value, len);
++              if (!is_overflow) p += len;
++              p_buf->len += len;
++            } else {
++              p_cmd->status = GATT_NOT_FOUND;
++              break;
++            }
+           } else {
+             p_cmd->status = GATT_NOT_FOUND;
+             break;
+           }
+ 
+           if (is_overflow) break;
+ 
+diff --git a/stack/gatt/gatt_utils.cc b/stack/gatt/gatt_utils.cc
+index 291cd1062..eb2a12dbc 100644
+--- a/stack/gatt/gatt_utils.cc
++++ b/stack/gatt/gatt_utils.cc
+@@ -1194,14 +1194,21 @@ void gatt_end_operation(tGATT_CLCB* p_clcb, tGATT_STATUS status, void* p_data) {
+   memset(&cb_data.att_value, 0, sizeof(tGATT_VALUE));
+ 
+   if (p_cmpl_cb != NULL && p_clcb->operation != 0) {
+     if (p_clcb->operation == GATTC_OPTYPE_READ) {
+       cb_data.att_value.handle = p_clcb->s_handle;
+       cb_data.att_value.len = p_clcb->counter;
+ 
++      if (cb_data.att_value.len > GATT_MAX_ATTR_LEN) {
++        LOG(WARNING) << __func__
++                     << StringPrintf(" Large cb_data.att_value, size=%d",
++                                     cb_data.att_value.len);
++        cb_data.att_value.len = GATT_MAX_ATTR_LEN;
++      }
++
+       if (p_data && p_clcb->counter)
+         memcpy(cb_data.att_value.value, p_data, cb_data.att_value.len);
+     }
+ 
+     if (p_clcb->operation == GATTC_OPTYPE_WRITE) {
+       memset(&cb_data.att_value, 0, sizeof(tGATT_VALUE));
+       cb_data.handle = cb_data.att_value.handle = p_clcb->s_handle;
+diff --git a/stack/include/btm_api_types.h b/stack/include/btm_api_types.h
+index 5ed6586d2..c6620c13d 100644
+--- a/stack/include/btm_api_types.h
++++ b/stack/include/btm_api_types.h
+@@ -1095,20 +1095,16 @@ typedef void(tBTM_ESCO_CBACK)(tBTM_ESCO_EVT event, tBTM_ESCO_EVT_DATA* p_data);
+  *  SECURITY MANAGEMENT
+  ****************************************************************************/
+ /*******************************
+  *  Security Manager Constants
+  *******************************/
+ 
+ /* Security Mode (BTM_SetSecurityMode) */
+-#define BTM_SEC_MODE_UNDEFINED 0
+-#define BTM_SEC_MODE_NONE 1
+ #define BTM_SEC_MODE_SERVICE 2
+-#define BTM_SEC_MODE_LINK 3
+ #define BTM_SEC_MODE_SP 4
+-#define BTM_SEC_MODE_SP_DEBUG 5
+ #define BTM_SEC_MODE_SC 6
+ 
+ /* Maximum Number of BTM Security Modes */
+ #define BTM_SEC_MODES_MAX 7
+ 
+ /* Security Service Levels [bit mask] (BTM_SetSecurityLevel)
+  * Encryption should not be used without authentication
+diff --git a/stack/sdp/sdp_db.cc b/stack/sdp/sdp_db.cc
+index 65ed52fd9..23e5b53ff 100644
+--- a/stack/sdp/sdp_db.cc
++++ b/stack/sdp/sdp_db.cc
+@@ -395,14 +395,19 @@ bool SDP_DeleteRecord(uint32_t handle) {
+  ******************************************************************************/
+ bool SDP_AddAttribute(uint32_t handle, uint16_t attr_id, uint8_t attr_type,
+                       uint32_t attr_len, uint8_t* p_val) {
+ #if (SDP_SERVER_ENABLED == TRUE)
+   uint16_t xx;
+   tSDP_RECORD* p_rec = &sdp_cb.server_db.record[0];
+ 
++  if (p_val == nullptr) {
++    SDP_TRACE_WARNING("Trying to add attribute with p_val == nullptr, skipped");
++    return (false);
++  }
++
+   if (sdp_cb.trace_level >= BT_TRACE_LEVEL_DEBUG) {
+     if ((attr_type == UINT_DESC_TYPE) ||
+         (attr_type == TWO_COMP_INT_DESC_TYPE) ||
+         (attr_type == UUID_DESC_TYPE) ||
+         (attr_type == DATA_ELE_SEQ_DESC_TYPE) ||
+         (attr_type == DATA_ELE_ALT_DESC_TYPE)) {
+       uint8_t num_array[400];
+@@ -429,15 +434,23 @@ bool SDP_AddAttribute(uint32_t handle, uint16_t attr_id, uint8_t attr_type,
+           handle, attr_id, attr_type, attr_len, p_val, p_val);
+     }
+   }
+ 
+   /* Find the record in the database */
+   for (xx = 0; xx < sdp_cb.server_db.num_records; xx++, p_rec++) {
+     if (p_rec->record_handle == handle) {
+-      return SDP_AddAttributeToRecord (p_rec, attr_id, attr_type, attr_len, p_val);
++
++      // error out early, no need to look up
++      if (p_rec->free_pad_ptr >= SDP_MAX_PAD_LEN) {
++        SDP_TRACE_ERROR("the free pad for SDP record with handle %d is "
++                        "full, skip adding the attribute", handle);
++        return (false);
++      } else {
++        return SDP_AddAttributeToRecord (p_rec, attr_id, attr_type, attr_len, p_val);
++      }
+     }
+   }
+ #endif
+   return (false);
+ }
+ 
+ /*******************************************************************************
+@@ -496,23 +509,21 @@ bool SDP_AddAttributeToRecord (tSDP_RECORD *p_rec, uint16_t attr_id,
+         attr_len = SDP_MAX_PAD_LEN - p_rec->free_pad_ptr;
+         p_val[SDP_MAX_PAD_LEN - p_rec->free_pad_ptr] = '\0';
+         p_val[SDP_MAX_PAD_LEN - p_rec->free_pad_ptr + 1] = '\0';
+       } else
+         attr_len = 0;
+     }
+ 
+-    if ((attr_len > 0) && (p_val != 0)) {
++    if (attr_len > 0) {
+       p_attr->len = attr_len;
+       memcpy(&p_rec->attr_pad[p_rec->free_pad_ptr], p_val, (size_t)attr_len);
+       p_attr->value_ptr = &p_rec->attr_pad[p_rec->free_pad_ptr];
+       p_rec->free_pad_ptr += attr_len;
+-    } else if ((attr_len == 0 &&
+-                p_attr->len !=
+-                    0) || /* if truncate to 0 length, simply don't add */
+-               p_val == 0) {
++    } else if (attr_len == 0 && p_attr->len != 0) {
++      /* if truncate to 0 length, simply don't add */
+       SDP_TRACE_ERROR(
+           "SDP_AddAttributeToRecord fail, length exceed maximum: ID %d: attr_len:%d ",
+           attr_id, attr_len);
+       p_attr->id = p_attr->type = p_attr->len = 0;
+       return (false);
+     }
+     p_rec->num_attributes++;
+diff --git a/stack/sdp/sdp_discovery.cc b/stack/sdp/sdp_discovery.cc
+index ebfa510f1..14713c4b1 100644
+--- a/stack/sdp/sdp_discovery.cc
++++ b/stack/sdp/sdp_discovery.cc
+@@ -70,28 +70,44 @@ static uint8_t* add_attr(uint8_t* p, uint8_t* p_end, tSDP_DISCOVERY_DB* p_db,
+  *                  passed UUIDs. It is also passed the address of the output
+  *                  buffer.
+  *
+  * Returns          Pointer to next byte in the output buffer.
+  *
+  ******************************************************************************/
+ static uint8_t* sdpu_build_uuid_seq(uint8_t* p_out, uint16_t num_uuids,
+-                                    Uuid* p_uuid_list) {
++                                    Uuid* p_uuid_list, uint16_t& bytes_left) {
+   uint16_t xx;
+   uint8_t* p_len;
+ 
++  if (bytes_left < 2) {
++    DCHECK(0) << "SDP: No space for data element header";
++    return (p_out);
++  }
++
+   /* First thing is the data element header */
+   UINT8_TO_BE_STREAM(p_out, (DATA_ELE_SEQ_DESC_TYPE << 3) | SIZE_IN_NEXT_BYTE);
+ 
+   /* Remember where the length goes. Leave space for it. */
+   p_len = p_out;
+   p_out += 1;
+ 
++  /* Account for data element header and length */
++  bytes_left -= 2;
++
+   /* Now, loop through and put in all the UUID(s) */
+   for (xx = 0; xx < num_uuids; xx++, p_uuid_list++) {
+     int len = p_uuid_list->GetShortestRepresentationSize();
++
++    if (len + 1 > bytes_left) {
++      DCHECK(0) << "SDP: Too many UUIDs for internal buffer";
++      break;
++    } else {
++      bytes_left -= (len + 1);
++    }
++
+     if (len == Uuid::kNumBytes16) {
+       UINT8_TO_BE_STREAM(p_out, (UUID_DESC_TYPE << 3) | SIZE_TWO_BYTES);
+       UINT16_TO_BE_STREAM(p_out, p_uuid_list->As16Bit());
+     } else if (len == Uuid::kNumBytes32) {
+       UINT8_TO_BE_STREAM(p_out, (UUID_DESC_TYPE << 3) | SIZE_FOUR_BYTES);
+       UINT32_TO_BE_STREAM(p_out, p_uuid_list->As32Bit());
+     } else if (len == Uuid::kNumBytes128) {
+@@ -120,35 +136,52 @@ static uint8_t* sdpu_build_uuid_seq(uint8_t* p_out, uint16_t num_uuids,
+  *
+  ******************************************************************************/
+ static void sdp_snd_service_search_req(tCONN_CB* p_ccb, uint8_t cont_len,
+                                        uint8_t* p_cont) {
+   uint8_t *p, *p_start, *p_param_len;
+   BT_HDR* p_cmd = (BT_HDR*)osi_malloc(SDP_DATA_BUF_SIZE);
+   uint16_t param_len;
++  uint16_t bytes_left = SDP_DATA_BUF_SIZE;
+ 
+   /* Prepare the buffer for sending the packet to L2CAP */
+   p_cmd->offset = L2CAP_MIN_OFFSET;
+   p = p_start = (uint8_t*)(p_cmd + 1) + L2CAP_MIN_OFFSET;
+ 
+   /* Build a service search request packet */
+   UINT8_TO_BE_STREAM(p, SDP_PDU_SERVICE_SEARCH_REQ);
+   UINT16_TO_BE_STREAM(p, p_ccb->transaction_id);
+   p_ccb->transaction_id++;
+ 
+   /* Skip the length, we need to add it at the end */
+   p_param_len = p;
+   p += 2;
+ 
+-/* Build the UID sequence. */
++  /* Account for header size, max service record count and
++   * continuation state */
++  const uint16_t base_bytes = (sizeof(BT_HDR) + L2CAP_MIN_OFFSET +
++                               3u + /* service search request header */
++                               2u + /* param len */
++                               3u + ((p_cont) ? cont_len : 0));
++
++  if (base_bytes > bytes_left) {
++    DCHECK(0) << "SDP: Overran SDP data buffer";
++    osi_free(p_cmd);
++    return;
++  }
++
++  bytes_left -= base_bytes;
++
++  /* Build the UID sequence. */
+ #if (SDP_BROWSE_PLUS == TRUE)
+   p = sdpu_build_uuid_seq(p, 1,
+-                          &p_ccb->p_db->uuid_filters[p_ccb->cur_uuid_idx]);
++                          &p_ccb->p_db->uuid_filters[p_ccb->cur_uuid_idx],
++                          bytes_left);
+ #else
+   p = sdpu_build_uuid_seq(p, p_ccb->p_db->num_uuid_filters,
+-                          p_ccb->p_db->uuid_filters);
++                          p_ccb->p_db->uuid_filters, bytes_left);
+ #endif
+ 
+   /* Set max service record count */
+   UINT16_TO_BE_STREAM(p, sdp_cb.max_recs_per_search);
+ 
+   /* Set continuation state */
+   UINT8_TO_BE_STREAM(p, cont_len);
+@@ -631,34 +664,51 @@ static void process_service_search_attr_rsp(tCONN_CB* p_ccb, uint8_t* p_reply,
+ #if (SDP_DEBUG_RAW == TRUE)
+   SDP_TRACE_WARNING("cont_request_needed:%d", cont_request_needed);
+ #endif
+   /* If continuation request (or first time request) */
+   if ((cont_request_needed) || (!p_reply)) {
+     BT_HDR* p_msg = (BT_HDR*)osi_malloc(SDP_DATA_BUF_SIZE);
+     uint8_t* p;
++    uint16_t bytes_left = SDP_DATA_BUF_SIZE;
+ 
+     p_msg->offset = L2CAP_MIN_OFFSET;
+     p = p_start = (uint8_t*)(p_msg + 1) + L2CAP_MIN_OFFSET;
+ 
+     /* Build a service search request packet */
+     UINT8_TO_BE_STREAM(p, SDP_PDU_SERVICE_SEARCH_ATTR_REQ);
+     UINT16_TO_BE_STREAM(p, p_ccb->transaction_id);
+     p_ccb->transaction_id++;
+ 
+     /* Skip the length, we need to add it at the end */
+     p_param_len = p;
+     p += 2;
+ 
+-/* Build the UID sequence. */
++    /* Account for header size, max service record count and
++     * continuation state */
++    const uint16_t base_bytes = (sizeof(BT_HDR) + L2CAP_MIN_OFFSET +
++                                 3u + /* service search request header */
++                                 2u + /* param len */
++                                 3u + /* max service record count */
++                                 ((p_reply) ? (*p_reply) : 0));
++
++    if (base_bytes > bytes_left) {
++      sdp_disconnect(p_ccb, SDP_INVALID_CONT_STATE);
++      return;
++    }
++
++    bytes_left -= base_bytes;
++
++    /* Build the UID sequence. */
+ #if (SDP_BROWSE_PLUS == TRUE)
+     p = sdpu_build_uuid_seq(p, 1,
+-                            &p_ccb->p_db->uuid_filters[p_ccb->cur_uuid_idx]);
++                            &p_ccb->p_db->uuid_filters[p_ccb->cur_uuid_idx],
++                            bytes_left);
+ #else
+     p = sdpu_build_uuid_seq(p, p_ccb->p_db->num_uuid_filters,
+-                            p_ccb->p_db->uuid_filters);
++                            p_ccb->p_db->uuid_filters, bytes_left);
+ #endif
+ 
+     /* Max attribute byte count */
+     UINT16_TO_BE_STREAM(p, sdp_cb.max_attr_list_size);
+ 
+     /* If no attribute filters, build a wildcard attribute sequence */
+     if (p_ccb->p_db->num_attr_filters)
+diff --git a/stack/sdp/sdp_utils.cc b/stack/sdp/sdp_utils.cc
+index 9310770c6..93625ed4b 100644
+--- a/stack/sdp/sdp_utils.cc
++++ b/stack/sdp/sdp_utils.cc
+@@ -735,16 +735,36 @@ bool sdpu_compare_uuid_arrays(uint8_t* p_uuid1, uint32_t len1, uint8_t* p_uuid2,
+  *                  to the smallest possible
+  *
+  * Returns          true if matched, else false
+  *
+  ******************************************************************************/
+ bool sdpu_compare_uuid_with_attr(const Uuid& uuid, tSDP_DISC_ATTR* p_attr) {
+   int len = uuid.GetShortestRepresentationSize();
+-  if (len == 2) return uuid.As16Bit() == p_attr->attr_value.v.u16;
+-  if (len == 4) return uuid.As32Bit() == p_attr->attr_value.v.u32;
++  if (len == 2) {
++    if (SDP_DISC_ATTR_LEN(p_attr->attr_len_type) == Uuid::kNumBytes16) {
++      return uuid.As16Bit() == p_attr->attr_value.v.u16;
++    } else {
++      LOG(ERROR) << "invalid length for discovery attribute";
++      return (false);
++    }
++  }
++  if (len == 4) {
++    if (SDP_DISC_ATTR_LEN(p_attr->attr_len_type) == Uuid::kNumBytes32) {
++      return uuid.As32Bit() == p_attr->attr_value.v.u32;
++    } else {
++      LOG(ERROR) << "invalid length for discovery attribute";
++      return (false);
++    }
++  }
++
++  if (SDP_DISC_ATTR_LEN(p_attr->attr_len_type) != Uuid::kNumBytes128) {
++    LOG(ERROR) << "invalid length for discovery attribute";
++    return (false);
++  }
++
+   if (memcmp(uuid.To128BitBE().data(), (void*)p_attr->attr_value.v.array,
+              Uuid::kNumBytes128) == 0)
+     return (true);
+ 
+   return (false);
+ }
+ 
+diff --git a/stack/smp/smp_act.cc b/stack/smp/smp_act.cc
+index 196eeacd7..ab9e9aa69 100755
+--- a/stack/smp/smp_act.cc
++++ b/stack/smp/smp_act.cc
+@@ -286,14 +286,15 @@ void smp_send_pair_rsp(tSMP_CB* p_cb, tSMP_INT_DATA* p_data) {
+ /*******************************************************************************
+  * Function     smp_send_confirm
+  * Description  send confirmation to the peer
+  ******************************************************************************/
+ void smp_send_confirm(tSMP_CB* p_cb, tSMP_INT_DATA* p_data) {
+   SMP_TRACE_DEBUG("%s", __func__);
+   smp_send_cmd(SMP_OPCODE_CONFIRM, p_cb);
++  p_cb->flags |= SMP_PAIR_FLAGS_CMD_CONFIRM_SENT;
+ }
+ 
+ /*******************************************************************************
+  * Function     smp_send_init
+  * Description  process pairing initializer to slave device
+  ******************************************************************************/
+ void smp_send_init(tSMP_CB* p_cb, tSMP_INT_DATA* p_data) {
+@@ -425,14 +426,21 @@ void smp_send_ltk_reply(tSMP_CB* p_cb, tSMP_INT_DATA* p_data) {
+ }
+ 
+ /*******************************************************************************
+  * Function     smp_proc_sec_req
+  * Description  process security request.
+  ******************************************************************************/
+ void smp_proc_sec_req(tSMP_CB* p_cb, tSMP_INT_DATA* p_data) {
++  if (smp_command_has_invalid_length(p_cb)) {
++    tSMP_INT_DATA smp_int_data;
++    smp_int_data.status = SMP_INVALID_PARAMETERS;
++    smp_sm_event(p_cb, SMP_AUTH_CMPL_EVT, &smp_int_data);
++    return;
++  }
++
+   tBTM_LE_AUTH_REQ auth_req = *(tBTM_LE_AUTH_REQ*)p_data->p_data;
+   tBTM_BLE_SEC_REQ_ACT sec_req_act;
+ 
+   SMP_TRACE_DEBUG("%s: auth_req=0x%x", __func__, auth_req);
+ 
+   p_cb->cb_evt = 0;
+ 
+@@ -640,14 +648,25 @@ void smp_proc_init(tSMP_CB* p_cb, tSMP_INT_DATA* p_data) {
+   if (smp_command_has_invalid_parameters(p_cb)) {
+     tSMP_INT_DATA smp_int_data;
+     smp_int_data.status = SMP_INVALID_PARAMETERS;
+     smp_sm_event(p_cb, SMP_AUTH_CMPL_EVT, &smp_int_data);
+     return;
+   }
+ 
++  if (!((p_cb->loc_auth_req & SMP_SC_SUPPORT_BIT) &&
++        (p_cb->peer_auth_req & SMP_SC_SUPPORT_BIT)) &&
++      !(p_cb->flags & SMP_PAIR_FLAGS_CMD_CONFIRM_SENT)) {
++    // in legacy pairing, the peer should send its rand after
++    // we send our confirm
++    tSMP_INT_DATA smp_int_data{};
++    smp_int_data.status = SMP_INVALID_PARAMETERS;
++    smp_sm_event(p_cb, SMP_AUTH_CMPL_EVT, &smp_int_data);
++    return;
++  }
++
+   /* save the SRand for comparison */
+   STREAM_TO_ARRAY(p_cb->rrand.data(), p, OCTET16_LEN);
+ }
+ 
+ /*******************************************************************************
+  * Function     smp_proc_rand
+  * Description  process pairing random (nonce) from peer device
+diff --git a/stack/smp/smp_int.h b/stack/smp/smp_int.h
+index a9b4471fc..4aab2408a 100644
+--- a/stack/smp/smp_int.h
++++ b/stack/smp/smp_int.h
+@@ -244,14 +244,15 @@ enum {
+   (1 << 5) /* used on slave to resolve race condition */
+ #define SMP_PAIR_FLAG_HAVE_PEER_PUBL_KEY \
+   (1 << 6) /* used on slave to resolve race condition */
+ #define SMP_PAIR_FLAG_HAVE_PEER_COMM \
+   (1 << 7) /* used to resolve race condition */
+ #define SMP_PAIR_FLAG_HAVE_LOCAL_PUBL_KEY \
+   (1 << 8) /* used on slave to resolve race condition */
++#define SMP_PAIR_FLAGS_CMD_CONFIRM_SENT (1 << 9)
+ 
+ /* check if authentication requirement need MITM protection */
+ #define SMP_NO_MITM_REQUIRED(x) (((x)&SMP_AUTH_YN_BIT) == 0)
+ 
+ typedef struct {
+   RawAddress bd_addr;
+   BT_HDR* p_copy;

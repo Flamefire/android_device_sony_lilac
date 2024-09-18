@@ -1,0 +1,631 @@
+# PWD: frameworks/av
+diff --git a/media/codec2/sfplugin/utils/Codec2BufferUtils.cpp b/media/codec2/sfplugin/utils/Codec2BufferUtils.cpp
+index bf2a07ee52..9bc8eb9c4c 100644
+--- a/media/codec2/sfplugin/utils/Codec2BufferUtils.cpp
++++ b/media/codec2/sfplugin/utils/Codec2BufferUtils.cpp
+@@ -357,16 +357,16 @@ status_t ConvertRGBToPlanarYUV(
+ 
+     const C2PlanarLayout &layout = src.layout();
+     const uint8_t *pRed   = src.data()[C2PlanarLayout::PLANE_R];
+     const uint8_t *pGreen = src.data()[C2PlanarLayout::PLANE_G];
+     const uint8_t *pBlue  = src.data()[C2PlanarLayout::PLANE_B];
+ 
+ #define CLIP3(x,y,z) (((z) < (x)) ? (x) : (((z) > (y)) ? (y) : (z)))
+-    for (size_t y = 0; y < src.height(); ++y) {
+-        for (size_t x = 0; x < src.width(); ++x) {
++    for (size_t y = 0; y < src.crop().height; ++y) {
++        for (size_t x = 0; x < src.crop().width; ++x) {
+             uint8_t red = *pRed;
+             uint8_t green = *pGreen;
+             uint8_t blue = *pBlue;
+ 
+             // using ITU-R BT.601 conversion matrix
+             unsigned luma =
+                 CLIP3(0, (((red * 66 + green * 129 + blue * 25) >> 8) + 16), 255);
+diff --git a/media/libmediaplayer2/JAudioTrack.cpp b/media/libmediaplayer2/JAudioTrack.cpp
+index fab6c649fc..be91e9a920 100644
+--- a/media/libmediaplayer2/JAudioTrack.cpp
++++ b/media/libmediaplayer2/JAudioTrack.cpp
+@@ -691,34 +691,34 @@ jobject JAudioTrack::createVolumeShaperOperationObj(
+     if (operation->getReplaceId() >= 0) {
+         jmethodID jReplace = env->GetMethodID(jBuilderCls, "replace",
+                 "(IB)Landroid/media/VolumeShaper$Operation$Builder;");
+         bool join = (flags | media::VolumeShaper::Operation::FLAG_JOIN) != 0;
+         jBuilderObj = env->CallObjectMethod(jBuilderCls, jReplace, operation->getReplaceId(), join);
+     }
+ 
+-    if (flags | media::VolumeShaper::Operation::FLAG_REVERSE) {
++    if (flags & media::VolumeShaper::Operation::FLAG_REVERSE) {
+         jmethodID jReverse = env->GetMethodID(jBuilderCls, "reverse",
+                 "()Landroid/media/VolumeShaper$Operation$Builder;");
+         jBuilderObj = env->CallObjectMethod(jBuilderCls, jReverse);
+     }
+ 
+     // TODO: VolumeShaper Javadoc says "Do not call terminate() directly". Can we call this?
+-    if (flags | media::VolumeShaper::Operation::FLAG_TERMINATE) {
++    if (flags & media::VolumeShaper::Operation::FLAG_TERMINATE) {
+         jmethodID jTerminate = env->GetMethodID(jBuilderCls, "terminate",
+                 "()Landroid/media/VolumeShaper$Operation$Builder;");
+         jBuilderObj = env->CallObjectMethod(jBuilderCls, jTerminate);
+     }
+ 
+-    if (flags | media::VolumeShaper::Operation::FLAG_DELAY) {
++    if (flags & media::VolumeShaper::Operation::FLAG_DELAY) {
+         jmethodID jDefer = env->GetMethodID(jBuilderCls, "defer",
+                 "()Landroid/media/VolumeShaper$Operation$Builder;");
+         jBuilderObj = env->CallObjectMethod(jBuilderCls, jDefer);
+     }
+ 
+-    if (flags | media::VolumeShaper::Operation::FLAG_CREATE_IF_NECESSARY) {
++    if (flags & media::VolumeShaper::Operation::FLAG_CREATE_IF_NECESSARY) {
+         jmethodID jCreateIfNeeded = env->GetMethodID(jBuilderCls, "createIfNeeded",
+                 "()Landroid/media/VolumeShaper$Operation$Builder;");
+         jBuilderObj = env->CallObjectMethod(jBuilderCls, jCreateIfNeeded);
+     }
+ 
+     // TODO: Handle error case (can it be NULL?)
+     jmethodID jBuild = env->GetMethodID(jBuilderCls, "build",
+diff --git a/media/libmediaplayerservice/StagefrightRecorder.cpp b/media/libmediaplayerservice/StagefrightRecorder.cpp
+index 71c79720fe..e2a183e80c 100644
+--- a/media/libmediaplayerservice/StagefrightRecorder.cpp
++++ b/media/libmediaplayerservice/StagefrightRecorder.cpp
+@@ -1793,14 +1793,19 @@ status_t StagefrightRecorder::setupVideoEncoder(
+         if (baseLayerFps < maxBaseLayerFps) {
+             break;
+         }
+     }
+ 
+     if (tsLayers > 1) {
+         uint32_t bLayers = std::min(2u, tsLayers - 1); // use up-to 2 B-layers
++        // TODO(b/341121900): Remove this once B frames are handled correctly in screen recorder
++        // use case in case of mic only
++        if (mAudioSource == AUDIO_SOURCE_MIC && mVideoSource == VIDEO_SOURCE_SURFACE) {
++            bLayers = 0;
++        }
+         uint32_t pLayers = tsLayers - bLayers;
+         format->setString(
+                 "ts-schema", AStringPrintf("android.generic.%u+%u", pLayers, bLayers));
+ 
+         // TODO: some encoders do not support B-frames with temporal layering, and we have a
+         // different preference based on use-case. We could move this into camera profiles.
+         format->setInt32("android._prefer-b-frames", preferBFrames);
+diff --git a/media/libstagefright/codecs/m4v_h263/dec/SoftMPEG4.cpp b/media/libstagefright/codecs/m4v_h263/dec/SoftMPEG4.cpp
+index 60750d9a61..db08030ad1 100644
+--- a/media/libstagefright/codecs/m4v_h263/dec/SoftMPEG4.cpp
++++ b/media/libstagefright/codecs/m4v_h263/dec/SoftMPEG4.cpp
+@@ -308,16 +308,19 @@ void SoftMPEG4::onQueueFilled(OMX_U32 /* portIndex */) {
+ 
+         ++mInputBufferCount;
+ 
+         outHeader->nOffset = 0;
+         outHeader->nFilledLen = frameSize;
+ 
+         List<BufferInfo *>::iterator it = outQueue.begin();
+-        while ((*it)->mHeader != outHeader) {
+-            ++it;
++        while (it != outQueue.end() && (*it)->mHeader != outHeader) {
++             ++it;
++        }
++        if (it == outQueue.end()) {
++            return;
+         }
+ 
+         BufferInfo *outInfo = *it;
+         outInfo->mOwnedByUs = false;
+         outQueue.erase(it);
+         outInfo = NULL;
+ 
+diff --git a/media/libstagefright/codecs/on2/enc/SoftVP8Encoder.cpp b/media/libstagefright/codecs/on2/enc/SoftVP8Encoder.cpp
+index 04737a9ccf..9198b7c327 100644
+--- a/media/libstagefright/codecs/on2/enc/SoftVP8Encoder.cpp
++++ b/media/libstagefright/codecs/on2/enc/SoftVP8Encoder.cpp
+@@ -116,27 +116,37 @@ OMX_ERRORTYPE SoftVP8Encoder::internalSetParameter(OMX_INDEXTYPE index,
+         default:
+             return SoftVPXEncoder::internalSetParameter(index, param);
+     }
+ }
+ 
+ OMX_ERRORTYPE SoftVP8Encoder::internalGetVp8Params(
+         OMX_VIDEO_PARAM_VP8TYPE* vp8Params) {
++    if (!isValidOMXParam(vp8Params)) {
++        android_errorWriteLog(0x534e4554, "273936274");
++        return OMX_ErrorBadParameter;
++    }
++
+     if (vp8Params->nPortIndex != kOutputPortIndex) {
+         return OMX_ErrorUnsupportedIndex;
+     }
+ 
+     vp8Params->eProfile = OMX_VIDEO_VP8ProfileMain;
+     vp8Params->eLevel = mLevel;
+     vp8Params->bErrorResilientMode = mErrorResilience;
+     vp8Params->nDCTPartitions = mDCTPartitions;
+     return OMX_ErrorNone;
+ }
+ 
+ OMX_ERRORTYPE SoftVP8Encoder::internalSetVp8Params(
+         const OMX_VIDEO_PARAM_VP8TYPE* vp8Params) {
++    if (!isValidOMXParam(vp8Params)) {
++        android_errorWriteLog(0x534e4554, "273937171");
++        return OMX_ErrorBadParameter;
++    }
++
+     if (vp8Params->nPortIndex != kOutputPortIndex) {
+         return OMX_ErrorUnsupportedIndex;
+     }
+ 
+     if (vp8Params->eProfile != OMX_VIDEO_VP8ProfileMain) {
+         return OMX_ErrorBadParameter;
+     }
+diff --git a/media/libstagefright/codecs/on2/enc/SoftVP9Encoder.cpp b/media/libstagefright/codecs/on2/enc/SoftVP9Encoder.cpp
+index 1ea1c85f76..f8495c2da4 100644
+--- a/media/libstagefright/codecs/on2/enc/SoftVP9Encoder.cpp
++++ b/media/libstagefright/codecs/on2/enc/SoftVP9Encoder.cpp
+@@ -115,28 +115,38 @@ OMX_ERRORTYPE SoftVP9Encoder::internalSetParameter(
+         default:
+             return SoftVPXEncoder::internalSetParameter(index, param);
+     }
+ }
+ 
+ OMX_ERRORTYPE SoftVP9Encoder::internalGetVp9Params(
+         OMX_VIDEO_PARAM_VP9TYPE *vp9Params) {
++    if (!isValidOMXParam(vp9Params)) {
++        android_errorWriteLog(0x534e4554, "273936553");
++        return OMX_ErrorBadParameter;
++    }
++
+     if (vp9Params->nPortIndex != kOutputPortIndex) {
+         return OMX_ErrorUnsupportedIndex;
+     }
+ 
+     vp9Params->eProfile = OMX_VIDEO_VP9Profile0;
+     vp9Params->eLevel = mLevel;
+     vp9Params->bErrorResilientMode = mErrorResilience;
+     vp9Params->nTileColumns = mTileColumns;
+     vp9Params->bEnableFrameParallelDecoding = mFrameParallelDecoding;
+     return OMX_ErrorNone;
+ }
+ 
+ OMX_ERRORTYPE SoftVP9Encoder::internalSetVp9Params(
+         const OMX_VIDEO_PARAM_VP9TYPE *vp9Params) {
++    if (!isValidOMXParam(vp9Params)) {
++        android_errorWriteLog(0x534e4554, "273937136");
++        return OMX_ErrorBadParameter;
++    }
++
+     if (vp9Params->nPortIndex != kOutputPortIndex) {
+         return OMX_ErrorUnsupportedIndex;
+     }
+ 
+     if (vp9Params->eProfile != OMX_VIDEO_VP9Profile0) {
+         return OMX_ErrorBadParameter;
+     }
+diff --git a/media/libstagefright/codecs/on2/enc/SoftVPXEncoder.cpp b/media/libstagefright/codecs/on2/enc/SoftVPXEncoder.cpp
+index d0cb0718c2..054413e7c0 100644
+--- a/media/libstagefright/codecs/on2/enc/SoftVPXEncoder.cpp
++++ b/media/libstagefright/codecs/on2/enc/SoftVPXEncoder.cpp
+@@ -481,14 +481,19 @@ OMX_ERRORTYPE SoftVPXEncoder::internalSetBitrateParams(
+     }
+ 
+     return OMX_ErrorNone;
+ }
+ 
+ OMX_ERRORTYPE SoftVPXEncoder::internalGetAndroidVpxParams(
+         OMX_VIDEO_PARAM_ANDROID_VP8ENCODERTYPE *vpxAndroidParams) {
++    if (!isValidOMXParam(vpxAndroidParams)) {
++        android_errorWriteLog(0x534e4554, "273936601");
++        return OMX_ErrorBadParameter;
++    }
++
+     if (vpxAndroidParams->nPortIndex != kOutputPortIndex) {
+         return OMX_ErrorUnsupportedIndex;
+     }
+ 
+     vpxAndroidParams->nKeyFrameInterval = mKeyFrameInterval;
+     vpxAndroidParams->eTemporalPattern = mTemporalPatternType;
+     vpxAndroidParams->nTemporalLayerCount = mTemporalLayers;
+@@ -497,14 +502,18 @@ OMX_ERRORTYPE SoftVPXEncoder::internalGetAndroidVpxParams(
+     memcpy(vpxAndroidParams->nTemporalLayerBitrateRatio,
+            mTemporalLayerBitrateRatio, sizeof(mTemporalLayerBitrateRatio));
+     return OMX_ErrorNone;
+ }
+ 
+ OMX_ERRORTYPE SoftVPXEncoder::internalSetAndroidVpxParams(
+         const OMX_VIDEO_PARAM_ANDROID_VP8ENCODERTYPE *vpxAndroidParams) {
++    if (!isValidOMXParam(vpxAndroidParams)) {
++        android_errorWriteLog(0x534e4554, "273937551");
++        return OMX_ErrorBadParameter;
++    }
+     if (vpxAndroidParams->nPortIndex != kOutputPortIndex) {
+         return OMX_ErrorUnsupportedIndex;
+     }
+     if (vpxAndroidParams->eTemporalPattern != OMX_VIDEO_VPXTemporalLayerPatternNone &&
+             vpxAndroidParams->eTemporalPattern != OMX_VIDEO_VPXTemporalLayerPatternWebRTC) {
+         return OMX_ErrorBadParameter;
+     }
+diff --git a/media/libstagefright/colorconversion/ColorConverter.cpp b/media/libstagefright/colorconversion/ColorConverter.cpp
+index d685321028..c491d8043b 100644
+--- a/media/libstagefright/colorconversion/ColorConverter.cpp
++++ b/media/libstagefright/colorconversion/ColorConverter.cpp
+@@ -644,15 +644,16 @@ status_t ColorConverter::convertYUV420Planar16ToY410(
+         uint16_t *ptr_ytop = (uint16_t*) src_y;
+         uint16_t *ptr_ybot = (uint16_t*) (src_y + src.mStride);
+         uint16_t *ptr_u = (uint16_t*) src_u;
+         uint16_t *ptr_v = (uint16_t*) src_v;
+ 
+         uint32_t u01, v01, y01, y23, y45, y67, uv0, uv1;
+         size_t x = 0;
+-        for (; x < src.cropWidth() - 3; x += 4) {
++        // x % 4 is always 0 so x + 3 will never overflow.
++        for (; x + 3 < src.cropWidth(); x += 4) {
+             u01 = *((uint32_t*)ptr_u); ptr_u += 2;
+             v01 = *((uint32_t*)ptr_v); ptr_v += 2;
+ 
+             y01 = *((uint32_t*)ptr_ytop); ptr_ytop += 2;
+             y23 = *((uint32_t*)ptr_ytop); ptr_ytop += 2;
+             y45 = *((uint32_t*)ptr_ybot); ptr_ybot += 2;
+             y67 = *((uint32_t*)ptr_ybot); ptr_ybot += 2;
+diff --git a/media/libstagefright/foundation/MetaDataBase.cpp b/media/libstagefright/foundation/MetaDataBase.cpp
+index bfea6f1537..a3c623e354 100644
+--- a/media/libstagefright/foundation/MetaDataBase.cpp
++++ b/media/libstagefright/foundation/MetaDataBase.cpp
+@@ -20,14 +20,16 @@
+ #include <binder/Parcel.h>
+ #include <utils/KeyedVector.h>
+ #include <utils/Log.h>
+ 
+ #include <stdlib.h>
+ #include <string.h>
+ 
++#include <mutex>
++
+ #include <media/stagefright/foundation/ADebug.h>
+ #include <media/stagefright/foundation/AString.h>
+ #include <media/stagefright/foundation/hexdump.h>
+ #include <media/stagefright/MetaDataBase.h>
+ 
+ namespace android {
+ 
+@@ -71,14 +73,15 @@ private:
+ 
+ struct MetaDataBase::Rect {
+     int32_t mLeft, mTop, mRight, mBottom;
+ };
+ 
+ 
+ struct MetaDataBase::MetaDataInternal {
++    std::mutex mLock;
+     KeyedVector<uint32_t, MetaDataBase::typed_data> mItems;
+ };
+ 
+ 
+ MetaDataBase::MetaDataBase()
+     : mInternalData(new MetaDataInternal()) {
+ }
+@@ -95,18 +98,20 @@ MetaDataBase& MetaDataBase::operator = (const MetaDataBase &rhs) {
+ 
+ MetaDataBase::~MetaDataBase() {
+     clear();
+     delete mInternalData;
+ }
+ 
+ void MetaDataBase::clear() {
++    std::lock_guard<std::mutex> guard(mInternalData->mLock);
+     mInternalData->mItems.clear();
+ }
+ 
+ bool MetaDataBase::remove(uint32_t key) {
++    std::lock_guard<std::mutex> guard(mInternalData->mLock);
+     ssize_t i = mInternalData->mItems.indexOfKey(key);
+ 
+     if (i < 0) {
+         return false;
+     }
+ 
+     mInternalData->mItems.removeItemsAt(i);
+@@ -245,14 +250,15 @@ bool MetaDataBase::findRect(
+     return true;
+ }
+ 
+ bool MetaDataBase::setData(
+         uint32_t key, uint32_t type, const void *data, size_t size) {
+     bool overwrote_existing = true;
+ 
++    std::lock_guard<std::mutex> guard(mInternalData->mLock);
+     ssize_t i = mInternalData->mItems.indexOfKey(key);
+     if (i < 0) {
+         typed_data item;
+         i = mInternalData->mItems.add(key, item);
+ 
+         overwrote_existing = false;
+     }
+@@ -262,28 +268,30 @@ bool MetaDataBase::setData(
+     item.setData(type, data, size);
+ 
+     return overwrote_existing;
+ }
+ 
+ bool MetaDataBase::findData(uint32_t key, uint32_t *type,
+                         const void **data, size_t *size) const {
++    std::lock_guard<std::mutex> guard(mInternalData->mLock);
+     ssize_t i = mInternalData->mItems.indexOfKey(key);
+ 
+     if (i < 0) {
+         return false;
+     }
+ 
+     const typed_data &item = mInternalData->mItems.valueAt(i);
+ 
+     item.getData(type, data, size);
+ 
+     return true;
+ }
+ 
+ bool MetaDataBase::hasData(uint32_t key) const {
++    std::lock_guard<std::mutex> guard(mInternalData->mLock);
+     ssize_t i = mInternalData->mItems.indexOfKey(key);
+ 
+     if (i < 0) {
+         return false;
+     }
+ 
+     return true;
+@@ -422,39 +430,42 @@ static void MakeFourCCString(uint32_t x, char *s) {
+     s[2] = (x >> 8) & 0xff;
+     s[3] = x & 0xff;
+     s[4] = '\0';
+ }
+ 
+ String8 MetaDataBase::toString() const {
+     String8 s;
++    std::lock_guard<std::mutex> guard(mInternalData->mLock);
+     for (int i = mInternalData->mItems.size(); --i >= 0;) {
+         int32_t key = mInternalData->mItems.keyAt(i);
+         char cc[5];
+         MakeFourCCString(key, cc);
+         const typed_data &item = mInternalData->mItems.valueAt(i);
+         s.appendFormat("%s: %s", cc, item.asString(false).string());
+         if (i != 0) {
+             s.append(", ");
+         }
+     }
+     return s;
+ }
+ 
+ void MetaDataBase::dumpToLog() const {
++    std::lock_guard<std::mutex> guard(mInternalData->mLock);
+     for (int i = mInternalData->mItems.size(); --i >= 0;) {
+         int32_t key = mInternalData->mItems.keyAt(i);
+         char cc[5];
+         MakeFourCCString(key, cc);
+         const typed_data &item = mInternalData->mItems.valueAt(i);
+         ALOGI("%s: %s", cc, item.asString(true /* verbose */).string());
+     }
+ }
+ 
+ status_t MetaDataBase::writeToParcel(Parcel &parcel) {
+     status_t ret;
++    std::lock_guard<std::mutex> guard(mInternalData->mLock);
+     size_t numItems = mInternalData->mItems.size();
+     ret = parcel.writeUint32(uint32_t(numItems));
+     if (ret) {
+         return ret;
+     }
+     for (size_t i = 0; i < numItems; i++) {
+         int32_t key = mInternalData->mItems.keyAt(i);
+diff --git a/media/libstagefright/omx/SoftVideoDecoderOMXComponent.cpp b/media/libstagefright/omx/SoftVideoDecoderOMXComponent.cpp
+index e853da9763..4ab5d10609 100644
+--- a/media/libstagefright/omx/SoftVideoDecoderOMXComponent.cpp
++++ b/media/libstagefright/omx/SoftVideoDecoderOMXComponent.cpp
+@@ -612,14 +612,25 @@ OMX_ERRORTYPE SoftVideoDecoderOMXComponent::getConfig(
+                 auto it = mHdr10PlusOutputs.begin();
+ 
+                 auto info = (*it).get();
+ 
+                 DescribeHDR10PlusInfoParams* outParams =
+                         (DescribeHDR10PlusInfoParams *)params;
+ 
++                if (!isValidOMXParam(outParams)) {
++                    return OMX_ErrorBadParameter;
++                }
++                if (offsetof(DescribeHDR10PlusInfoParams, nValue) + outParams->nParamSize >
++                    outParams->nSize) {
++                    ALOGE("b/329641908: too large param size; nParamSize=%u nSize=%u",
++                          outParams->nParamSize, outParams->nSize);
++                    android_errorWriteLog(0x534e4554, "329641908");
++                    return OMX_ErrorBadParameter;
++                }
++
+                 outParams->nParamSizeUsed = info->size();
+ 
+                 // If the buffer provided by the client does not have enough
+                 // storage, return the size only and do not remove the param yet.
+                 if (outParams->nParamSize >= info->size()) {
+                     memcpy(outParams->nValue, info->data(), info->size());
+                     mHdr10PlusOutputs.erase(it);
+@@ -690,14 +701,18 @@ OMX_ERRORTYPE SoftVideoDecoderOMXComponent::internalSetConfig(
+             if (!supportDescribeHdr10PlusInfo()) {
+                 return OMX_ErrorUnsupportedIndex;
+             }
+ 
+             const DescribeHDR10PlusInfoParams* inParams =
+                     (DescribeHDR10PlusInfoParams *)params;
+ 
++            if (!isValidOMXParam(inParams)) {
++                return OMX_ErrorBadParameter;
++            }
++
+             if (*frameConfig) {
+                 // This is a request to append to the current frame config set.
+                 // For now, we only support kDescribeHdr10PlusInfoIndex, which
+                 // we simply replace with the last set value.
+                 if (mHdr10PlusInputs.size() > 0) {
+                     *(--mHdr10PlusInputs.end()) = ABuffer::CreateAsCopy(
+                             inParams->nValue, inParams->nParamSizeUsed);
+diff --git a/media/mtp/MtpFfsHandle.cpp b/media/mtp/MtpFfsHandle.cpp
+index bd6a6c679a..09eb96a00d 100644
+--- a/media/mtp/MtpFfsHandle.cpp
++++ b/media/mtp/MtpFfsHandle.cpp
+@@ -292,14 +292,18 @@ int MtpFfsHandle::start(bool ptp) {
+     mPollFds[1].events = POLLIN;
+ 
+     mCanceled = false;
+     return 0;
+ }
+ 
+ void MtpFfsHandle::close() {
++    auto timeout = std::chrono::seconds(2);
++    std::unique_lock lk(m);
++    cv.wait_for(lk, timeout ,[this]{return child_threads==0;});
++
+     io_destroy(mCtx);
+     closeEndpoints();
+     closeConfig();
+ }
+ 
+ int MtpFfsHandle::waitEvents(struct io_buffer *buf, int min_events, struct io_event *events,
+         int *counter) {
+@@ -658,22 +662,32 @@ int MtpFfsHandle::sendFile(mtp_file_range mfr) {
+ 
+ int MtpFfsHandle::sendEvent(mtp_event me) {
+     // Mimic the behavior of f_mtp by sending the event async.
+     // Events aren't critical to the connection, so we don't need to check the return value.
+     char *temp = new char[me.length];
+     memcpy(temp, me.data, me.length);
+     me.data = temp;
++
++    std::unique_lock lk(m);
++    child_threads++;
++    lk.unlock();
++
+     std::thread t([this, me]() { return this->doSendEvent(me); });
+     t.detach();
+     return 0;
+ }
+ 
+ void MtpFfsHandle::doSendEvent(mtp_event me) {
+     unsigned length = me.length;
+     int ret = ::write(mIntr, me.data, length);
+     if (static_cast<unsigned>(ret) != length)
+         PLOG(ERROR) << "Mtp error sending event thread!";
+     delete[] reinterpret_cast<char*>(me.data);
++
++    std::unique_lock lk(m);
++    child_threads--;
++    lk.unlock();
++    cv.notify_one();
+ }
+ 
+ } // namespace android
+ 
+diff --git a/media/mtp/MtpFfsHandle.h b/media/mtp/MtpFfsHandle.h
+index fe343f74f6..ae78db2877 100644
+--- a/media/mtp/MtpFfsHandle.h
++++ b/media/mtp/MtpFfsHandle.h
+@@ -54,14 +54,18 @@ protected:
+     void doSendEvent(mtp_event me);
+     bool openEndpoints(bool ptp);
+ 
+     static int getPacketSize(int ffs_fd);
+ 
+     bool mCanceled;
+ 
++    std::mutex m;
++    std::condition_variable cv;
++    std::atomic<int> child_threads{0};
++
+     android::base::unique_fd mControl;
+     // "in" from the host's perspective => sink for mtp server
+     android::base::unique_fd mBulkIn;
+     // "out" from the host's perspective => source for mtp server
+     android::base::unique_fd mBulkOut;
+     android::base::unique_fd mIntr;
+ 
+diff --git a/media/mtp/MtpPacket.cpp b/media/mtp/MtpPacket.cpp
+index 3b298a9bf3..87c5c0495b 100644
+--- a/media/mtp/MtpPacket.cpp
++++ b/media/mtp/MtpPacket.cpp
+@@ -88,32 +88,54 @@ void MtpPacket::copyFrom(const MtpPacket& src) {
+     int length = src.mPacketSize;
+     allocate(length);
+     mPacketSize = length;
+     memcpy(mBuffer, src.mBuffer, length);
+ }
+ 
+ uint16_t MtpPacket::getUInt16(int offset) const {
+-    return ((uint16_t)mBuffer[offset + 1] << 8) | (uint16_t)mBuffer[offset];
++    if ((unsigned long)(offset+2) <= mBufferSize) {
++        return ((uint16_t)mBuffer[offset + 1] << 8) | (uint16_t)mBuffer[offset];
++    }
++    else {
++        ALOGE("offset for buffer read is greater than buffer size!");
++        abort();
++    }
+ }
+ 
+ uint32_t MtpPacket::getUInt32(int offset) const {
+-    return ((uint32_t)mBuffer[offset + 3] << 24) | ((uint32_t)mBuffer[offset + 2] << 16) |
+-           ((uint32_t)mBuffer[offset + 1] << 8)  | (uint32_t)mBuffer[offset];
++    if ((unsigned long)(offset+4) <= mBufferSize) {
++        return ((uint32_t)mBuffer[offset + 3] << 24) | ((uint32_t)mBuffer[offset + 2] << 16) |
++               ((uint32_t)mBuffer[offset + 1] << 8)  | (uint32_t)mBuffer[offset];
++    }
++    else {
++        ALOGE("offset for buffer read is greater than buffer size!");
++        abort();
++    }
+ }
+ 
+ void MtpPacket::putUInt16(int offset, uint16_t value) {
+-    mBuffer[offset++] = (uint8_t)(value & 0xFF);
+-    mBuffer[offset++] = (uint8_t)((value >> 8) & 0xFF);
++    if ((unsigned long)(offset+2) <= mBufferSize) {
++        mBuffer[offset++] = (uint8_t)(value & 0xFF);
++        mBuffer[offset++] = (uint8_t)((value >> 8) & 0xFF);
++    }
++    else {
++        ALOGE("offset for buffer write is greater than buffer size!");
++    }
+ }
+ 
+ void MtpPacket::putUInt32(int offset, uint32_t value) {
+-    mBuffer[offset++] = (uint8_t)(value & 0xFF);
+-    mBuffer[offset++] = (uint8_t)((value >> 8) & 0xFF);
+-    mBuffer[offset++] = (uint8_t)((value >> 16) & 0xFF);
+-    mBuffer[offset++] = (uint8_t)((value >> 24) & 0xFF);
++    if ((unsigned long)(offset+4) <= mBufferSize) {
++        mBuffer[offset++] = (uint8_t)(value & 0xFF);
++        mBuffer[offset++] = (uint8_t)((value >> 8) & 0xFF);
++        mBuffer[offset++] = (uint8_t)((value >> 16) & 0xFF);
++        mBuffer[offset++] = (uint8_t)((value >> 24) & 0xFF);
++    }
++    else {
++        ALOGE("offset for buffer write is greater than buffer size!");
++    }
+ }
+ 
+ uint16_t MtpPacket::getContainerCode() const {
+     return getUInt16(MTP_CONTAINER_CODE_OFFSET);
+ }
+ 
+ void MtpPacket::setContainerCode(uint16_t code) {
+@@ -142,16 +164,18 @@ uint32_t MtpPacket::getParameter(int index) const {
+ 
+ void MtpPacket::setParameter(int index, uint32_t value) {
+     if (index < 1 || index > 5) {
+         ALOGE("index %d out of range in MtpPacket::setParameter", index);
+         return;
+     }
+     int offset = MTP_CONTAINER_PARAMETER_OFFSET + (index - 1) * sizeof(uint32_t);
+-    if (mPacketSize < offset + sizeof(uint32_t))
++    if (mPacketSize < offset + sizeof(uint32_t)) {
+         mPacketSize = offset + sizeof(uint32_t);
++        allocate(mPacketSize);
++    }
+     putUInt32(offset, value);
+ }
+ 
+ #ifdef MTP_HOST
+ int MtpPacket::transfer(struct usb_request* request) {
+     int result = usb_device_bulk_transfer(request->dev,
+                             request->endpoint,

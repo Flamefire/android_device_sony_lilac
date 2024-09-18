@@ -1,0 +1,47 @@
+From 23963a3a83ed2723637a0742f8074e9a90fc8e34 Mon Sep 17 00:00:00 2001
+From: "Kevin F. Haggerty" <haggertk@lineageos.org>
+Date: Sun, 8 Sep 2024 08:09:31 -0600
+Subject: [PATCH] Bump Security String to 2024-09-05
+
+Implemented:
+============
+CVE:            References:    Type:  Severity:  Updated AOSP versions:
+CVE-2024-40650  A-293199910    EoP    High       12, 12L, 13, 14
+CVE-2024-40652  A-327749022    EoP    High       12, 12L, 13, 14
+CVE-2024-40654  A-333364513    EoP    High       12, 12L, 13, 14
+CVE-2024-40655  A-300904123    EoP    High       12, 12L, 13, 14
+CVE-2024-40657  A-341886134    EoP    High       12, 12L, 13, 14
+CVE-2024-40658  A-329641908    EoP    High       12, 12L, 13, 14
+CVE-2024-40662  A-261721900    EoP    High       12, 12L, 13, 14
+
+Not Implemented:
+================
+CVE-2024-32896  A-324321147    EoP    High       12, 12L, 13, 14
+
+Not Applicable (platform source):
+=================================
+CVE:            References:    Type:  Severity:  Updated AOSP versions:
+CVE-2024-40656  A-329058967    ID     High       12, 12L, 13, 14
+CVE-2024-40659  A-336976105    DoS    High       14
+
+Change-Id: I4943e0cf54e5afed22b4671a253f170fedce1a8a
+---
+ core/version_defaults.mk | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/core/version_defaults.mk b/core/version_defaults.mk
+index 7c55cf9f7a..a1ee27872b 100644
+--- a/core/version_defaults.mk
++++ b/core/version_defaults.mk
+@@ -250,7 +250,7 @@ ifndef PLATFORM_SECURITY_PATCH
+     #  It must be of the form "YYYY-MM-DD" on production devices.
+     #  It must match one of the Android Security Patch Level strings of the Public Security Bulletins.
+     #  If there is no $PLATFORM_SECURITY_PATCH set, keep it empty.
+-    PLATFORM_SECURITY_PATCH := 2024-08-05
++    PLATFORM_SECURITY_PATCH := 2024-09-05
+ endif
+ .KATI_READONLY := PLATFORM_SECURITY_PATCH
+ 
+-- 
+2.40.1
+
