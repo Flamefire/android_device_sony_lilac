@@ -1,10 +1,10 @@
 {
   "MANUFACTURER": "Google",
   "BRAND": "google",
-  "DEVICE": "sailfish",
-  "PRODUCT": "sailfish",
-  "MODEL": "Pixel",
-  "FINGERPRINT": "google/sailfish/sailfish:8.1.0/OPM1.171019.011/4448085:user/release-keys",
-  "SECURITY_PATCH": "2017-12-05",
+  "DEVICE": "akita",
+  "PRODUCT": "akita_beta",
+  "MODEL": "Pixel 8a",
+  "FINGERPRINT": "google/akita_beta/akita:15/AP31.240617.015/12207491:user/release-keys",
+  "SECURITY_PATCH": "2024-08-05",
   "FIRST_API_LEVEL": "25"
 }
