@@ -87,7 +87,7 @@ index 000000000000..b5ee8c4c5c27
 +    private static final String PACKAGE_GMS = "com.google.android.gms";
 +    private static final String PROCESS_UNSTABLE = "com.google.android.gms.unstable";
 +
-+    private static final String PIF_FILEPATH = "/data/adb/pif.json";
++    private static final String PIF_FILEPATH = "/sdcard/pif.json";
 +    private static final String PIF_FILEPATH_PROP = "ro.vendor.pif_path";
 +
 +    private static volatile boolean sIsGms = false;
