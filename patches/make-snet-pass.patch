@@ -168,7 +168,7 @@ index 000000000000..b5ee8c4c5c27
 +            return;
 +        }
 +        if (value.equals(oldValue)) {
-+            Log.e(TAG, String.format("[%s]: %s (unchanged)", field.getName(), value));
++            Log.i(TAG, String.format("[%s]: %s (unchanged)", field.getName(), value));
 +            return;
 +        }
 +        Object newValue = null;
