@@ -1,0 +1,134 @@
+# PWD: vendor/qcom/opensource/commonsys/packages/apps/Bluetooth
+diff --git a/jni/com_android_bluetooth_btservice_AdapterService.cpp b/jni/com_android_bluetooth_btservice_AdapterService.cpp
+index fdb7dbf0b..b7e927b56 100644
+--- a/jni/com_android_bluetooth_btservice_AdapterService.cpp
++++ b/jni/com_android_bluetooth_btservice_AdapterService.cpp
+@@ -400,14 +400,15 @@ static void callback_thread_event(bt_cb_thread_evt event) {
+     ALOGV("Callback thread attached: %p", callbackEnv);
+   } else if (event == DISASSOCIATE_JVM) {
+     if (callbackEnv != AndroidRuntime::getJNIEnv()) {
+       ALOGE("Callback: '%s' is not called on the correct thread", __func__);
+       return;
+     }
+     vm->DetachCurrentThread();
++    callbackEnv = NULL;
+   }
+ }
+ 
+ static void dut_mode_recv_callback(uint16_t opcode, uint8_t* buf, uint8_t len) {
+ 
+ }
+ 
+diff --git a/jni/com_android_bluetooth_hid_host.cpp b/jni/com_android_bluetooth_hid_host.cpp
+index b8f4d6530..e4c885b3e 100644
+--- a/jni/com_android_bluetooth_hid_host.cpp
++++ b/jni/com_android_bluetooth_hid_host.cpp
+@@ -281,26 +281,28 @@ static jboolean connectHidNative(JNIEnv* env, jobject object,
+   }
+   env->ReleaseByteArrayElements(address, addr, 0);
+ 
+   return ret;
+ }
+ 
+ static jboolean disconnectHidNative(JNIEnv* env, jobject object,
+-                                    jbyteArray address) {
++                                    jbyteArray address,
++                                    jboolean reconnect_allowed) {
+   jbyte* addr;
+   jboolean ret = JNI_TRUE;
+   if (!sBluetoothHidInterface) return JNI_FALSE;
+ 
+   addr = env->GetByteArrayElements(address, NULL);
+   if (!addr) {
+     ALOGE("Bluetooth device address null");
+     return JNI_FALSE;
+   }
+ 
+-  bt_status_t status = sBluetoothHidInterface->disconnect((RawAddress*)addr);
++  bt_status_t status =
++      sBluetoothHidInterface->disconnect((RawAddress*)addr, reconnect_allowed);
+   if (status != BT_STATUS_SUCCESS) {
+     ALOGE("Failed disconnect hid channel, status: %d", status);
+     ret = JNI_FALSE;
+   }
+   env->ReleaseByteArrayElements(address, addr, 0);
+ 
+   return ret;
+@@ -508,15 +510,15 @@ static jboolean setIdleTimeNative(JNIEnv* env, jobject object,
+ }
+ 
+ static JNINativeMethod sMethods[] = {
+     {"classInitNative", "()V", (void*)classInitNative},
+     {"initializeNative", "()V", (void*)initializeNative},
+     {"cleanupNative", "()V", (void*)cleanupNative},
+     {"connectHidNative", "([B)Z", (void*)connectHidNative},
+-    {"disconnectHidNative", "([B)Z", (void*)disconnectHidNative},
++    {"disconnectHidNative", "([BZ)Z", (void*)disconnectHidNative},
+     {"getProtocolModeNative", "([B)Z", (void*)getProtocolModeNative},
+     {"virtualUnPlugNative", "([B)Z", (void*)virtualUnPlugNative},
+     {"setProtocolModeNative", "([BB)Z", (void*)setProtocolModeNative},
+     {"getReportNative", "([BBBI)Z", (void*)getReportNative},
+     {"setReportNative", "([BBLjava/lang/String;)Z", (void*)setReportNative},
+     {"sendDataNative", "([BLjava/lang/String;)Z", (void*)sendDataNative},
+     {"getIdleTimeNative", "([B)Z", (void*)getIdleTimeNative},
+diff --git a/src/com/android/bluetooth/hid/HidHostService.java b/src/com/android/bluetooth/hid/HidHostService.java
+index bbde61948..1124caa19 100644
+--- a/src/com/android/bluetooth/hid/HidHostService.java
++++ b/src/com/android/bluetooth/hid/HidHostService.java
+@@ -152,15 +152,18 @@ public class HidHostService extends ProfileService {
+                         break;
+                     }
+                     mTargetDevice = device;
+                 }
+                 break;
+                 case MESSAGE_DISCONNECT: {
+                     BluetoothDevice device = (BluetoothDevice) msg.obj;
+-                    if (!disconnectHidNative(Utils.getByteAddress(device))) {
++                    int priority = getPriority(device);
++                    boolean reconnectAllowed =
++                            priority == BluetoothProfile.PRIORITY_ON;
++                    if (!disconnectHidNative(Utils.getByteAddress(device), reconnectAllowed)) {
+                         broadcastConnectionState(device, BluetoothProfile.STATE_DISCONNECTING);
+                         broadcastConnectionState(device, BluetoothProfile.STATE_DISCONNECTED);
+                         break;
+                     }
+                 }
+                 break;
+                 case MESSAGE_CONNECT_STATE_CHANGED: {
+@@ -177,15 +180,18 @@ public class HidHostService extends ProfileService {
+                     if (halState == CONN_STATE_CONNECTED
+                             && prevState == BluetoothHidHost.STATE_DISCONNECTED
+                             && (!okToConnect(device))) {
+                         if (DBG) {
+                             Log.d(TAG, "Incoming HID connection rejected");
+                         }
+                         if (disconnectRemote(device)) {
+-                            disconnectHidNative(Utils.getByteAddress(device));
++                            int connectionPolicy = getConnectionPolicy(device);
++                            boolean reconnectAllowed =
++                                    connectionPolicy == BluetoothProfile.CONNECTION_POLICY_ALLOWED;
++                            disconnectHidNative(Utils.getByteAddress(device), reconnectAllowed);
+                         } else {
+                             virtualUnPlugNative(Utils.getByteAddress(device));
+                         }
+                     } else {
+                         broadcastConnectionState(device, convertHalState(halState));
+                     }
+                     if (halState == CONN_STATE_CONNECTED && (mTargetDevice != null
+@@ -902,15 +908,15 @@ public class HidHostService extends ProfileService {
+ 
+     private native void initializeNative();
+ 
+     private native void cleanupNative();
+ 
+     private native boolean connectHidNative(byte[] btAddress);
+ 
+-    private native boolean disconnectHidNative(byte[] btAddress);
++    private native boolean disconnectHidNative(byte[] btAddress, boolean reconnectAllowed);
+ 
+     private native boolean getProtocolModeNative(byte[] btAddress);
+ 
+     private native boolean virtualUnPlugNative(byte[] btAddress);
+ 
+     private native boolean setProtocolModeNative(byte[] btAddress, byte protocolMode);
+ 

@@ -1,0 +1,31 @@
+# PWD: libcore
+diff --git a/ojluni/src/main/native/zip_util.c b/ojluni/src/main/native/zip_util.c
+index 6c02d2bc73..475be3afd9 100644
+--- a/ojluni/src/main/native/zip_util.c
++++ b/ojluni/src/main/native/zip_util.c
+@@ -874,14 +874,25 @@ ZIP_Put_In_Cache0(const char *name, ZFILE zfd, char **pmsg, jlong lastModified,
+ 
+     // Trivially, reuse errbuf.
+     if (readFullyAt(zfd, errbuf, 4, 0 /* offset */) != -1) {  // errors will be handled later
+         if (GETSIG(errbuf) == LOCSIG)
+             zip->locsig = JNI_TRUE;
+         else
+             zip->locsig = JNI_FALSE;
++
++        // BEGIN Android-changed: do not accept files with invalid header.
++        if (GETSIG(errbuf) != LOCSIG && GETSIG(errbuf) != ENDSIG) {
++            if (pmsg) {
++                *pmsg = strdup("Entry at offset zero has invalid LFH signature.");
++            }
++            ZFILE_Close(zfd);
++            freeZip(zip);
++            return NULL;
++        }
++        // END Android-changed: do not accept files with invalid header.
+     }
+ 
+     // This lseek is safe because it happens during construction of the ZipFile
+     // object. We must take care not to perform any operations that change the
+     // offset after (see b/30407219).
+     len = zip->len = IO_Lseek(zfd, 0, SEEK_END);
+     if (len <= 0) {
