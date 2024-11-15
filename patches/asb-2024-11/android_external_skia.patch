@@ -1,0 +1,31 @@
+# PWD: external/skia
+diff --git a/src/effects/SkEmbossMaskFilter.cpp b/src/effects/SkEmbossMaskFilter.cpp
+index ef26520172..94ff73e908 100644
+--- a/src/effects/SkEmbossMaskFilter.cpp
++++ b/src/effects/SkEmbossMaskFilter.cpp
+@@ -91,19 +91,21 @@ bool SkEmbossMaskFilter::filterMask(SkMask* dst, const SkMask& src,
+         return true;
+     }
+ 
+     // create a larger buffer for the other two channels (should force fBlur to do this for us)
+ 
+     {
+         uint8_t* alphaPlane = dst->fImage;
+-        size_t   planeSize = dst->computeImageSize();
+-        if (0 == planeSize) {
+-            return false;   // too big to allocate, abort
++        size_t totalSize = dst->computeTotalImageSize();
++        if (totalSize == 0) {
++            return false;  // too big to allocate, abort
+         }
+-        dst->fImage = SkMask::AllocImage(planeSize * 3);
++        size_t planeSize = dst->computeImageSize();
++        SkASSERT(planeSize != 0);  // if totalSize didn't overflow, this can't either
++        dst->fImage = SkMask::AllocImage(totalSize);
+         memcpy(dst->fImage, alphaPlane, planeSize);
+         SkMask::FreeImage(alphaPlane);
+     }
+ 
+     // run the light direction through the matrix...
+     Light   light = fLight;
+     matrix.mapVectors((SkVector*)(void*)light.fDirection,

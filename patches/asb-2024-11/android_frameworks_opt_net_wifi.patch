@@ -1,0 +1,498 @@
+# PWD: frameworks/opt/net/wifi
+diff --git a/service/java/com/android/server/wifi/WifiConfigurationUtil.java b/service/java/com/android/server/wifi/WifiConfigurationUtil.java
+index b8992a0119..4d484adfb6 100644
+--- a/service/java/com/android/server/wifi/WifiConfigurationUtil.java
++++ b/service/java/com/android/server/wifi/WifiConfigurationUtil.java
+@@ -78,14 +78,20 @@ public class WifiConfigurationUtil {
+     private static final int SSID_UTF_8_MAX_LEN = 32 + ENCLOSING_QUOTES_LEN;
+     private static final int SSID_HEX_MIN_LEN = 2;
+     private static final int SSID_HEX_MAX_LEN = 64;
+     private static final int PSK_ASCII_MIN_LEN = 8 + ENCLOSING_QUOTES_LEN;
+     private static final int SAE_ASCII_MIN_LEN = 1 + ENCLOSING_QUOTES_LEN;
+     private static final int PSK_SAE_ASCII_MAX_LEN = 63 + ENCLOSING_QUOTES_LEN;
+     private static final int PSK_SAE_HEX_LEN = 64;
++    private static final int MAX_STRING_LENGTH = 512;
++
++    // BACKPORT
++    private static final int MAX_NUMBER_OF_OI = 36;
++    private static final long MAX_OI_VALUE = ((long) 1 << 40)  - 1;
++
+     @VisibleForTesting
+     public static final String PASSWORD_MASK = "*";
+     private static final String MATCH_EMPTY_SSID_PATTERN_PATH = "";
+     private static final Pair<MacAddress, MacAddress> MATCH_NONE_BSSID_PATTERN =
+             new Pair(MacAddress.BROADCAST_ADDRESS, MacAddress.BROADCAST_ADDRESS);
+     private static final Pair<MacAddress, MacAddress> MATCH_ALL_BSSID_PATTERN =
+             new Pair(MacAddress.ALL_ZEROS_ADDRESS, MacAddress.ALL_ZEROS_ADDRESS);
+@@ -684,23 +690,30 @@ public class WifiConfigurationUtil {
+      *              update could contain only the fields that are being changed.
+      * @return true if the parameters are valid, false otherwise.
+      */
+     public static boolean validate(WifiConfiguration config, boolean isAdd) {
+         if (!validateSsid(config.SSID, isAdd)) {
+             return false;
+         }
+-        if (!validateBssid(config.BSSID)) {
++        if (!validateBssid(config.BSSID) || !validateBssid(config.dhcpServer)
++                || !validateBssid(config.defaultGwMacAddress)) {
+             return false;
+         }
+         if (!validateBitSets(config)) {
+             return false;
+         }
+         if (!validateKeyMgmt(config.allowedKeyManagement)) {
+             return false;
+         }
++        if (!validatePasspoint(config)) {
++            return false;
++        }
++        if (!validateNetworkSelectionStatus(config.getNetworkSelectionStatus())) {
++            return false;
++        }
+         if (config.allowedKeyManagement.get(WifiConfiguration.KeyMgmt.WPA_PSK)
+                 && !validatePassword(config.preSharedKey, isAdd, false)) {
+             return false;
+         }
+         if (config.allowedKeyManagement.get(WifiConfiguration.KeyMgmt.OWE)) {
+             // PMF mandatory for OWE networks
+             if (!config.requirePMF) {
+@@ -728,14 +741,72 @@ public class WifiConfigurationUtil {
+         if (!validateIpConfiguration(config.getIpConfiguration())) {
+             return false;
+         }
+         // TBD: Validate some enterprise params as well in the future here.
+         return true;
+     }
+ 
++    private static boolean validateStringField(String field, int maxLength) {
++        return field == null || field.length() <= maxLength;
++    }
++
++    private static boolean validatePasspoint(WifiConfiguration config) {
++        if (!validateStringField(config.FQDN, 255)) {
++            return false;
++        }
++        if (!validateStringField(config.providerFriendlyName, 255)) {
++            return false;
++        }
++        if (!validateRoamingConsortiumIds(config.roamingConsortiumIds)) {
++            return false;
++        }
++        if (!validateUpdateIdentifier(config.updateIdentifier)) {
++            return false;
++        }
++        return true;
++    }
++
++    private static boolean validateUpdateIdentifier(String updateIdentifier) {
++        if (TextUtils.isEmpty(updateIdentifier)) {
++            return true;
++        }
++        try {
++            Integer.valueOf(updateIdentifier);
++        } catch (NumberFormatException e) {
++            return false;
++        }
++        return true;
++    }
++
++    private static boolean validateNetworkSelectionStatus(
++            WifiConfiguration.NetworkSelectionStatus status) {
++        if (status == null) {
++            return false;
++        }
++        return validateStringField(status.getConnectChoice(), MAX_STRING_LENGTH)
++                    && validateBssid(status.getNetworkSelectionBSSID());
++    }
++
++    private static boolean validateRoamingConsortiumIds(long[] roamingConsortiumIds) {
++        if (roamingConsortiumIds != null) {
++            if (roamingConsortiumIds.length > MAX_NUMBER_OF_OI) {
++                Log.d(TAG, "too many Roaming Consortium Organization Identifiers in the "
++                        + "profile");
++                return false;
++            }
++            for (long oi : roamingConsortiumIds) {
++                if (oi < 0 || oi > MAX_OI_VALUE) {
++                    Log.d(TAG, "Organization Identifiers is out of range");
++                    return false;
++                }
++            }
++        }
++        return true;
++    }
++
+     private static boolean validateBssidPattern(
+             Pair<MacAddress, MacAddress> bssidPatternMatcher) {
+         if (bssidPatternMatcher == null) return true;
+         MacAddress baseAddress = bssidPatternMatcher.first;
+         MacAddress mask = bssidPatternMatcher.second;
+         if (baseAddress.getAddressType() != MacAddress.TYPE_UNICAST) {
+             Log.e(TAG, "validateBssidPatternMatcher failed : invalid base address: " + baseAddress);
+diff --git a/service/java/com/android/server/wifi/hotspot2/PasspointManager.java b/service/java/com/android/server/wifi/hotspot2/PasspointManager.java
+index 0666943c32..8916976ea5 100644
+--- a/service/java/com/android/server/wifi/hotspot2/PasspointManager.java
++++ b/service/java/com/android/server/wifi/hotspot2/PasspointManager.java
+@@ -370,14 +370,20 @@ public class PasspointManager {
+             Log.e(TAG, "Invalid configuration");
+             return false;
+         }
+         if (!mWifiPermissionsUtil.doesUidBelongToCurrentUser(uid)) {
+             Log.e(TAG, "UID " + uid + " not visible to the current user");
+             return false;
+         }
++        if (getPasspointProviderWithPackage(packageName).size()
++                >= WifiManager.NETWORK_SUGGESTIONS_MAX_PER_APP) {
++            Log.e(TAG, "packageName " + packageName + " has too many passpoint with exceed the "
++                    + "limitation");
++            return false;
++        }
+ 
+         // For Hotspot 2.0 Release 1, the CA Certificate must be trusted by one of the pre-loaded
+         // public CAs in the system key store on the device.  Since the provisioning method
+         // for Release 1 is not standardized nor trusted,  this is a reasonable restriction
+         // to improve security.  The presence of UpdateIdentifier is used to differentiate
+         // between R1 and R2 configuration.
+         X509Certificate[] x509Certificates = config.getCredential().getCaCertificates();
+diff --git a/tests/wifitests/src/com/android/server/wifi/hotspot2/PasspointManagerTest.java b/tests/wifitests/src/com/android/server/wifi/hotspot2/PasspointManagerTest.java
+index 618f1c3d5a..2b02ed5083 100644
+--- a/tests/wifitests/src/com/android/server/wifi/hotspot2/PasspointManagerTest.java
++++ b/tests/wifitests/src/com/android/server/wifi/hotspot2/PasspointManagerTest.java
+@@ -38,14 +38,15 @@ import static org.mockito.Mockito.lenient;
+ import static org.mockito.Mockito.mock;
+ import static org.mockito.Mockito.never;
+ import static org.mockito.Mockito.reset;
+ import static org.mockito.Mockito.verify;
+ import static org.mockito.Mockito.when;
+ import static org.mockito.MockitoAnnotations.initMocks;
+ 
++import android.app.ActivityManager;
+ import android.app.AppOpsManager;
+ import android.content.Context;
+ import android.content.Intent;
+ import android.net.Uri;
+ import android.net.wifi.EAPConstants;
+ import android.net.wifi.ScanResult;
+ import android.net.wifi.WifiConfiguration;
+@@ -174,14 +175,15 @@ public class PasspointManagerTest {
+     @Mock AppOpsManager mAppOpsManager;
+     @Mock WifiInjector mWifiInjector;
+     @Mock ClientModeImpl mClientModeImpl;
+     @Mock TelephonyManager mTelephonyManager;
+     @Mock TelephonyManager mDataTelephonyManager;
+     @Mock SubscriptionManager mSubscriptionManager;
+     @Mock WifiPermissionsUtil mWifiPermissionsUtil;
++    @Mock ActivityManager mActivityManager;
+ 
+     Handler mHandler;
+     TestLooper mLooper;
+     PasspointManager mManager;
+     ArgumentCaptor<AppOpsManager.OnOpChangedListener> mAppOpChangedListenerCaptor =
+             ArgumentCaptor.forClass(AppOpsManager.OnOpChangedListener.class);
+ 
+@@ -199,14 +201,15 @@ public class PasspointManagerTest {
+                 .thenReturn(mOsuServerConnection);
+         when(mObjectFactory.makeWfaKeyStore()).thenReturn(mWfaKeyStore);
+         when(mWfaKeyStore.get()).thenReturn(mKeyStore);
+         when(mObjectFactory.makePasspointProvisioner(any(Context.class), any(WifiNative.class),
+                 any(PasspointManager.class), any(WifiMetrics.class)))
+                 .thenReturn(mPasspointProvisioner);
+         when(mContext.getSystemService(Context.APP_OPS_SERVICE)).thenReturn(mAppOpsManager);
++        when(mContext.getSystemService(ActivityManager.class)).thenReturn(mActivityManager);
+         when(mWifiInjector.getClientModeImpl()).thenReturn(mClientModeImpl);
+         when(mWifiPermissionsUtil.doesUidBelongToCurrentUser(anyInt())).thenReturn(true);
+         mLooper = new TestLooper();
+         mHandler = new Handler(mLooper.getLooper());
+         mManager = new PasspointManager(mContext, mWifiInjector, mHandler, mWifiNative,
+                 mWifiKeyStore, mClock, mSimAccessor, mObjectFactory, mWifiConfigManager,
+                 mWifiConfigStore, mWifiMetrics, mTelephonyManager, mSubscriptionManager,
+@@ -264,19 +267,14 @@ public class PasspointManagerTest {
+     private PasspointConfiguration createTestConfigWithUserCredential(String fqdn,
+             String friendlyName) {
+         PasspointConfiguration config = new PasspointConfiguration();
+         HomeSp homeSp = new HomeSp();
+         homeSp.setFqdn(fqdn);
+         homeSp.setFriendlyName(friendlyName);
+         config.setHomeSp(homeSp);
+-        Map<String, String> friendlyNames = new HashMap<>();
+-        friendlyNames.put("en", friendlyName);
+-        friendlyNames.put("kr", friendlyName + 1);
+-        friendlyNames.put("jp", friendlyName + 2);
+-        config.setServiceFriendlyNames(friendlyNames);
+         Credential credential = new Credential();
+         credential.setRealm(TEST_REALM);
+         credential.setCaCertificate(FakeKeys.CA_CERT0);
+         Credential.UserCredential userCredential = new Credential.UserCredential();
+         userCredential.setUsername("username");
+         userCredential.setPassword("password");
+         userCredential.setEapType(EAPConstants.EAP_TTLS);
+@@ -311,16 +309,24 @@ public class PasspointManagerTest {
+     /**
+      * Helper function for adding a test provider to the manager.  Return the mock
+      * provider that's added to the manager.
+      *
+      * @return {@link PasspointProvider}
+      */
+     private PasspointProvider addTestProvider(String fqdn, String friendlyName,
+-            String packageName) {
++            String packageName,
++            boolean addServiceFriendlyNames) {
+         PasspointConfiguration config = createTestConfigWithUserCredential(fqdn, friendlyName);
++        if (addServiceFriendlyNames) {
++            Map<String, String> friendlyNames = new HashMap<>();
++            friendlyNames.put("en", friendlyName);
++            friendlyNames.put("kr", friendlyName + 1);
++            friendlyNames.put("jp", friendlyName + 2);
++            config.setServiceFriendlyNames(friendlyNames);
++        }
+         PasspointProvider provider = createMockProvider(config);
+         when(mObjectFactory.makePasspointProvider(eq(config), eq(mWifiKeyStore),
+                 eq(mSimAccessor), anyLong(), eq(TEST_CREATOR_UID), eq(TEST_PACKAGE))).thenReturn(
+                 provider);
+         when(provider.getPackageName()).thenReturn(packageName);
+         assertTrue(mManager.addOrUpdateProvider(config, TEST_CREATOR_UID, TEST_PACKAGE));
+         return provider;
+@@ -734,15 +740,15 @@ public class PasspointManagerTest {
+     /**
+      * Verify that a {code null} be returned when ANQP entry doesn't exist in the cache.
+      *
+      * @throws Exception
+      */
+     @Test
+     public void matchProviderWithAnqpCacheMissed() throws Exception {
+-        addTestProvider(TEST_FQDN, TEST_FRIENDLY_NAME, TEST_PACKAGE);
++        addTestProvider(TEST_FQDN, TEST_FRIENDLY_NAME, TEST_PACKAGE, false);
+ 
+         when(mAnqpCache.getEntry(TEST_ANQP_KEY)).thenReturn(null);
+         assertNull(mManager.matchProvider(createTestScanResult()));
+         // Verify that a request for ANQP elements is initiated.
+         verify(mAnqpRequestManager).requestANQPElements(eq(TEST_BSSID), any(ANQPNetworkKey.class),
+                 anyBoolean(), anyBoolean());
+     }
+@@ -750,15 +756,15 @@ public class PasspointManagerTest {
+     /**
+      * Verify that the expected provider will be returned when a HomeProvider is matched.
+      *
+      * @throws Exception
+      */
+     @Test
+     public void matchProviderAsHomeProvider() throws Exception {
+-        PasspointProvider provider = addTestProvider(TEST_FQDN, TEST_FRIENDLY_NAME, TEST_PACKAGE);
++        PasspointProvider provider = addTestProvider(TEST_FQDN, TEST_FRIENDLY_NAME, TEST_PACKAGE, false);
+         ANQPData entry = new ANQPData(mClock, null);
+ 
+         when(mAnqpCache.getEntry(TEST_ANQP_KEY)).thenReturn(entry);
+         when(provider.match(anyMap(), any(RoamingConsortium.class)))
+             .thenReturn(PasspointMatch.HomeProvider);
+         Pair<PasspointProvider, PasspointMatch> result =
+                 mManager.matchProvider(createTestScanResult());
+@@ -769,15 +775,15 @@ public class PasspointManagerTest {
+     /**
+      * Verify that the expected provider will be returned when a RoamingProvider is matched.
+      *
+      * @throws Exception
+      */
+     @Test
+     public void matchProviderAsRoamingProvider() throws Exception {
+-        PasspointProvider provider = addTestProvider(TEST_FQDN, TEST_FRIENDLY_NAME, TEST_PACKAGE);
++        PasspointProvider provider = addTestProvider(TEST_FQDN, TEST_FRIENDLY_NAME, TEST_PACKAGE, false);
+         ANQPData entry = new ANQPData(mClock, null);
+ 
+         when(mAnqpCache.getEntry(TEST_ANQP_KEY)).thenReturn(entry);
+         when(provider.match(anyMap(), any(RoamingConsortium.class)))
+             .thenReturn(PasspointMatch.RoamingProvider);
+         Pair<PasspointProvider, PasspointMatch> result =
+                 mManager.matchProvider(createTestScanResult());
+@@ -788,15 +794,15 @@ public class PasspointManagerTest {
+     /**
+      * Verify that a {code null} will be returned when there is no matching provider.
+      *
+      * @throws Exception
+      */
+     @Test
+     public void matchProviderWithNoMatch() throws Exception {
+-        PasspointProvider provider = addTestProvider(TEST_FQDN, TEST_FRIENDLY_NAME, TEST_PACKAGE);
++        PasspointProvider provider = addTestProvider(TEST_FQDN, TEST_FRIENDLY_NAME, TEST_PACKAGE, false);
+         ANQPData entry = new ANQPData(mClock, null);
+ 
+         when(mAnqpCache.getEntry(TEST_ANQP_KEY)).thenReturn(entry);
+         when(provider.match(anyMap(), any(RoamingConsortium.class)))
+             .thenReturn(PasspointMatch.None);
+         assertNull(mManager.matchProvider(createTestScanResult()));
+     }
+@@ -848,24 +854,24 @@ public class PasspointManagerTest {
+     public void getAllMatchingFqdnsForScanResults() {
+         // static mocking
+         MockitoSession session =
+                 com.android.dx.mockito.inline.extended.ExtendedMockito.mockitoSession().mockStatic(
+                         InformationElementUtil.class).startMocking();
+         try {
+             PasspointProvider providerHome = addTestProvider(TEST_FQDN + 0, TEST_FRIENDLY_NAME,
+-                    TEST_PACKAGE);
++                    TEST_PACKAGE, false);
+             WifiConfiguration homeWifiConfiguration = new WifiConfiguration();
+             homeWifiConfiguration.FQDN = TEST_FQDN + 0;
+             homeWifiConfiguration.isHomeProviderNetwork = true;
+             PasspointProvider providerRoaming = addTestProvider(TEST_FQDN + 1, TEST_FRIENDLY_NAME,
+-                    TEST_PACKAGE);
++                    TEST_PACKAGE, false);
+             WifiConfiguration roamingWifiConfiguration = new WifiConfiguration();
+             roamingWifiConfiguration.FQDN = TEST_FQDN + 1;
+             PasspointProvider providerNone = addTestProvider(TEST_FQDN + 2, TEST_FRIENDLY_NAME,
+-                    TEST_PACKAGE);
++                    TEST_PACKAGE, false);
+             ANQPData entry = new ANQPData(mClock, null);
+             InformationElementUtil.Vsa vsa = new InformationElementUtil.Vsa();
+             vsa.anqpDomainID = TEST_ANQP_DOMAIN_ID2;
+ 
+             when(mAnqpCache.getEntry(TEST_ANQP_KEY2)).thenReturn(entry);
+             when(InformationElementUtil.getHS2VendorSpecificIE(isNull())).thenReturn(vsa);
+             when(providerHome.match(anyMap(), isNull()))
+@@ -901,23 +907,23 @@ public class PasspointManagerTest {
+ 
+     /**
+      * Verify that an expected list of {@link WifiConfiguration} will be returned when provided
+      * a list of FQDN is matched to installed Passpoint profiles.
+      */
+     @Test
+     public void getWifiConfigsForPasspointProfiles() {
+-        PasspointProvider provider1 = addTestProvider(TEST_FQDN, TEST_FRIENDLY_NAME, TEST_PACKAGE);
++        PasspointProvider provider1 = addTestProvider(TEST_FQDN, TEST_FRIENDLY_NAME, TEST_PACKAGE, false);
+         WifiConfiguration wifiConfiguration1 = new WifiConfiguration();
+         wifiConfiguration1.FQDN = TEST_FQDN;
+         PasspointProvider provider2 = addTestProvider(TEST_FQDN + 1, TEST_FRIENDLY_NAME,
+-                TEST_PACKAGE);
++                TEST_PACKAGE, false);
+         WifiConfiguration wifiConfiguration2 = new WifiConfiguration();
+         wifiConfiguration2.FQDN = TEST_FQDN + 1;
+         PasspointProvider provider3 = addTestProvider(TEST_FQDN + 2, TEST_FRIENDLY_NAME,
+-                TEST_PACKAGE);
++                TEST_PACKAGE, false);
+         WifiConfiguration wifiConfiguration3 = new WifiConfiguration();
+         wifiConfiguration3.FQDN = TEST_FQDN + 2;
+         lenient().when(provider1.getWifiConfig()).thenReturn(wifiConfiguration1);
+         lenient().when(provider2.getWifiConfig()).thenReturn(wifiConfiguration2);
+         lenient().when(provider3.getWifiConfig()).thenReturn(wifiConfiguration3);
+ 
+         assertEquals(3, mManager.getWifiConfigsForPasspointProfiles(
+@@ -1110,17 +1116,17 @@ public class PasspointManagerTest {
+ 
+     /**
+      * Verify that matching Passpoint configurations will be returned as map with corresponding
+      * OSU providers.
+      */
+     @Test
+     public void getMatchingPasspointConfigsForOsuProvidersWithMatch() {
+-        PasspointProvider provider1 = addTestProvider(TEST_FQDN, TEST_FRIENDLY_NAME, TEST_PACKAGE);
++        PasspointProvider provider1 = addTestProvider(TEST_FQDN, TEST_FRIENDLY_NAME, TEST_PACKAGE, true);
+         PasspointProvider provider2 = addTestProvider(TEST_FQDN2, TEST_FRIENDLY_NAME2,
+-                TEST_PACKAGE);
++                TEST_PACKAGE, true);
+ 
+         List<OsuProvider> osuProviders = new ArrayList<>();
+         Map<String, String> friendlyNames = new HashMap<>();
+         friendlyNames.put("en", "NO-MATCH-NAME");
+         friendlyNames.put("kr", TEST_FRIENDLY_NAME + 1);
+ 
+         osuProviders.add(PasspointProvisioningTestUtil.generateOsuProviderWithFriendlyName(true,
+@@ -1139,16 +1145,16 @@ public class PasspointManagerTest {
+     }
+ 
+     /**
+      * Verify that empty map will be returned when there is no matching Passpoint configuration.
+      */
+     @Test
+     public void getMatchingPasspointConfigsForOsuProvidersWitNoMatch() {
+-        addTestProvider(TEST_FQDN, TEST_FRIENDLY_NAME, TEST_PACKAGE);
+-        addTestProvider(TEST_FQDN2, TEST_FRIENDLY_NAME2, TEST_PACKAGE);
++        addTestProvider(TEST_FQDN, TEST_FRIENDLY_NAME, TEST_PACKAGE, false);
++        addTestProvider(TEST_FQDN2, TEST_FRIENDLY_NAME2, TEST_PACKAGE, false);
+ 
+         List<OsuProvider> osuProviders = new ArrayList<>();
+ 
+         Map<String, String> friendlyNames = new HashMap<>();
+         friendlyNames.put("en", "NO-MATCH-NAME");
+         osuProviders.add(PasspointProvisioningTestUtil.generateOsuProviderWithFriendlyName(true,
+                 friendlyNames));
+@@ -1440,44 +1446,44 @@ public class PasspointManagerTest {
+      * metric is updated after the provider was used to successfully connect to a Passpoint
+      * network for the first time.
+      *
+      * @throws Exception
+      */
+     @Test
+     public void providerNetworkConnectedFirstTime() throws Exception {
+-        PasspointProvider provider = addTestProvider(TEST_FQDN, TEST_FRIENDLY_NAME, TEST_PACKAGE);
++        PasspointProvider provider = addTestProvider(TEST_FQDN, TEST_FRIENDLY_NAME, TEST_PACKAGE, false);
+         when(provider.getHasEverConnected()).thenReturn(false);
+         mManager.onPasspointNetworkConnected(TEST_FQDN);
+         verify(provider).setHasEverConnected(eq(true));
+     }
+ 
+     /**
+      * Verify that the provider's "hasEverConnected" flag the associated metric is not updated
+      * after the provider was used to successfully connect to a Passpoint network for non-first
+      * time.
+      *
+      * @throws Exception
+      */
+     @Test
+     public void providerNetworkConnectedNotFirstTime() throws Exception {
+-        PasspointProvider provider = addTestProvider(TEST_FQDN, TEST_FRIENDLY_NAME, TEST_PACKAGE);
++        PasspointProvider provider = addTestProvider(TEST_FQDN, TEST_FRIENDLY_NAME, TEST_PACKAGE, false);
+         when(provider.getHasEverConnected()).thenReturn(true);
+         mManager.onPasspointNetworkConnected(TEST_FQDN);
+         verify(provider, never()).setHasEverConnected(anyBoolean());
+     }
+ 
+     /**
+      * Verify that the expected Passpoint metrics are updated when
+      * {@link PasspointManager#updateMetrics} is invoked.
+      *
+      * @throws Exception
+      */
+     @Test
+     public void updateMetrics() {
+-        PasspointProvider provider = addTestProvider(TEST_FQDN, TEST_FRIENDLY_NAME, TEST_PACKAGE);
++        PasspointProvider provider = addTestProvider(TEST_FQDN, TEST_FRIENDLY_NAME, TEST_PACKAGE, false);
+         ArgumentCaptor<Map<String, PasspointProvider>> argCaptor = ArgumentCaptor.forClass(
+                 Map.class);
+         // Provider have not provided a successful network connection.
+         int expectedInstalledProviders = 1;
+         int expectedConnectedProviders = 0;
+         when(provider.getHasEverConnected()).thenReturn(false);
+         mManager.updateMetrics();
+@@ -1597,15 +1603,15 @@ public class PasspointManagerTest {
+     }
+ 
+     /**
+      * Verify that it returns {@code false} when it does not have Carrier Provider.
+      */
+     @Test
+     public void verifyHasProviderForCarrierWithNoMatch() {
+-        addTestProvider(TEST_FQDN, TEST_FRIENDLY_NAME, TEST_PACKAGE);
++        addTestProvider(TEST_FQDN, TEST_FRIENDLY_NAME, TEST_PACKAGE, false);
+ 
+         assertFalse(mManager.hasCarrierProvider(TEST_MCC_MNC));
+     }
+ 
+     /**
+      * Verify that it returns a carrier EAP-method from NAI-Realm matched with the carrier.
+      */
+@@ -1684,15 +1690,15 @@ public class PasspointManagerTest {
+      * Verify that the corresponding Passpoint provider is removed when the app is disabled.
+      */
+     @Test
+     public void verifyRemovingPasspointProfilesWhenAppIsDisabled() {
+         WifiConfiguration currentConfiguration = WifiConfigurationTestUtil.createPasspointNetwork();
+         currentConfiguration.FQDN = TEST_FQDN;
+         when(mClientModeImpl.getCurrentWifiConfiguration()).thenReturn(currentConfiguration);
+-        addTestProvider(TEST_FQDN, TEST_FRIENDLY_NAME, TEST_PACKAGE);
++        addTestProvider(TEST_FQDN, TEST_FRIENDLY_NAME, TEST_PACKAGE, false);
+ 
+         verify(mAppOpsManager).startWatchingMode(eq(OPSTR_CHANGE_WIFI_STATE), eq(TEST_PACKAGE),
+                 mAppOpChangedListenerCaptor.capture());
+         assertEquals(1, mManager.getProviderConfigs(TEST_CREATOR_UID, true).size());
+         AppOpsManager.OnOpChangedListener listener = mAppOpChangedListenerCaptor.getValue();
+         assertNotNull(listener);
+ 

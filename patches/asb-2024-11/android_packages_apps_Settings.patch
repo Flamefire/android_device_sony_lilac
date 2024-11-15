@@ -1,0 +1,166 @@
+# PWD: packages/apps/Settings
+diff --git a/src/com/android/settings/applications/AppInfoBase.java b/src/com/android/settings/applications/AppInfoBase.java
+index 71043400ff8..9d098000fbc 100644
+--- a/src/com/android/settings/applications/AppInfoBase.java
++++ b/src/com/android/settings/applications/AppInfoBase.java
+@@ -14,15 +14,17 @@
+  * limitations under the License.
+  */
+ 
+ package com.android.settings.applications;
+ 
+ import static com.android.settingslib.RestrictedLockUtils.EnforcedAdmin;
+ 
++import android.Manifest;
+ import android.app.Activity;
++import android.app.ActivityManager;
+ import android.app.Dialog;
+ import android.app.admin.DevicePolicyManager;
+ import android.app.settings.SettingsEnums;
+ import android.content.BroadcastReceiver;
+ import android.content.Context;
+ import android.content.Intent;
+ import android.content.IntentFilter;
+@@ -34,14 +36,15 @@ import android.os.Bundle;
+ import android.os.IBinder;
+ import android.os.ServiceManager;
+ import android.os.UserHandle;
+ import android.os.UserManager;
+ import android.text.TextUtils;
+ import android.util.Log;
+ 
++import androidx.annotation.VisibleForTesting;
+ import androidx.appcompat.app.AlertDialog;
+ import androidx.fragment.app.DialogFragment;
+ import androidx.fragment.app.Fragment;
+ 
+ import com.android.settings.SettingsActivity;
+ import com.android.settings.SettingsPreferenceFragment;
+ import com.android.settings.applications.manageapplications.ManageApplications;
+@@ -130,16 +133,21 @@ public abstract class AppInfoBase extends SettingsPreferenceFragment
+                 getIntent() : (Intent) args.getParcelable("intent");
+         if (mPackageName == null) {
+             if (intent != null && intent.getData() != null) {
+                 mPackageName = intent.getData().getSchemeSpecificPart();
+             }
+         }
+         if (intent != null && intent.hasExtra(Intent.EXTRA_USER_HANDLE)) {
+-            mUserId = ((UserHandle) intent.getParcelableExtra(
+-                    Intent.EXTRA_USER_HANDLE)).getIdentifier();
++            mUserId = ((UserHandle) intent.getParcelableExtra(Intent.EXTRA_USER_HANDLE))
++                    .getIdentifier();
++            if (mUserId != UserHandle.myUserId() && !hasInteractAcrossUsersPermission()) {
++                Log.w(TAG, "Intent not valid.");
++                finish();
++                return "";
++            }
+         } else {
+             mUserId = UserHandle.myUserId();
+         }
+         mAppEntry = mState.getEntry(mPackageName, mUserId);
+         if (mAppEntry != null) {
+             // Get application info again to refresh changed properties of application
+             try {
+@@ -154,14 +162,40 @@ public abstract class AppInfoBase extends SettingsPreferenceFragment
+             Log.w(TAG, "Missing AppEntry; maybe reinstalling?");
+             mPackageInfo = null;
+         }
+ 
+         return mPackageName;
+     }
+ 
++    @VisibleForTesting
++    protected boolean hasInteractAcrossUsersPermission() {
++        Activity activity = getActivity();
++        if (activity == null) {
++            return false;
++        }
++        String callingPackageName = null;
++        try {
++            callingPackageName = ActivityManager.getService()
++                .getLaunchedFromPackage(activity.getActivityToken());
++        } catch (Exception e) {
++            return false;
++        }
++        if (TextUtils.isEmpty(callingPackageName)) {
++            Log.w(TAG, "Not able to get calling package name for permission check");
++            return false;
++        }
++        if (mPm.checkPermission(Manifest.permission.INTERACT_ACROSS_USERS_FULL, callingPackageName)
++                != PackageManager.PERMISSION_GRANTED) {
++            Log.w(TAG, "Package " + callingPackageName + " does not have required permission "
++                    + Manifest.permission.INTERACT_ACROSS_USERS_FULL);
++            return false;
++        }
++        return true;
++    }
++
+     protected void setIntentAndFinish(boolean appChanged) {
+         Log.i(TAG, "appChanged=" + appChanged);
+         Intent intent = new Intent();
+         intent.putExtra(ManageApplications.APP_CHG, appChanged);
+         SettingsActivity sa = (SettingsActivity) getActivity();
+         sa.finishPreferencePanel(Activity.RESULT_OK, intent);
+         mFinishing = true;
+diff --git a/src/com/android/settings/users/AppRestrictionsFragment.java b/src/com/android/settings/users/AppRestrictionsFragment.java
+index 7cf46b69245..3f06e870a02 100644
+--- a/src/com/android/settings/users/AppRestrictionsFragment.java
++++ b/src/com/android/settings/users/AppRestrictionsFragment.java
+@@ -645,15 +645,15 @@ public class AppRestrictionsFragment extends SettingsPreferenceFragment implemen
+                         EventLog.writeEvent(0x534e4554, "200688991", -1 /* UID */, "");
+                         return;
+                     }
+ 
+                     int requestCode = generateCustomActivityRequestCode(
+                             RestrictionsResultReceiver.this.preference);
+                     AppRestrictionsFragment.this.startActivityForResult(
+-                            restrictionsIntent, requestCode);
++                            new Intent(restrictionsIntent), requestCode);
+                 }
+             }
+         }
+ 
+         private void assertSafeToStartCustomActivity(Intent intent) {
+             EventLog.writeEvent(0x534e4554, "223578534", -1 /* UID */, "");
+             ResolveInfo resolveInfo = mPackageManager.resolveActivity(
+diff --git a/src/com/android/settings/users/EditUserPhotoController.java b/src/com/android/settings/users/EditUserPhotoController.java
+index f1831f7120b..d836d2687bc 100644
+--- a/src/com/android/settings/users/EditUserPhotoController.java
++++ b/src/com/android/settings/users/EditUserPhotoController.java
+@@ -14,14 +14,15 @@
+  * limitations under the License.
+  */
+ 
+ package com.android.settings.users;
+ 
+ import android.app.Activity;
+ import android.content.ClipData;
++import android.content.ContentProvider;
+ import android.content.ContentResolver;
+ import android.content.Context;
+ import android.content.Intent;
+ import android.content.pm.ActivityInfo;
+ import android.content.pm.PackageManager;
+ import android.content.pm.ResolveInfo;
+ import android.database.Cursor;
+@@ -127,14 +128,20 @@ public class EditUserPhotoController {
+         // Check if the result is a content uri
+         if (!ContentResolver.SCHEME_CONTENT.equals(pictureUri.getScheme())) {
+             Log.e(TAG, "Invalid pictureUri scheme: " + pictureUri.getScheme());
+             EventLog.writeEvent(0x534e4554, "172939189", -1, pictureUri.getPath());
+             return false;
+         }
+ 
++        final int currentUserId = UserHandle.myUserId();
++        if (currentUserId != ContentProvider.getUserIdFromUri(pictureUri, currentUserId)) {
++            Log.e(TAG, "Invalid pictureUri: " + pictureUri);
++            return false;
++        }
++
+         switch (requestCode) {
+             case REQUEST_CODE_CROP_PHOTO:
+                 onPhotoCropped(pictureUri, true);
+                 return true;
+             case REQUEST_CODE_TAKE_PHOTO:
+             case REQUEST_CODE_CHOOSE_PHOTO:
+                 if (mTakePictureUri.equals(pictureUri)) {

@@ -1,0 +1,55 @@
+From 37a9600ef97f814ce780ef420b11ac23905a6844 Mon Sep 17 00:00:00 2001
+From: "Kevin F. Haggerty" <haggertk@lineageos.org>
+Date: Fri, 8 Nov 2024 11:52:52 -0700
+Subject: [PATCH] Bump Security String to 2024-11-05
+
+Implemented:
+============
+CVE:            References:    Type:  Severity:  Updated AOSP versions:
+CVE-2024-43080  A-330722900    EoP    High       12, 12L, 13, 14, 15
+CVE-2024-43081  A-341256043    EoP    High       12, 12L, 13, 14, 15
+CVE-2024-43083  A-348352288    DoS    High       12, 12L, 13, 14, 15
+CVE-2024-43084  A-281044385    ID     High       12, 12L, 13, 14, 15
+CVE-2024-43085  A-353712853    EoP    High       12, 12L, 13, 14, 15
+CVE-2024-43086  A-343440463    ID     High       12, 12L, 13, 14, 15
+CVE-2024-43088  A-326057017    EoP    High       12, 12L, 13, 14, 15
+CVE-2024-43089  A-304280682    EoP    High       12, 12L, 13, 14, 15
+CVE-2024-43090  A-331180422    ID     High       12, 12L, 13, 14
+CVE-2024-43091  A-344620577    RCE    High       12, 12L, 13, 14, 15
+
+Not Implemented:
+================
+None
+
+Not Applicable (platform source):
+=================================
+CVE:            References:    Type:  Severity:  Updated AOSP versions:
+CVE-2024-29779  A-329701910    EoP    High       14
+CVE-2024-34719  A-242996380    EoP    High       12, 12L, 13, 14
+CVE-2024-40660  A-347307756    EoP    High       14, 15
+CVE-2024-40661  A-308138085    EoP    High       12, 12L, 13, 14
+CVE-2024-43082  A-296915959    ID     High       12, 12L
+CVE-2024-43087  A-353700779    EoP    High       12, 12L, 13, 14, 15
+CVE-2024-43093  A-341680936    EoP    High       12, 13, 14, 15
+
+Change-Id: I6b0d0b2919c458fd96f82253936a8719e4359926
+---
+ core/version_defaults.mk | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/core/version_defaults.mk b/core/version_defaults.mk
+index 1c8e1267ab..940b154a67 100644
+--- a/core/version_defaults.mk
++++ b/core/version_defaults.mk
+@@ -250,7 +250,7 @@ ifndef PLATFORM_SECURITY_PATCH
+     #  It must be of the form "YYYY-MM-DD" on production devices.
+     #  It must match one of the Android Security Patch Level strings of the Public Security Bulletins.
+     #  If there is no $PLATFORM_SECURITY_PATCH set, keep it empty.
+-    PLATFORM_SECURITY_PATCH := 2024-10-05
++    PLATFORM_SECURITY_PATCH := 2024-11-05
+ endif
+ .KATI_READONLY := PLATFORM_SECURITY_PATCH
+ 
+-- 
+2.40.1
+
