@@ -23,6 +23,7 @@ if [ ! -d "$repo_root/device/sony/lilac/patches" ]; then
   showError "Failed to find repository root at $repo_root"
 fi
 
+clean_patch_dirs=0
 patch_set=all
 script_name=$(basename "$0")
 for arg in "$@"; do
@@ -47,6 +48,18 @@ numApplied=0
 numSkipped=0
 numWarned=0
 
+function clean_dir {
+    dir=${1:?"Missing dir param"}
+    if ! git -C "$dir" diff --quiet; then
+        echo -n "Cleaning ${dir}: "
+        git -C "$dir" reset --hard --quiet
+        git -C "$dir" clean -d --force --quiet
+        echo -e "${LGREEN}Done.${NC}"
+    else
+        echo "Ignoring ${dir}  (no changes detected)"
+    fi
+}
+
 function applyPatch {
     patch=${1:?"No patch specified"}
 
@@ -54,15 +67,8 @@ function applyPatch {
         showError "Faulty patch: $patch"
     fi
 
-    if [ "${clean_patch_dirs:-}" ]; then
-        if ! git -C "$patch_dir" diff --quiet; then
-            echo -n "Cleaning ${patch_dir}: "
-            git -C "$patch_dir" reset --hard --quiet
-            git -C "$patch_dir" clean -d --force --quiet
-            echo -e "${LGREEN}Done.${NC}"
-        else
-            echo "Ignoring ${patch_dir}  (no changes detected)"
-        fi
+    if ((clean_patch_dirs == 1)); then
+        clean_dir "$patch_dir"
         return
     fi
 
@@ -105,6 +111,26 @@ function applyPatch {
 for filename in $(find "$PATCH_ROOT/asb-"* -maxdepth 1 -type f -name '*.patch' -printf "%f\n" | sort -u); do
     patch=$(find "$PATCH_ROOT/asb-"* -maxdepth 1 -type f -name "$filename" | sort | tail -n1)
     applyPatch "$patch"
+done
+
+# Required to avoid conflicts leading to module "soong-clang-prebuilts" already defined
+for prebuild_dir in "prebuilts-lineage-18.1" "prebuilts-lineage-19.1"; do
+    dir_path="$repo_root/$prebuild_dir/clang/host/linux-x86"
+    [[ -d "$dir_path" ]] || continue
+    if ((clean_patch_dirs == 1)); then
+        clean_dir "$dir_path"
+        continue
+    fi
+    for file in "Android.mk" "Android.bp" "soong/Android.bp"; do
+        file_path="$dir_path/$file"
+        echo -n "Fixing $file in $prebuild_dir: "
+        if [[ -s "$file_path" ]]; then
+            echo -n "" > "$file_path"
+            echo -e "${LGREEN}Done.${NC}"
+        else
+            echo -e "${GREEN}Skipped.${NC}"
+        fi
+    done
 done
 
 # Apply custom patches
