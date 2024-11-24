@@ -9,7 +9,6 @@ Combined with code from:
     https://github.com/osm0sis/PlayIntegrityFork
 Code is licensed under Apache License, Version 2.0 & GPLv3 respectively
 diff --git a/core/java/android/app/Instrumentation.java b/core/java/android/app/Instrumentation.java
-index 721525d9af9d..09dcad811d4d 100644
 --- a/core/java/android/app/Instrumentation.java
 +++ b/core/java/android/app/Instrumentation.java
 @@ -57,6 +57,8 @@ import android.view.WindowManagerGlobal;
@@ -25,7 +24,7 @@ index 721525d9af9d..09dcad811d4d 100644
          Application app = getFactory(context.getPackageName())
                  .instantiateApplication(cl, className);
          app.attach(context);
-+        AttestationHooks.initApplicationBeforeOnCreate(app);
++        AttestationHooks.initApplicationBeforeOnCreate(app, context);
          return app;
      }
      
@@ -33,16 +32,15 @@ index 721525d9af9d..09dcad811d4d 100644
              ClassNotFoundException {
          Application app = (Application)clazz.newInstance();
          app.attach(context);
-+        AttestationHooks.initApplicationBeforeOnCreate(app);
++        AttestationHooks.initApplicationBeforeOnCreate(app, context);
          return app;
      }
  
 diff --git a/core/java/com/android/internal/gmscompat/AttestationHooks.java b/core/java/com/android/internal/gmscompat/AttestationHooks.java
 new file mode 100644
-index 000000000000..b5ee8c4c5c27
 --- /dev/null
 +++ b/core/java/com/android/internal/gmscompat/AttestationHooks.java
-@@ -0,0 +1,201 @@
+@@ -0,0 +1,248 @@
 +/*
 + * Copyright (C) 2021 The Android Open Source Project
 + *
@@ -62,14 +60,19 @@ index 000000000000..b5ee8c4c5c27
 +package com.android.internal.gmscompat;
 +
 +import android.app.Application;
++import android.content.Context;
++import android.net.Uri;
 +import android.os.Build;
 +import android.os.SystemProperties;
 +import android.util.Log;
 +
 +import libcore.io.IoUtils;
 +
-+import java.io.IOException;
 +import java.io.File;
++import java.io.FileNotFoundException;
++import java.io.InputStream;
++import java.io.InputStreamReader;
++import java.io.IOException;
 +import java.lang.reflect.Field;
 +import java.lang.SecurityException;
 +import java.util.Arrays;
@@ -87,59 +90,101 @@ index 000000000000..b5ee8c4c5c27
 +    private static final String PACKAGE_GMS = "com.google.android.gms";
 +    private static final String PROCESS_UNSTABLE = "com.google.android.gms.unstable";
 +
-+    private static final String PIF_FILEPATH = "/sdcard/pif.json";
++    private static final String CUSTOM_PIF_URI = "content://com.yoshino.parts.pifprovider/pif";
 +    private static final String PIF_FILEPATH_PROP = "ro.vendor.pif_path";
 +
 +    private static volatile boolean sIsGms = false;
 +
 +    private AttestationHooks() { }
 +
-+    private static File getPIFConfigPath() {
-+        File path = new File(PIF_FILEPATH);
-+        try {
-+            if (path.isFile())
-+                return path;
-+        } catch (SecurityException e) {
-+            Log.e(TAG, String.format("Failed to check PIF file at %s: %s", path.getPath(), e));
++    private static String readInputStream(InputStream stream) throws IOException{
++        try(InputStreamReader reader = new InputStreamReader(stream)) {
++            final char[] buffer = new char[128];
++            final StringBuilder content = new StringBuilder();
++            for (int numRead; (numRead = reader.read(buffer, 0, buffer.length)) > 0; )
++                content.append(buffer, 0, numRead);
++            return content.toString();
 +        }
-+        String path_from_prop = SystemProperties.get(PIF_FILEPATH_PROP);
-+        if (path_from_prop.isEmpty()) {
-+            Log.w(TAG, String.format("Property %s is not set and file %s is not found, skipping PI spoof",
-+                                     PIF_FILEPATH_PROP, PIF_FILEPATH));
++    }
++
++    private static JSONObject readCustomPIFConfigFile(Context context) {
++        final Uri provUri = Uri.parse(CUSTOM_PIF_URI);
++        try (InputStream inputStream = context.getContentResolver().openInputStream(provUri)) {
++            if (inputStream != null) {
++                final String content = readInputStream(inputStream);
++                if (content != null && content.isEmpty())
++                    Log.e(TAG, "Ignoring empty custom PIF file");
++                else if (content != null)
++                    return new JSONObject(content);
++            }
++        } catch (FileNotFoundException e) {
 +            return null;
++        } catch (IOException e) {
++            e.printStackTrace();
++        } catch (JSONException e) {
++            Log.e(TAG, String.format("Failed to parse custom/downloaded config: " + e));
 +        }
-+        path = new File(path_from_prop);
-+        try {
-+            if (path.isFile())
-+                return path;
-+        } catch (SecurityException e) {
-+            Log.e(TAG, String.format("Failed to check PIF file at %s: %s", path.getPath(), e));
-+        }
-+        Log.w(TAG, String.format("PIF file not found at %s or %s, skipping PI spoof", PIF_FILEPATH, path_from_prop));
 +        return null;
 +    }
 +
-+    private static Map<String, String> getFieldsToSpoof() {
-+        File pifPath = getPIFConfigPath();
-+        if (pifPath == null)
-+            return null;
-+        Log.i(TAG, String.format("Using PIF file at %s", pifPath.getPath()));
-+
-+        Map<String, String> result = new HashMap<String, String>();
++    /** Read the PIF config from the given path into a JSON object.
++     *  Return null on error
++     */
++    private static JSONObject tryReadPIFConfig(File path) {
 +        try {
-+            JSONObject json = new JSONObject(IoUtils.readFileAsString(pifPath.getAbsolutePath()));
-+            Iterator<String> iter = json.keys();
-+            while (iter.hasNext()) {
-+                String key = iter.next();
-+                if (key.matches("[A-Z_]+"))
-+                    result.put(key, json.getString(key));
-+            }
++            if (!path.isFile())
++                return null;
++        } catch (SecurityException e) {
++            Log.e(TAG, String.format("Failed to check PIF file at %s: %s", path, e));
++        }
++        try {
++            final String content = IoUtils.readFileAsString(path.getAbsolutePath());
++            if (content != null && content.isEmpty())
++                Log.e(TAG, "Ignoring empty PIF file at " + path);
++            else if (content != null)
++                return new JSONObject(content);
++            return null;
 +        } catch (IOException | JSONException e) {
-+            Log.e(TAG, "Failed to read PIF file: " + e);
++            Log.e(TAG, String.format("Failed to read PIF file at %s: ", path.getPath(), e));
++            return null;
++        }
++    }
++
++    private static JSONObject getPIFConfig(Context context) {
++        JSONObject result = readCustomPIFConfigFile(context);
++        if (result != null)
++            return result;
++        final String path_from_prop = SystemProperties.get(PIF_FILEPATH_PROP);
++        if (path_from_prop.isEmpty()) {
++            Log.w(TAG, String.format("Property %s is not set and no custom or downloaded config found, skipping PI spoof",
++                                     PIF_FILEPATH_PROP));
++            return null;
++        }
++        result = tryReadPIFConfig(new File(path_from_prop));
++        if (result == null)
++            Log.w(TAG, String.format("Default PIF file not found at %s=%s, skipping PI spoof", PIF_FILEPATH_PROP, path_from_prop));
++        return result;
++    }
++
++    private static Map<String, String> getFieldsToSpoof(Context context) {
++        final JSONObject configFromFile = getPIFConfig(context);
++        if (configFromFile == null)
++            return null;
++
++        final Map<String, String> result = new HashMap<String, String>();
++        try {
++            Iterator<String> iter = configFromFile.keys();
++            while (iter.hasNext()) {
++                final String key = iter.next();
++                if (key.matches("[A-Z_]+"))
++                    result.put(key, configFromFile.getString(key));
++            }
++        } catch (JSONException e) {
++            Log.e(TAG, "Failed to parse PIF config: " + e);
 +            return null;
 +        }
 +        // For compatibility across Android versions set all if any is set
-+        String[] apiLevelNames = {"DEVICE_INITIAL_SDK_INT", "FIRST_SDK_INT", "FIRST_API_LEVEL"};
++        final String[] apiLevelNames = {"DEVICE_INITIAL_SDK_INT", "FIRST_SDK_INT", "FIRST_API_LEVEL"};
 +        String firstApiLevel = "";
 +        for (String name : apiLevelNames)
 +            firstApiLevel = result.getOrDefault(name, firstApiLevel);
@@ -148,11 +193,11 @@ index 000000000000..b5ee8c4c5c27
 +                result.putIfAbsent(name, firstApiLevel);
 +        }
 +        // Derive missing fields from the fingerprint
-+        String[] fpFields = {"BRAND", "PRODUCT", "DEVICE", "RELEASE", "ID", "INCREMENTAL", "TYPE", "TAGS"};
-+        String fp = result.getOrDefault("FINGERPRINT", "");
++        final String[] fpFields = {"BRAND", "PRODUCT", "DEVICE", "RELEASE", "ID", "INCREMENTAL", "TYPE", "TAGS"};
++        final String fp = result.getOrDefault("FINGERPRINT", "");
 +        if (!fp.isEmpty() && !Arrays.stream(fpFields).allMatch(name -> result.containsKey(name))) {
 +            Log.d(TAG, "Deriving fields from fingerprint");
-+            String[] parts = fp.split("[:/]");
++            final String[] parts = fp.split("[:/]");
 +            for (int i = 0; i < parts.length && i < fpFields.length; i++)
 +                result.putIfAbsent(fpFields[i], parts[i]);
 +        }
@@ -172,7 +217,7 @@ index 000000000000..b5ee8c4c5c27
 +            return;
 +        }
 +        Object newValue = null;
-+        Class<?> fieldType = field.getType();
++        final Class<?> fieldType = field.getType();
 +        if (fieldType == String.class)
 +            newValue = value;
 +        else if (fieldType == int.class)
@@ -216,19 +261,19 @@ index 000000000000..b5ee8c4c5c27
 +        field.setAccessible(false);
 +    }
 +
-+    private static void spoofPlayIntegrity() {
++    private static void spoofPlayIntegrity(Context context) {
 +        // Set properties for PlayIntegrity / CTS profile
-+        Map<String, String> fields = getFieldsToSpoof();
++        final Map<String, String> fields = getFieldsToSpoof(context);
 +        if (fields != null) {
 +            for (String key : fields.keySet())
 +                setField(key, fields.get(key));
 +        }
 +    }
 +
-+    public static void initApplicationBeforeOnCreate(Application app) {
++    public static void initApplicationBeforeOnCreate(Application app, Context context) {
 +        if (PACKAGE_GMS.equals(app.getPackageName()) && PROCESS_UNSTABLE.equals(Application.getProcessName())) {
 +            sIsGms = true;
-+            spoofPlayIntegrity();
++            spoofPlayIntegrity(context);
 +        }
 +    }
 +
@@ -245,7 +290,6 @@ index 000000000000..b5ee8c4c5c27
 +    }
 +}
 diff --git a/keystore/java/android/security/keystore/AndroidKeyStoreSpi.java b/keystore/java/android/security/keystore/AndroidKeyStoreSpi.java
-index 51c42520ccc9..35a12654634a 100644
 --- a/keystore/java/android/security/keystore/AndroidKeyStoreSpi.java
 +++ b/keystore/java/android/security/keystore/AndroidKeyStoreSpi.java
 @@ -32,6 +32,8 @@ import android.util.Log;
