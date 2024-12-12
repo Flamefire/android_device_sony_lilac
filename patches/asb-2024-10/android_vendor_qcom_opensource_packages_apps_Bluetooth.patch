@@ -104,9 +104,9 @@ index bbde61948..1124caa19 100644
                          }
                          if (disconnectRemote(device)) {
 -                            disconnectHidNative(Utils.getByteAddress(device));
-+                            int connectionPolicy = getConnectionPolicy(device);
++                            int priority = getPriority(device);
 +                            boolean reconnectAllowed =
-+                                    connectionPolicy == BluetoothProfile.CONNECTION_POLICY_ALLOWED;
++                                    priority == BluetoothProfile.PRIORITY_ON;
 +                            disconnectHidNative(Utils.getByteAddress(device), reconnectAllowed);
                          } else {
                              virtualUnPlugNative(Utils.getByteAddress(device));
