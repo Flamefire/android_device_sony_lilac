@@ -134,6 +134,11 @@ lib64/libmdsprpc_system.so
 lib64/libsdsprpc_system.so
 lib64/libseemore.so
 
+# Felica
+product/etc/felica/common.cfg|087625813dbceb783c1f4dd3c8e505e1a8b251d7
+product/etc/felica/mfm.cfg|4cbcf716bd968c54d031831145a2821afbb67deb
+product/etc/felica/mfs.cfg|0adfe851cbe62db27c91bcf314bb708b64059af9
+
 # FFU
 lib/firmware/ufs/01AD-483238553632333031414D5220202020-D003.bin:etc/firmware/ufs/01AD-483238553632333031414D5220202020-D003.bin
 
