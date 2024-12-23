@@ -1,0 +1,84 @@
+From a3c591b6c8fb5564236f64b67627d7d69d8819cd Mon Sep 17 00:00:00 2001
+From: Brian Delwiche <delwiche@google.com>
+Date: Thu, 3 Oct 2024 22:10:33 +0000
+Subject: [PATCH 5/5] [BACKPORT] Fix OOB writes in gatt_sr.cc
+
+At various points in gatt_sr.cc, the output of the
+gatt_tcb_get_payload_size function is used without checking for a
+positive length.  However, in exceptional cases it is possible for the
+channel to be closed at the time the function is called, which will lead
+to a zero length and cause an OOB write in subsequent processing.
+
+Fix all of these.
+
+Bug: 364026473
+Bug: 364027038
+Bug: 364027949
+Bug: 364025411
+Test: m libbluetooth
+Test: researcher POC
+Flag: EXEMPT trivial validity checks
+Tag: #security
+Ignore-AOSP-First: Security
+(cherry picked from https://googleplex-android-review.googlesource.com/q/commit:136fb5359ad1664159dbf906e60637f613355828)
+Merged-In: I953279c78db5a68b0bdb401d3dd373241043c33a
+Change-Id: I953279c78db5a68b0bdb401d3dd373241043c33a
+---
+ stack/gatt/gatt_sr.cc | 20 ++++++++++++++++++++
+ 1 file changed, 20 insertions(+)
+
+diff --git a/stack/gatt/gatt_sr.cc b/stack/gatt/gatt_sr.cc
+index ed654a5cc..f300e43b6 100644
+--- a/stack/gatt/gatt_sr.cc
++++ b/stack/gatt/gatt_sr.cc
+@@ -669,6 +669,11 @@ void gatts_process_primary_service_req(tGATT_TCB& tcb, uint8_t op_code,
+     }
+   }
+ 
++  // This can happen if the channel is already closed.
++  if (tcb.payload_size == 0) {
++    return;
++  }
++
+   uint16_t msg_len =
+       (uint16_t)(sizeof(BT_HDR) + tcb.payload_size + L2CAP_MIN_OFFSET);
+   BT_HDR* p_msg = (BT_HDR*)osi_calloc(msg_len);
+@@ -702,6 +707,11 @@ static void gatts_process_find_info(tGATT_TCB& tcb, uint8_t op_code,
+     return;
+   }
+ 
++  // This can happen if the channel is already closed.
++  if (tcb.payload_size == 0) {
++    return;
++  }
++
+   uint16_t buf_len =
+       (uint16_t)(sizeof(BT_HDR) + tcb.payload_size + L2CAP_MIN_OFFSET);
+ 
+@@ -832,6 +842,11 @@ void gatts_process_read_by_type_req(tGATT_TCB& tcb, uint8_t op_code,
+     return;
+   }
+ 
++  // This can happen if the channel is already closed.
++  if (tcb.payload_size == 0) {
++    return;
++  }
++
+   size_t msg_len = sizeof(BT_HDR) + tcb.payload_size + L2CAP_MIN_OFFSET;
+   BT_HDR* p_msg = (BT_HDR*)osi_calloc(msg_len);
+   uint8_t* p = (uint8_t*)(p_msg + 1) + L2CAP_MIN_OFFSET;
+@@ -972,6 +987,11 @@ void gatts_process_write_req(tGATT_TCB& tcb, tGATT_SRV_LIST_ELEM& el,
+ static void gatts_process_read_req(tGATT_TCB& tcb, tGATT_SRV_LIST_ELEM& el,
+                                    uint8_t op_code, uint16_t handle,
+                                    uint16_t len, uint8_t* p_data) {
++  // This can happen if the channel is already closed.
++  if (tcb.payload_size == 0) {
++    return;
++  }
++
+   size_t buf_len = sizeof(BT_HDR) + tcb.payload_size + L2CAP_MIN_OFFSET;
+   uint16_t offset = 0;
+ 
+-- 
+2.40.1
+

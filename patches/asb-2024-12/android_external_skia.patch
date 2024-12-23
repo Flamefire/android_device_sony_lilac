@@ -1,0 +1,115 @@
+# PWD: external/skia
+diff --git a/src/core/SkBlurMF.cpp b/src/core/SkBlurMF.cpp
+index e175d2ef62..42cb9951f1 100644
+--- a/src/core/SkBlurMF.cpp
++++ b/src/core/SkBlurMF.cpp
+@@ -311,14 +311,17 @@ bool SkBlurMaskFilterImpl::filterRRectMask(SkMask* dst, const SkRRect& r,
+ static bool prepare_to_draw_into_mask(const SkRect& bounds, SkMask* mask) {
+     SkASSERT(mask != nullptr);
+ 
+     mask->fBounds = bounds.roundOut();
+     mask->fRowBytes = SkAlign4(mask->fBounds.width());
+     mask->fFormat = SkMask::kA8_Format;
+     const size_t size = mask->computeImageSize();
++    if (size == 0) {
++        return false;
++    }
+     mask->fImage = SkMask::AllocImage(size, SkMask::kZeroInit_Alloc);
+     if (nullptr == mask->fImage) {
+         return false;
+     }
+     return true;
+ }
+ 
+diff --git a/src/core/SkRegion.cpp b/src/core/SkRegion.cpp
+index 9176c7a55c..f97da2e9dd 100644
+--- a/src/core/SkRegion.cpp
++++ b/src/core/SkRegion.cpp
+@@ -49,16 +49,18 @@ public:
+     SkRegionPriv::RunType& operator[](int i) {
+         SkASSERT((unsigned)i < (unsigned)fCount);
+         return fPtr[i];
+     }
+     /** Resize the array to a size greater-than-or-equal-to count. */
+     void resizeToAtLeast(int count) {
+         if (count > fCount) {
+-            // leave at least 50% extra space for future growth.
+-            count += count >> 1;
++            // leave at least 50% extra space for future growth (unless adding would overflow)
++            SkSafeMath safe;
++            int newCount = safe.addInt(count, count >> 1);
++            count = safe ? newCount : SK_MaxS32;
+             fMalloc.realloc(count);
+             if (fPtr == fStack) {
+                 memcpy(fMalloc.get(), fStack, fCount * sizeof(SkRegionPriv::RunType));
+             }
+             fPtr = fMalloc.get();
+             fCount = count;
+         }
+diff --git a/src/effects/SkEmbossMaskFilter.cpp b/src/effects/SkEmbossMaskFilter.cpp
+index ef26520172..94ff73e908 100644
+--- a/src/effects/SkEmbossMaskFilter.cpp
++++ b/src/effects/SkEmbossMaskFilter.cpp
+@@ -91,19 +91,21 @@ bool SkEmbossMaskFilter::filterMask(SkMask* dst, const SkMask& src,
+         return true;
+     }
+ 
+     // create a larger buffer for the other two channels (should force fBlur to do this for us)
+ 
+     {
+         uint8_t* alphaPlane = dst->fImage;
+-        size_t   planeSize = dst->computeImageSize();
+-        if (0 == planeSize) {
+-            return false;   // too big to allocate, abort
++        size_t totalSize = dst->computeTotalImageSize();
++        if (totalSize == 0) {
++            return false;  // too big to allocate, abort
+         }
+-        dst->fImage = SkMask::AllocImage(planeSize * 3);
++        size_t planeSize = dst->computeImageSize();
++        SkASSERT(planeSize != 0);  // if totalSize didn't overflow, this can't either
++        dst->fImage = SkMask::AllocImage(totalSize);
+         memcpy(dst->fImage, alphaPlane, planeSize);
+         SkMask::FreeImage(alphaPlane);
+     }
+ 
+     // run the light direction through the matrix...
+     Light   light = fLight;
+     matrix.mapVectors((SkVector*)(void*)light.fDirection,
+diff --git a/src/pdf/SkDeflate.cpp b/src/pdf/SkDeflate.cpp
+index be3e182cd1..40631f1f06 100644
+--- a/src/pdf/SkDeflate.cpp
++++ b/src/pdf/SkDeflate.cpp
+@@ -6,24 +6,32 @@
+  */
+ 
+ #include "SkDeflate.h"
+ 
+ #include "SkData.h"
+ #include "SkMakeUnique.h"
+ #include "SkMalloc.h"
++#include "SkTFitsIn.h"
+ #include "SkTo.h"
+ #include "SkTraceEvent.h"
+ 
+ #include "zlib.h"
+ 
+ namespace {
+ 
+ // Different zlib implementations use different T.
+ // We've seen size_t and unsigned.
+ template <typename T> void* skia_alloc_func(void*, T items, T size) {
++    if (!SkTFitsIn<size_t>(size)) {
++        return nullptr;
++    }
++    const size_t maxItems = SIZE_MAX / size;
++    if (maxItems < items) {
++        return nullptr;
++    }
+     return sk_calloc_throw(SkToSizeT(items) * SkToSizeT(size));
+ }
+ 
+ void skia_free_func(void*, void* address) { sk_free(address); }
+ 
+ }  // namespace
+ 

@@ -1,0 +1,53 @@
+From f631808920b0b4ef4389094e909302334c9cbef4 Mon Sep 17 00:00:00 2001
+From: Brian Delwiche <delwiche@google.com>
+Date: Wed, 4 Sep 2024 22:01:58 +0000
+Subject: [PATCH 4/5] [BACKPORT] Encrypt LE link immediately on reconnection
+
+LE link must be encrypted immediately on connection if device are
+already bonded.
+
+This is a backport of ag/29056565, but the code needs to go in a
+different location because that patch relies on recent feature work.
+
+Ignore-AOSP-First: security
+Test: mmm packages/modules/Bluetooth
+Bug: 288144143
+(cherry picked from https://googleplex-android-review.googlesource.com/q/commit:1cb2dc039d5d084a4a44e8ce283c1b21b9868354)
+Merged-In: Ibb6d651fe53835260ecc6d08215b2a3bd235bced
+Change-Id: Ibb6d651fe53835260ecc6d08215b2a3bd235bced
+---
+ stack/btm/btm_acl.cc | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
+
+diff --git a/stack/btm/btm_acl.cc b/stack/btm/btm_acl.cc
+index 14390482e..a1715a03c 100644
+--- a/stack/btm/btm_acl.cc
++++ b/stack/btm/btm_acl.cc
+@@ -51,6 +51,7 @@
+ #include "hcidefs.h"
+ #include "hcimsgs.h"
+ #include "l2c_int.h"
++#include "main/shim/dumpsys.h"
+ #include "osi/include/log.h"
+ #include "osi/include/osi.h"
+ 
+@@ -1226,6 +1227,16 @@ void btm_establish_continue(tACL_CONN* p_acl_cb) {
+ 
+     if (btm_cb.btm_def_link_policy)
+       BTM_SetLinkPolicy(p_acl_cb->remote_addr, &btm_cb.btm_def_link_policy);
++  } else if (p_acl_cb->transport == BT_TRANSPORT_LE) {
++    tBTM_SEC_DEV_REC* p_dev_rec = btm_find_dev(p_acl_cb->remote_addr);
++    if (p_dev_rec == nullptr) {
++      LOG_WARN(LOG_TAG, "No security record for %s",
++               PRIVATE_ADDRESS(p_acl_cb->remote_addr));
++    } else if (p_dev_rec->sec_flags & BTM_SEC_LE_LINK_KEY_KNOWN) {
++      btm_ble_set_encryption(
++          p_acl_cb->remote_addr, BTM_BLE_SEC_ENCRYPT,
++          p_dev_rec->role_master ? BTM_ROLE_MASTER : BTM_ROLE_SLAVE);
++    }
+   }
+ #endif
+   if (p_acl_cb->link_up_issued) {
+-- 
+2.40.1
+
