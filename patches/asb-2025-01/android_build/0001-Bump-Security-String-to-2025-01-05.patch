@@ -1,0 +1,68 @@
+From 7400aa543d65e483696a2aba43f2088a5ee2c6cc Mon Sep 17 00:00:00 2001
+From: mse1969 <mse1969@posteo.de>
+Date: Mon, 27 Jan 2025 19:03:38 +0100
+Subject: [PATCH] Bump Security String to 2025-01-05
+
+Implemented:
+============
+CVE:            References:    Type:  Severity:  Updated AOSP versions:
+CVE-2024-34722  A-251514170    EoP    High       12, 12L, 13, 14
+CVE-2024-49724  A-369351375    EoP    High       12, 12L, 13, 14, 15
+CVE-2024-49733  A-365738306    ID     High       12, 12L, 13, 14, 15
+CVE-2024-49736  A-316578327    DoS    High       12, 12L, 13, 14
+CVE-2024-49738  A-370840874    EoP    High       12, 12L, 13, 14, 15
+CVE-2024-49742  A-363248394    EoP    High       12, 12L, 13, 14, 15
+CVE-2024-49744  A-360846772    EoP    High       12, 12L, 13, 14, 15
+CVE-2024-49745  A-370831157    EoP    High       12, 12L, 13, 14, 15
+CVE-2024-49749  A-355461643    RCE    High       12, 12L, 13, 14, 15
+
+Previously Implemented:
+================
+CVE:            References:    Type:  Severity:  Updated AOSP versions:  Prior Change:
+CVE-2024-34730  A-308429049    EoP    High       12, 12L, 13, 14	 f9b4d83
+									 26c752c
+									 6365a21
+									 4129caf
+CVE-2024-43096  A-323850943    RCE    Critical   12, 12L, 13, 14, 15	 f4d536a
+CVE-2024-43763  A-356886209    DoS    High       12, 12L, 13, 14, 15	 71241c0
+CVE-2024-43770  A-364026473    RCE    Critical   12, 12L, 13, 14, 15	 a3c591b
+CVE-2024-43771  A-364027949    RCE    Critical   12, 12L, 13, 14, 15	 a3c591b
+CVE-2024-49747  A-364027038    RCE    Critical   12, 12L, 13, 14, 15	 a3c591b
+CVE-2024-49748  A-364025411    RCE    Critical   12, 12L, 13, 14, 15	 a3c591b
+									 ee288f3
+
+Not Implemented:
+================
+None
+
+Not Applicable (platform source):
+=================================
+CVE:            References:    Type:  Severity:  Updated AOSP versions:
+CVE-2024-43095  A-340480881    EoP    High       12, 12L, 13, 14, 15
+CVE-2024-43765  A-233605527    EoP    High       12, 12L, 13, 14, 15
+CVE-2024-49732  A-371975420    EoP    High       15
+CVE-2024-49734  A-193031925    ID     High       14, 15
+CVE-2024-49735  A-345881518    EoP    High       15
+CVE-2024-49737  A-369103643    EoP    High       13, 14, 15
+
+Change-Id: Ic13f8d362c3d9113673d3d9a69e4fb205379ab36
+---
+ core/version_defaults.mk | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/core/version_defaults.mk b/core/version_defaults.mk
+index 96f3d3ce7e..b37a8864e5 100644
+--- a/core/version_defaults.mk
++++ b/core/version_defaults.mk
+@@ -250,7 +250,7 @@ ifndef PLATFORM_SECURITY_PATCH
+     #  It must be of the form "YYYY-MM-DD" on production devices.
+     #  It must match one of the Android Security Patch Level strings of the Public Security Bulletins.
+     #  If there is no $PLATFORM_SECURITY_PATCH set, keep it empty.
+-    PLATFORM_SECURITY_PATCH := 2024-12-05
++    PLATFORM_SECURITY_PATCH := 2025-01-05
+ endif
+ .KATI_READONLY := PLATFORM_SECURITY_PATCH
+ 
+-- 
+2.40.1
+

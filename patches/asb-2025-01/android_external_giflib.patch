@@ -1,0 +1,26 @@
+# PWD: external/giflib
+diff --git a/dgif_lib.c b/dgif_lib.c
+index 66a1d6a..7b43a6a 100644
+--- a/dgif_lib.c
++++ b/dgif_lib.c
+@@ -1095,16 +1095,18 @@ DGifSlurp(GifFileType *GifFile)
+         switch (RecordType) {
+           case IMAGE_DESC_RECORD_TYPE:
+               if (DGifGetImageDesc(GifFile) == GIF_ERROR)
+                   return (GIF_ERROR);
+ 
+               sp = &GifFile->SavedImages[GifFile->ImageCount - 1];
+               /* Allocate memory for the image */
+-              if (sp->ImageDesc.Width < 0 && sp->ImageDesc.Height < 0 &&
+-                      sp->ImageDesc.Width > (INT_MAX / sp->ImageDesc.Height)) {
++              if (sp->ImageDesc.Width <= 0 ||
++                      sp->ImageDesc.Height <= 0 ||
++                      sp->ImageDesc.Width >
++                          (INT_MAX / sp->ImageDesc.Height)) {
+                   return GIF_ERROR;
+               }
+               ImageSize = sp->ImageDesc.Width * sp->ImageDesc.Height;
+ 
+               if (ImageSize > (SIZE_MAX / sizeof(GifPixelType))) {
+                   return GIF_ERROR;
+               }

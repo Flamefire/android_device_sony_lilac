@@ -1,0 +1,63 @@
+From ab5ebcd928d30d9515f41ea240c9f72ef14a8a77 Mon Sep 17 00:00:00 2001
+From: Hyangseok Chae <neo.chae@lge.com>
+Date: Fri, 8 Nov 2019 08:01:39 +0900
+Subject: [PATCH 3/6] Fix a missing synchronization to Notification
+
+Concurrent access on allPendingIntents could cause
+crash by ArrayIndexOutOfBoundsException.
+Below two accesses can occur in two different threads.
+But allPendingIntents(ArraySet) is not thread-safe.
+1. Access to write.
+   allPendingIntents = new ArraySet<>();
+   parcel.writeArraySet(allPendingIntents)
+2. Access to add.
+   allPendingIntents.add(intent);
+
+So, we added missing synchronization to Notification
+
+Test:
+It is hard to reproduce by manual.
+Make/Update notification with pendingintent.
+
+Change-Id: Ib866f6b92528f7a944ac93997a9cff07892d4192
+Bugs: 144081764
+---
+ core/java/android/app/Notification.java | 14 +++++++++-----
+ 1 file changed, 9 insertions(+), 5 deletions(-)
+
+diff --git a/core/java/android/app/Notification.java b/core/java/android/app/Notification.java
+index 61a355ddbc77..328e8b7d718a 100644
+--- a/core/java/android/app/Notification.java
++++ b/core/java/android/app/Notification.java
+@@ -2626,10 +2626,12 @@ public class Notification implements Parcelable
+             PendingIntent.setOnMarshaledListener(
+                     (PendingIntent intent, Parcel out, int outFlags) -> {
+                 if (parcel == out) {
+-                    if (allPendingIntents == null) {
+-                        allPendingIntents = new ArraySet<>();
++                    synchronized (this) {
++                        if (allPendingIntents == null) {
++                            allPendingIntents = new ArraySet<>();
++                        }
++                        allPendingIntents.add(intent);
+                     }
+-                    allPendingIntents.add(intent);
+                 }
+             });
+         }
+@@ -2637,8 +2639,10 @@ public class Notification implements Parcelable
+             // IMPORTANT: Add marshaling code in writeToParcelImpl as we
+             // want to intercept all pending events written to the parcel.
+             writeToParcelImpl(parcel, flags);
+-            // Must be written last!
+-            parcel.writeArraySet(allPendingIntents);
++            synchronized (this) {
++                // Must be written last!
++                parcel.writeArraySet(allPendingIntents);
++            }
+         } finally {
+             if (collectPendingIntents) {
+                 PendingIntent.setOnMarshaledListener(null);
+-- 
+2.40.1
+
