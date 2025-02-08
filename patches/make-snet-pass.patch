@@ -40,7 +40,7 @@ diff --git a/core/java/com/android/internal/gmscompat/AttestationHooks.java b/co
 new file mode 100644
 --- /dev/null
 +++ b/core/java/com/android/internal/gmscompat/AttestationHooks.java
-@@ -0,0 +1,248 @@
+@@ -0,0 +1,254 @@
 +/*
 + * Copyright (C) 2021 The Android Open Source Project
 + *
@@ -87,12 +87,14 @@ new file mode 100644
 +public final class AttestationHooks {
 +    private static final String TAG = "GmsCompat/Attestation";
 +
++    private static final String PACKAGE_PLAYSTORE = "com.android.vending";
 +    private static final String PACKAGE_GMS = "com.google.android.gms";
 +    private static final String PROCESS_UNSTABLE = "com.google.android.gms.unstable";
 +
 +    private static final String CUSTOM_PIF_URI = "content://com.yoshino.parts.pifprovider/pif";
 +    private static final String PIF_FILEPATH_PROP = "ro.vendor.pif_path";
 +
++    private static volatile boolean sIsFinsky = false;
 +    private static volatile boolean sIsGms = false;
 +
 +    private AttestationHooks() { }
@@ -271,7 +273,10 @@ new file mode 100644
 +    }
 +
 +    public static void initApplicationBeforeOnCreate(Application app, Context context) {
-+        if (PACKAGE_GMS.equals(app.getPackageName()) && PROCESS_UNSTABLE.equals(Application.getProcessName())) {
++        final String packageName = app.getPackageName();
++        if (PACKAGE_PLAYSTORE.equals(packageName))
++            sIsFinsky = true;
++        else if (PACKAGE_GMS.equals(packageName) && PROCESS_UNSTABLE.equals(Application.getProcessName().toLowerCase())) {
 +            sIsGms = true;
 +            spoofPlayIntegrity(context);
 +        }
@@ -283,8 +288,9 @@ new file mode 100644
 +    }
 +
 +    public static void onEngineGetCertificateChain() {
-+        // Check stack for SafetyNet
-+        if (sIsGms && isCallerSafetyNet()) {
++        // Check stack for SafetyNet or Playstore
++        if ((sIsGms && isCallerSafetyNet()) || sIsFinsky) {
++            Log.i(TAG, "Blocked key attestation");
 +            throw new UnsupportedOperationException();
 +        }
 +    }
