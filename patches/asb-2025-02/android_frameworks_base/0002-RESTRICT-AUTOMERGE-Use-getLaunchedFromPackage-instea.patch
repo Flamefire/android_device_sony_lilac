@@ -1,0 +1,53 @@
+From d6d1ea854236096745f238ba132f841e338c4ec7 Mon Sep 17 00:00:00 2001
+From: Marvin Ramin <marvinramin@google.com>
+Date: Wed, 16 Oct 2024 12:26:02 +0200
+Subject: [PATCH 2/3] RESTRICT AUTOMERGE Use getLaunchedFromPackage instead of
+ getCallingPackage
+
+Ensure that MediaProjectionPermissionActivity is doing proper
+attribution and validation of permissions before showing.
+
+Bug: 372670004
+Bug: 373581993
+Test: presubmit
+(cherry picked from https://googleplex-android-review.googlesource.com/q/commit:3919d8df51f439d26de479374f2543594eb54382)
+Merged-In: I48adb14fbc8d5f2f2e21ef8a30a713d33f03ab02
+Change-Id: I48adb14fbc8d5f2f2e21ef8a30a713d33f03ab02
+---
+ .../media/MediaProjectionPermissionActivity.java       | 10 ++++++++--
+ 1 file changed, 8 insertions(+), 2 deletions(-)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/media/MediaProjectionPermissionActivity.java b/packages/SystemUI/src/com/android/systemui/media/MediaProjectionPermissionActivity.java
+index f78429316e5a..d828d5dee5fe 100644
+--- a/packages/SystemUI/src/com/android/systemui/media/MediaProjectionPermissionActivity.java
++++ b/packages/SystemUI/src/com/android/systemui/media/MediaProjectionPermissionActivity.java
+@@ -19,6 +19,7 @@ package com.android.systemui.media;
+ import static android.view.WindowManager.LayoutParams.SYSTEM_FLAG_HIDE_NON_SYSTEM_OVERLAY_WINDOWS;
+ 
+ import android.app.Activity;
++import android.app.ActivityTaskManager;
+ import android.app.AlertDialog;
+ import android.content.DialogInterface;
+ import android.content.Intent;
+@@ -62,11 +63,16 @@ public class MediaProjectionPermissionActivity extends Activity
+     public void onCreate(Bundle icicle) {
+         super.onCreate(icicle);
+ 
+-        mPackageName = getCallingPackage();
++        try {
++            mPackageName = ActivityTaskManager.getService().getLaunchedFromPackage(getActivityToken());
++        } catch (RemoteException e) {
++            throw e.rethrowFromSystemServer();
++        }
++
+         IBinder b = ServiceManager.getService(MEDIA_PROJECTION_SERVICE);
+         mService = IMediaProjectionManager.Stub.asInterface(b);
+ 
+-        if (mPackageName == null) {
++        if (getCallingPackage() == null) {
+             finish();
+             return;
+         }
+-- 
+2.40.1
+

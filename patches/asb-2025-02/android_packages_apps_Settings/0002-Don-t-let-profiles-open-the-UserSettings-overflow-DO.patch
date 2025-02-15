@@ -1,0 +1,38 @@
+From 047b799f45389fc1935bc532638639f7d281bc52 Mon Sep 17 00:00:00 2001
+From: Adam Bookatz <bookatz@google.com>
+Date: Mon, 18 Nov 2024 15:53:41 -0800
+Subject: [PATCH 2/2] Don't let profiles open the UserSettings overflow [DO NOT
+ MERGE]
+
+Really, profiles aren't expected to open Settings at all. But if they
+do somehow, the overflow shouldn't appear.
+
+Bug: 352542820
+Flag: EXEMPT bugfix
+Test: Try to access the overflow of the work profile by launching its Settings in
+adb shell am start --user 10 'com.android.settings/.Settings\$UserSettingsActivity'
+
+(cherry picked from commit 69c7f5dac580361792bbb189178653b297d06c8a)
+(cherry picked from https://googleplex-android-review.googlesource.com/q/commit:fa5ff372a068f287d28e9294a461dd266d17bd16)
+Merged-In: I5e4c095cda3e19fa5c63c2c550a526f5da8ec5c1
+Change-Id: I5e4c095cda3e19fa5c63c2c550a526f5da8ec5c1
+---
+ src/com/android/settings/users/UserSettings.java | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/com/android/settings/users/UserSettings.java b/src/com/android/settings/users/UserSettings.java
+index 74e67149fda..370195ff9c0 100644
+--- a/src/com/android/settings/users/UserSettings.java
++++ b/src/com/android/settings/users/UserSettings.java
+@@ -336,7 +336,7 @@ public class UserSettings extends SettingsPreferenceFragment
+     public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+         int pos = 0;
+         final boolean canSwitchUsers = mUserManager.canSwitchUsers();
+-        if (!mUserCaps.mIsAdmin && canSwitchUsers) {
++        if (!mUserCaps.mIsAdmin && canSwitchUsers && !mUserManager.isProfile()) {
+             String nickname = mUserManager.getUserName();
+             MenuItem removeThisUser = menu.add(0, MENU_REMOVE_USER, pos++,
+                     getResources().getString(R.string.user_remove_user_menu, nickname));
+-- 
+2.40.1
+

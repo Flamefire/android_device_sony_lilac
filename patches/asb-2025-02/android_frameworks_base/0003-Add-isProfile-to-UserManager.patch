@@ -1,0 +1,55 @@
+From e5c0a96b2a678c0b46ad003b2fe73bb25edae9e9 Mon Sep 17 00:00:00 2001
+From: Alexander Grund <flamefire89@gmail.com>
+Date: Sat, 15 Feb 2025 11:46:39 +0100
+Subject: [PATCH 3/3] Add `isProfile` to `UserManager`
+
+Backport of similar functionality for system apps to check if the
+calling context user is a profile user.
+
+Change-Id: I9e55e399b1c8e05d608d85dbc8631ef9013f1888
+---
+ core/java/android/os/UserManager.java | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
+
+diff --git a/core/java/android/os/UserManager.java b/core/java/android/os/UserManager.java
+index fc714923bf41..ff09a70e036d 100644
+--- a/core/java/android/os/UserManager.java
++++ b/core/java/android/os/UserManager.java
+@@ -75,6 +75,9 @@ public class UserManager {
+     private final IUserManager mService;
+     private final Context mContext;
+ 
++    /** The userId of the constructor param context. To be used instead of mContext.getUserId(). */
++    private final @UserIdInt int mUserId;
++
+     private Boolean mIsManagedProfileCached;
+ 
+     /** Maximum length of username.
+@@ -1265,6 +1268,7 @@ public class UserManager {
+     public UserManager(Context context, IUserManager service) {
+         mService = service;
+         mContext = context.getApplicationContext();
++        mUserId = context.getUserId();
+     }
+ 
+     /**
+@@ -1578,6 +1582,16 @@ public class UserManager {
+         }
+     }
+ 
++    /**
++     * Checks if the calling context user is running in a profile.
++     *
++     * @return whether the caller is in a profile.
++     * @hide
++     */
++    public boolean isProfile() {
++        return getProfileParent(mUserId) != null;
++    }
++
+     /**
+      * Checks if the calling app is running in a managed profile.
+      *
+-- 
+2.40.1
+
