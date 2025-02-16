@@ -40,7 +40,7 @@ diff --git a/core/java/com/android/internal/gmscompat/AttestationHooks.java b/co
 new file mode 100644
 --- /dev/null
 +++ b/core/java/com/android/internal/gmscompat/AttestationHooks.java
-@@ -0,0 +1,254 @@
+@@ -0,0 +1,268 @@
 +/*
 + * Copyright (C) 2021 The Android Open Source Project
 + *
@@ -64,6 +64,7 @@ new file mode 100644
 +import android.net.Uri;
 +import android.os.Build;
 +import android.os.SystemProperties;
++import android.text.TextUtils;
 +import android.util.Log;
 +
 +import libcore.io.IoUtils;
@@ -276,9 +277,22 @@ new file mode 100644
 +        final String packageName = app.getPackageName();
 +        if (PACKAGE_PLAYSTORE.equals(packageName))
 +            sIsFinsky = true;
-+        else if (PACKAGE_GMS.equals(packageName) && PROCESS_UNSTABLE.equals(Application.getProcessName().toLowerCase())) {
-+            sIsGms = true;
-+            spoofPlayIntegrity(context);
++        else {
++            final String processName = Application.getProcessName();
++            // During boot there is a package 'android' w/o process name where getting PIF data fails.
++            // Ignore any application w/o a process name as it is likely some system app anyway.
++            if (TextUtils.isEmpty(processName))
++                return;
++            if (PACKAGE_GMS.equals(packageName) && PROCESS_UNSTABLE.equals(processName.toLowerCase()))
++                sIsGms = true;
++            else if (app.getApplicationInfo().isSystemApp())
++                return; // Ignore system apps
++            // Spoof BUILD properties but make sure we don't throw to avoid failure to start apps
++            try {
++                spoofPlayIntegrity(context);
++            } catch(Exception e) {
++                Log.e(TAG, String.format("Failed to spoof %s(%s)", packageName, processName), e);
++            }
 +        }
 +    }
 +
