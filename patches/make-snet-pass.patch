@@ -285,8 +285,8 @@ new file mode 100644
 +                return;
 +            if (PACKAGE_GMS.equals(packageName) && PROCESS_UNSTABLE.equals(processName.toLowerCase()))
 +                sIsGms = true;
-+            else if (app.getApplicationInfo().isSystemApp())
-+                return; // Ignore system apps
++            else
++                return;
 +            // Spoof BUILD properties but make sure we don't throw to avoid failure to start apps
 +            try {
 +                spoofPlayIntegrity(context);
