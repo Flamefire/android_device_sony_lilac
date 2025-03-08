@@ -1,0 +1,84 @@
+From 159b0e16fa2ed8fd80b95aa29b6230dcdb2ea568 Mon Sep 17 00:00:00 2001
+From: Brian Delwiche <delwiche@google.com>
+Date: Mon, 23 Sep 2024 21:39:40 +0000
+Subject: [PATCH] [BACKPORT] Use encrypted link for avdtp and avctp channels
+
+This is a backport of the AOSP changes for b/345258562.
+
+Test: mmm packages/modules/Bluetooth
+Bug: 345258562
+Ignore-AOSP-First: security
+Tag: #security
+(cherry picked from https://googleplex-android-review.googlesource.com/q/commit:0850bdb96f9af6aed32bd3cf96c6f93eb4e4ccb5)
+Merged-In: Ie5fe394f5c710690b8fc6e90cdd6c2b4cac9c7ca
+Change-Id: Ie5fe394f5c710690b8fc6e90cdd6c2b4cac9c7ca
+---
+ stack/avct/avct_api.cc | 7 +++++--
+ stack/avdt/avdt_api.cc | 6 ++++--
+ 2 files changed, 9 insertions(+), 4 deletions(-)
+
+diff --git a/stack/avct/avct_api.cc b/stack/avct/avct_api.cc
+index 7f0a36fa9..4f25fac9e 100644
+--- a/stack/avct/avct_api.cc
++++ b/stack/avct/avct_api.cc
+@@ -33,6 +33,7 @@
+ #include "bt_target.h"
+ #include "bt_types.h"
+ #include "bt_utils.h"
++#include "bta_api.h"
+ #include "btm_api.h"
+ #include "l2c_api.h"
+ #include "l2cdefs.h"
+@@ -72,15 +73,17 @@ void AVCT_Register(uint16_t mtu, UNUSED_ATTR uint16_t mtu_br,
+   /* initialize AVCTP data structures */
+   memset(&avct_cb, 0, sizeof(tAVCT_CB));
+ 
++  uint8_t sec = (uint8_t)(sec_mask | BTA_SEC_ENCRYPT);
++
+   /* Include the browsing channel which uses eFCR */
+   L2CA_Register(AVCT_BR_PSM, (tL2CAP_APPL_INFO*)&avct_l2c_br_appl,
+                 true /*enable_snoop*/);
+ 
+   /* AVCTP browsing channel uses the same security service as AVCTP control
+    * channel */
+-  BTM_SetSecurityLevel(true, "", BTM_SEC_SERVICE_AVCTP, sec_mask, AVCT_BR_PSM,
++  BTM_SetSecurityLevel(true, "", BTM_SEC_SERVICE_AVCTP, sec, AVCT_BR_PSM,
+                        0, 0);
+-  BTM_SetSecurityLevel(false, "", BTM_SEC_SERVICE_AVCTP, sec_mask, AVCT_BR_PSM,
++  BTM_SetSecurityLevel(false, "", BTM_SEC_SERVICE_AVCTP, sec, AVCT_BR_PSM,
+                        0, 0);
+ 
+   if (mtu_br < AVCT_MIN_BROWSE_MTU) mtu_br = AVCT_MIN_BROWSE_MTU;
+diff --git a/stack/avdt/avdt_api.cc b/stack/avdt/avdt_api.cc
+index bd4ad9073..8b79cdb4e 100644
+--- a/stack/avdt/avdt_api.cc
++++ b/stack/avdt/avdt_api.cc
+@@ -33,6 +33,7 @@
+ #include "avdtc_api.h"
+ #include "bt_target.h"
+ #include "bt_types.h"
++#include "bta_api.h"
+ #include "btm_api.h"
+ #include "btm_int.h"
+ #include "btm_int_types.h"
+@@ -104,14 +105,15 @@ void avdt_delay_report_timer_timeout(void* data) {
+  *
+  ******************************************************************************/
+ void AVDT_Register(tAVDT_REG* p_reg, tAVDT_CTRL_CBACK* p_cback) {
++  uint16_t sec = p_reg->sec_mask | BTA_SEC_ENCRYPT;
+   /* register PSM with L2CAP */
+   L2CA_Register(AVDT_PSM, (tL2CAP_APPL_INFO*)&avdt_l2c_appl,
+                 true /* enable_snoop */);
+ 
+   /* set security level */
+-  BTM_SetSecurityLevel(true, "", BTM_SEC_SERVICE_AVDTP, p_reg->sec_mask,
++  BTM_SetSecurityLevel(true, "", BTM_SEC_SERVICE_AVDTP, sec,
+                        AVDT_PSM, BTM_SEC_PROTO_AVDT, AVDT_CHAN_SIG);
+-  BTM_SetSecurityLevel(false, "", BTM_SEC_SERVICE_AVDTP, p_reg->sec_mask,
++  BTM_SetSecurityLevel(false, "", BTM_SEC_SERVICE_AVDTP, sec,
+                        AVDT_PSM, BTM_SEC_PROTO_AVDT, AVDT_CHAN_SIG);
+ 
+   /* do not use security on the media channel */
+-- 
+2.40.1
+

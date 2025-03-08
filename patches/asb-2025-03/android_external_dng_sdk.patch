@@ -1,0 +1,24 @@
+# PWD: external/dng_sdk
+diff --git a/source/dng_lossless_jpeg.cpp b/source/dng_lossless_jpeg.cpp
+index 9d0d01a..8802f32 100644
+--- a/source/dng_lossless_jpeg.cpp
++++ b/source/dng_lossless_jpeg.cpp
+@@ -1612,14 +1612,18 @@ inline int32 dng_lossless_decoder::get_bit ()
+  *
+  *--------------------------------------------------------------
+  */
+  
+ inline int32 dng_lossless_decoder::HuffDecode (HuffmanTable *htbl)
+ 	{
+ 	
++	if (htbl == nullptr) {
++		ThrowBadFormat ();
++	}
++
+     // If the huffman code is less than 8 bits, we can use the fast
+     // table lookup to get its value.  It's more than 8 bits about
+     // 3-4% of the time.
+ 
+     int32 code = show_bits8 ();
+     
+     if (htbl->numbits [code])

@@ -1,0 +1,111 @@
+# PWD: build/soong
+diff --git a/Android.bp b/Android.bp
+index b07fbe57a..13518373c 100644
+--- a/Android.bp
++++ b/Android.bp
+@@ -48,14 +48,15 @@ bootstrap_go_package {
+         "android/bootjar.go",
+         "android/config.go",
+         "android/defaults.go",
+         "android/defs.go",
+         "android/expand.go",
+         "android/filegroup.go",
+         "android/hooks.go",
++        "android/license.go",
+         "android/makevars.go",
+         "android/module.go",
+         "android/mutator.go",
+         "android/namespace.go",
+         "android/neverallow.go",
+         "android/notices.go",
+         "android/onceper.go",
+diff --git a/android/license.go b/android/license.go
+new file mode 100644
+index 000000000..1caf669cd
+--- /dev/null
++++ b/android/license.go
+@@ -0,0 +1,62 @@
++// Copyright 2020 Google Inc. All rights reserved.
++//
++// Licensed under the Apache License, Version 2.0 (the "License");
++// you may not use this file except in compliance with the License.
++// You may obtain a copy of the License at
++//
++//     http://www.apache.org/licenses/LICENSE-2.0
++//
++// Unless required by applicable law or agreed to in writing, software
++// distributed under the License is distributed on an "AS IS" BASIS,
++// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++// See the License for the specific language governing permissions and
++// limitations under the License.
++
++package android
++
++func init() {
++	RegisterModuleType("license", LicenseFactory)
++}
++
++type licenseProperties struct {
++	// Specifies the kinds of license that apply.
++	License_kinds []string
++	// Specifies a short copyright notice to use for the license.
++	Copyright_notice *string
++	// Specifies the path or label for the text of the license.
++	License_text []string `android:"path"`
++	// Specifies the package name to which the license applies.
++	Package_name *string
++	// Specifies where this license can be used
++	Visibility []string
++}
++
++type licenseModule struct {
++	ModuleBase
++	DefaultableModuleBase
++
++	properties licenseProperties
++}
++
++func (m *licenseModule) DepsMutator(ctx BottomUpMutatorContext) {
++	// Do nothing.
++}
++
++func (m *licenseModule) GenerateAndroidBuildActions(ctx ModuleContext) {
++	// Nothing to do.
++}
++
++func LicenseFactory() Module {
++	module := &licenseModule{}
++
++	base := module.base()
++	module.AddProperties(&base.nameProperties, &module.properties)
++
++	base.generalProperties = module.GetProperties()
++	base.customizableProperties = module.GetProperties()
++
++	InitAndroidModule(module)
++	InitDefaultableModule(module)
++
++	return module
++}
+diff --git a/android/module.go b/android/module.go
+index 17ddb0501..921e57dca 100644
+--- a/android/module.go
++++ b/android/module.go
+@@ -206,14 +206,17 @@ type nameProperties struct {
+ 	Name *string
+ }
+ 
+ type commonProperties struct {
+ 	// emit build rules for this module
+ 	Enabled *bool `android:"arch_variant"`
+ 
++	// Names of the licenses that apply to this module.
++	Licenses []string
++
+ 	// control whether this module compiles for 32-bit, 64-bit, or both.  Possible values
+ 	// are "32" (compile for 32-bit only), "64" (compile for 64-bit only), "both" (compile for both
+ 	// architectures), or "first" (compile for 64-bit on a 64-bit platform, and 32-bit on a 32-bit
+ 	// platform
+ 	Compile_multilib *string `android:"arch_variant"`
+ 
+ 	Target struct {

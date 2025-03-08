@@ -1,0 +1,28 @@
+From a4524c9b7a2fcbafae0c75a3ad767cdd8fb154a1 Mon Sep 17 00:00:00 2001
+From: mse1969 <mse1969@posteo.de>
+Date: Sat, 8 Mar 2025 00:03:24 +0100
+Subject: [PATCH] Track our own forks for 2025-03 ASB patching
+
+* external/dng_sdk
+
+Change-Id: Iee9300feb2e2ea946b34a94fda897da5679bfbb4
+---
+ default.xml | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/default.xml b/default.xml
+index 22f1483..e316eb9 100644
+--- a/default.xml
++++ b/default.xml
+@@ -112,7 +112,7 @@
+   <project path="external/desugar" name="platform/external/desugar" groups="pdk" remote="aosp" />
+   <project path="external/dexmaker" name="platform/external/dexmaker" groups="pdk" remote="aosp" />
+   <project path="external/dlmalloc" name="platform/external/dlmalloc" groups="pdk" remote="aosp" />
+-  <project path="external/dng_sdk" name="platform/external/dng_sdk" groups="pdk" remote="aosp" />
++  <project path="external/dng_sdk" name="LineageOS/android_external_dng_sdk" groups="pdk" />
+   <project path="external/dnsmasq" name="LineageOS/android_external_dnsmasq" groups="pdk" />
+   <project path="external/doclava" name="platform/external/doclava" groups="pdk" remote="aosp" />
+   <project path="external/dokka" name="platform/external/dokka" groups="pdk" remote="aosp" />
+-- 
+2.40.1
+
