@@ -141,6 +141,7 @@ if [ "$patch_set" = all ]; then
 else
     # v17.1-20221115 fix: ValueError: list.remove(x): x not in list
     applyPatch "$PATCH_ROOT"/fix-custom-apn-script.patch
+    applyPatch "$PATCH_ROOT/asb-2025-03/android_build_soong/0001-BACKPORT-Minimal-license-feature.patch"
     if [ "$patch_set" = minclang ]; then
         # v17.1-20230225 fix: "arm-linux-androidkernel-as" is not allowed
         applyPatch "$PATCH_ROOT"/allow-newer-kernel-clang.patch
