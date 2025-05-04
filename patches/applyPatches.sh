@@ -27,34 +27,45 @@ numApplied=0
 numSkipped=0
 numWarned=0
 
-for p in "$PATCH_ROOT/"*.patch; do
-    patch_dir=$(head -n1 "$p" | grep "# PWD: " | awk '{print $NF}' || true)
-    if [[ "$patch_dir" == "" ]]; then
-        echo "Faulty patch: $p"
-        exit 1
+function applyPatch {
+    patch=${1:?"No patch specified"}
+
+    if ! patch_dir=$(head -n1 "$patch" | grep "# PWD: " | awk '{print $NF}') || [[ "$patch_dir" == "" ]]; then
+        showError "Faulty patch: $patch"
     fi
 
-    echo -n "Applying $(basename "$p") in ${patch_dir}: "
-    patch_dir="$repo_root/$patch_dir"
-    # If the reverse patch could be applied, then the patch was likely already applied
-    patch --reverse --force  -p1 -d "$patch_dir" --input "$p" --dry-run > /dev/null && applied=1 || applied=0
-    if out=$(patch --forward -p1 -d "$patch_dir" --input "$p" -r /dev/null --no-backup-if-mismatch 2>&1); then
-        echo -e "${LGREEN}Done.${NC}"
-        ((++numApplied))
-        # We applied the patch but could apply the reverse before, i.e. would detect it as already applied.
-        # This may happen for patches only deleting stuff where the reverse (adding it) may succeed via fuzzy match
-        if [[ $applied == 1 ]]; then
-            echo -e "${YELLOW}WARNING${NC}: Skip detection will not work correctly for this patch!"
-            ((++numWarned))
-        fi
-    elif [[ $applied == 1 ]]; then
-        echo -e "${GREEN}Skipped.${NC}"
+    echo -en "Applying $(basename "$patch") in ${patch_dir}: "
+    if [[ $(wc -l < "$patch") == 1 ]]; then
+        echo -e "${LGREEN}Skipped (empty).${NC}"
         ((++numSkipped))
     else
-        echo -e "${RED}Failed!${NC}"
-        echo "$out"
-        exit 1
+        pushd "$repo_root/$patch_dir" > /dev/null
+        # If the reverse patch could be applied, then the patch was likely already applied
+        git apply --check --reverse -p1 --whitespace=nowarn "$patch" &> /dev/null && applied=1 || applied=0
+        if out=$(git apply -p1 --whitespace=nowarn "$patch" 2>&1); then
+            echo -e "${LGREEN}Done.${NC}"
+            ((++numApplied))
+            # We applied the patch but could apply the reverse before, i.e. would detect it as already applied.
+            # This may happen for patches only deleting stuff where the reverse (adding it) may succeed via fuzzy match
+            if [[ $applied == 1 ]]; then
+                echo -e "${YELLOW}WARNING${NC}: Skip detection will not work correctly for this patch!"
+                ((++numWarned))
+            fi
+        elif [[ $applied == 1 ]]; then
+            echo -e "${GREEN}Skipped.${NC}"
+            ((++numSkipped))
+        else
+            echo -e "${RED}Failed!${NC}"
+            echo "$out"
+	    popd > /dev/null
+            exit 1
+        fi
+	popd > /dev/null
     fi
+}
+
+for p in "$PATCH_ROOT/"*.patch; do
+    applyPatch "$p"
 done
 
 echo -e "Patching done! ${LGREEN}Applied: ${numApplied}${NC}, ${GREEN}skipped: ${numSkipped}${NC}, ${YELLOW}warnings: ${numWarned}${NC}"
