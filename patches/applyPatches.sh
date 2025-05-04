@@ -23,15 +23,48 @@ if [ ! -d "$repo_root/device/sony/lilac/patches" ]; then
   showError "Failed to find repository root at $repo_root"
 fi
 
+clean_patch_dirs=0
+script_name=$(basename "$0")
+for arg in "$@"; do
+    case "$arg" in
+        '--help'|'-h')
+            echo "Usage: $script_name [--clean]"
+            echo
+            echo "Options:"
+            echo "  --clean     Revert patched dirs instead of patching"
+            exit 0
+            ;;
+        '--clean')      clean_patch_dirs=1;;
+        *)              showError "unknown option: $arg"
+    esac
+done
+
 numApplied=0
 numSkipped=0
 numWarned=0
+
+function clean_dir {
+    dir=${1:?"Missing dir param"}
+    if ! git -C "$dir" diff --quiet; then
+        echo -n "Cleaning ${dir}: "
+        git -C "$dir" reset --hard --quiet
+        git -C "$dir" clean -d --force --quiet
+        echo -e "${LGREEN}Done.${NC}"
+    else
+        echo "Ignoring ${dir}  (no changes detected)"
+    fi
+}
 
 function applyPatch {
     patch=${1:?"No patch specified"}
 
     if ! patch_dir=$(head -n1 "$patch" | grep "# PWD: " | awk '{print $NF}') || [[ "$patch_dir" == "" ]]; then
         showError "Faulty patch: $patch"
+    fi
+
+    if ((clean_patch_dirs == 1)); then
+        clean_dir "$patch_dir"
+        return
     fi
 
     echo -en "Applying $(basename "$patch") in ${patch_dir}: "
