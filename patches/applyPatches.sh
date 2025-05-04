@@ -24,17 +24,20 @@ if [ ! -d "$repo_root/device/sony/lilac/patches" ]; then
 fi
 
 clean_patch_dirs=0
+patch_set=all
 script_name=$(basename "$0")
 for arg in "$@"; do
     case "$arg" in
         '--help'|'-h')
-            echo "Usage: $script_name [--clean]"
+            echo "Usage: $script_name [--clean | --minimal]"
             echo
             echo "Options:"
             echo "  --clean     Revert patched dirs instead of patching"
+            echo "  --minimal   Only required & security patches"
             exit 0
             ;;
         '--clean')      clean_patch_dirs=1;;
+        '--minimal')    patch_set=minimal;;
         *)              showError "unknown option: $arg"
     esac
 done
@@ -67,7 +70,12 @@ function applyPatch {
         return
     fi
 
-    echo -en "Applying $(basename "$patch") in ${patch_dir}: "
+    parent="$(basename "$(dirname "$patch")")"
+    msg="$(basename "$patch")"
+    if [[ "$parent" =~ asb-* ]]; then
+        msg+=" - ${YELLOW}${parent^^}${NC}"
+    fi
+    echo -en "Applying $msg in ${patch_dir}: "
     if [[ $(wc -l < "$patch") == 1 ]]; then
         echo -e "${LGREEN}Skipped (empty).${NC}"
         ((++numSkipped))
@@ -97,8 +105,17 @@ function applyPatch {
     fi
 }
 
-for p in "$PATCH_ROOT/"*.patch; do
-    applyPatch "$p"
+# Apply the latest ASB patch for each project/folder
+for filename in $(find "$PATCH_ROOT/asb-"* -maxdepth 1 -type f -name '*.patch' -printf "%f\n" | sort -u); do
+    patch=$(find "$PATCH_ROOT/asb-"* -maxdepth 1 -type f -name "$filename" | sort | tail -n1)
+    applyPatch "$patch"
 done
+
+# Apply custom patches
+if [ "$patch_set" = all ]; then
+    for p in "$PATCH_ROOT/"*.patch; do
+        applyPatch "$p"
+    done
+fi
 
 echo -e "Patching done! ${LGREEN}Applied: ${numApplied}${NC}, ${GREEN}skipped: ${numSkipped}${NC}, ${YELLOW}warnings: ${numWarned}${NC}"
