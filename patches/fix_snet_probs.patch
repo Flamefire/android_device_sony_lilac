@@ -7,18 +7,18 @@ Combined with:
 "fastboot: Revert to Android 11 method of checking lock status" https://github.com/ProtonAOSP/android_system_core/commit/497ada563
 
 diff --git a/init/property_service.cpp b/init/property_service.cpp
-index 42dd5afcb..c125e8a2b 100644
+index d429fc762..6922c168f 100644
 --- a/init/property_service.cpp
 +++ b/init/property_service.cpp
-@@ -45,6 +45,7 @@
- #include <optional>
+@@ -46,6 +46,7 @@
  #include <queue>
+ #include <string_view>
  #include <thread>
 +#include <utility>
  #include <vector>
  
  #include <InitProperties.sysprop.h>
-@@ -108,6 +109,8 @@ struct PropertyAuditData {
+@@ -118,6 +119,8 @@ struct PropertyAuditData {
      const char* name;
  };
  
@@ -27,7 +27,7 @@ index 42dd5afcb..c125e8a2b 100644
  static int PropertyAuditCallback(void* data, security_class_t /*cls*/, char* buf, size_t len) {
      auto* d = reinterpret_cast<PropertyAuditData*>(data);
  
-@@ -179,7 +182,7 @@ static uint32_t PropertySet(const std::string& name, const std::string& value, s
+@@ -189,7 +192,7 @@ static uint32_t PropertySet(const std::string& name, const std::string& value, s
      prop_info* pi = (prop_info*) __system_property_find(name.c_str());
      if (pi != nullptr) {
          // ro.* properties are actually "write-once".
@@ -36,7 +36,7 @@ index 42dd5afcb..c125e8a2b 100644
              *error = "Read-only property was already set";
              return PROP_ERROR_READ_ONLY_PROPERTY;
          }
-@@ -757,7 +760,65 @@ static void update_sys_usb_config() {
+@@ -781,7 +784,65 @@ static void update_sys_usb_config() {
      }
  }
  

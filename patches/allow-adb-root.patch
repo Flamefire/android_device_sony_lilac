@@ -26,3 +26,4 @@ index d622fdd3..153076df 100644
 +    *_aidl_return = true;
      return ndk::ScopedAStatus::ok();
  }
+

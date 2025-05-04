@@ -3,9 +3,9 @@ diff --git a/packages/SettingsLib/src/com/android/settingslib/fuelgauge/PowerAll
 index ea8a62f84164..213ab2c6ff2f 100644
 --- a/packages/SettingsLib/src/com/android/settingslib/fuelgauge/PowerAllowlistBackend.java
 +++ b/packages/SettingsLib/src/com/android/settingslib/fuelgauge/PowerAllowlistBackend.java
-@@ -72,15 +72,7 @@ public class PowerAllowlistBackend {
-     }
- 
+@@ -77,15 +77,7 @@ public class PowerAllowlistBackend {
+      * Check if target package is in allow list
+      */
      public boolean isAllowlisted(String pkg) {
 -        if (mAllowlistedApps.contains(pkg)) {
 -            return true;
@@ -20,3 +20,4 @@ index ea8a62f84164..213ab2c6ff2f 100644
      }
  
      /**
+
