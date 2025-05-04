@@ -1,0 +1,47 @@
+From 041fff03cee6375bd2acce2af31984430443f466 Mon Sep 17 00:00:00 2001
+From: Evan Severson <evanseverson@google.com>
+Date: Fri, 24 Sep 2021 10:28:08 -0700
+Subject: [PATCH 09/15] Add logcat for bad appop call
+
+When a process calls noteOp or startOp and the uid and package don't
+match it's hard to tell who that is coming from when looking at a
+bugreport. This adds a log to give us the caller and the bad parameters.
+
+Test: Make bad call from test app
+Fixes: 198341491
+Change-Id: Ie07f32756a56ec098b0d607a625e6e9ae94e1469
+---
+ .../core/java/com/android/server/appop/AppOpsService.java | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
+
+diff --git a/services/core/java/com/android/server/appop/AppOpsService.java b/services/core/java/com/android/server/appop/AppOpsService.java
+index cb7b15e17133..a32cf10be8cf 100644
+--- a/services/core/java/com/android/server/appop/AppOpsService.java
++++ b/services/core/java/com/android/server/appop/AppOpsService.java
+@@ -4569,8 +4569,10 @@ public class AppOpsService extends IAppOpsService.Stub {
+         }
+         if (pkgUid != Process.INVALID_UID) {
+             if (pkgUid != UserHandle.getAppId(uid)) {
++                Slog.e(TAG, "Bad call made by uid " + callingUid + ". "
++                        + "Package \"" + packageName + "\" does not belong to uid " + uid + ".");
+                 String otherUidMessage = DEBUG ? " but it is really " + pkgUid : " but it is not";
+-                throw new SecurityException("Specified package " + packageName + " under uid "
++                throw new SecurityException("Specified package \"" + packageName + "\" under uid "
+                         +  UserHandle.getAppId(uid) + otherUidMessage);
+             }
+             return new PackageVerificationResult(RestrictionBypass.UNRESTRICTED,
+@@ -4625,8 +4627,10 @@ public class AppOpsService extends IAppOpsService.Stub {
+         }
+ 
+         if (pkgUid != uid) {
++            Slog.e(TAG, "Bad call made by uid " + callingUid + ". "
++                    + "Package \"" + packageName + "\" does not belong to uid " + uid + ".");
+             String otherUidMessage = DEBUG ? " but it is really " + pkgUid : " but it is not";
+-            throw new SecurityException("Specified package " + packageName + " under uid " + uid
++            throw new SecurityException("Specified package \"" + packageName + "\" under uid " + uid
+                     + otherUidMessage);
+         }
+ 
+-- 
+2.40.1
+

@@ -1,0 +1,413 @@
+# PWD: packages/services/Telephony
+diff --git a/src/com/android/phone/ADNList.java b/src/com/android/phone/ADNList.java
+index 18b48fad5..bcf1a8914 100644
+--- a/src/com/android/phone/ADNList.java
++++ b/src/com/android/phone/ADNList.java
+@@ -77,14 +77,17 @@ public class ADNList extends ListActivity {
+ 
+     protected int mInitialSelection = -1;
+ 
+     @Override
+     protected void onCreate(Bundle icicle) {
+         super.onCreate(icicle);
+         getWindow().requestFeature(Window.FEATURE_INDETERMINATE_PROGRESS);
++        getWindow().addSystemFlags(
++                android.view.WindowManager.LayoutParams
++                        .SYSTEM_FLAG_HIDE_NON_SYSTEM_OVERLAY_WINDOWS);
+         setContentView(R.layout.adn_list);
+         mEmptyText = (TextView) findViewById(android.R.id.empty);
+         mQueryHandler = new QueryHandler(getContentResolver());
+     }
+ 
+     @Override
+     protected void onResume() {
+diff --git a/src/com/android/phone/CallFeaturesSetting.java b/src/com/android/phone/CallFeaturesSetting.java
+index ec6ea2bd3..481ac2396 100644
+--- a/src/com/android/phone/CallFeaturesSetting.java
++++ b/src/com/android/phone/CallFeaturesSetting.java
+@@ -249,14 +249,18 @@ public class CallFeaturesSetting extends PreferenceActivity
+     }
+ 
+     @Override
+     protected void onCreate(Bundle icicle) {
+         super.onCreate(icicle);
+         if (DBG) log("onCreate: Intent is " + getIntent());
+ 
++        getWindow().addSystemFlags(
++                android.view.WindowManager.LayoutParams
++                        .SYSTEM_FLAG_HIDE_NON_SYSTEM_OVERLAY_WINDOWS);
++
+         // Make sure we are running as an admin user.
+         UserManager userManager = (UserManager) getSystemService(Context.USER_SERVICE);
+         if (!userManager.isAdminUser()) {
+             Toast.makeText(this, R.string.call_settings_admin_user_only,
+                     Toast.LENGTH_SHORT).show();
+             finish();
+             return;
+diff --git a/src/com/android/phone/CdmaCallForwardOptions.java b/src/com/android/phone/CdmaCallForwardOptions.java
+index d70e7099b..62c945f0c 100644
+--- a/src/com/android/phone/CdmaCallForwardOptions.java
++++ b/src/com/android/phone/CdmaCallForwardOptions.java
+@@ -69,14 +69,18 @@ public class CdmaCallForwardOptions extends TimeConsumingPreferenceActivity {
+     private boolean mReplaceInvalidCFNumbers;
+     private boolean mCallForwardByUssd;
+ 
+     @Override
+     protected void onCreate(Bundle icicle) {
+         super.onCreate(icicle);
+ 
++        getWindow().addSystemFlags(
++                android.view.WindowManager.LayoutParams
++                        .SYSTEM_FLAG_HIDE_NON_SYSTEM_OVERLAY_WINDOWS);
++
+         addPreferencesFromResource(R.xml.callforward_options);
+ 
+         mSubscriptionInfoHelper = new SubscriptionInfoHelper(this, getIntent());
+         mSubscriptionInfoHelper.setActionBarTitle(
+                 getActionBar(), getResources(), R.string.call_forwarding_settings_with_label);
+         mPhone = mSubscriptionInfoHelper.getPhone();
+ 
+diff --git a/src/com/android/phone/CdmaCallOptions.java b/src/com/android/phone/CdmaCallOptions.java
+index 614587099..6942fcb3b 100644
+--- a/src/com/android/phone/CdmaCallOptions.java
++++ b/src/com/android/phone/CdmaCallOptions.java
+@@ -52,14 +52,18 @@ public class CdmaCallOptions extends TimeConsumingPreferenceActivity {
+     private UtCallback mUtCallback;
+     private ImsMmTelManager mMmTelManager;
+ 
+     @Override
+     protected void onCreate(Bundle icicle) {
+         super.onCreate(icicle);
+ 
++        getWindow().addSystemFlags(
++                android.view.WindowManager.LayoutParams
++                        .SYSTEM_FLAG_HIDE_NON_SYSTEM_OVERLAY_WINDOWS);
++
+         addPreferencesFromResource(R.xml.cdma_call_privacy);
+ 
+         SubscriptionInfoHelper subInfoHelper = new SubscriptionInfoHelper(this, getIntent());
+         subInfoHelper.setActionBarTitle(
+                 getActionBar(), getResources(), R.string.labelCdmaMore_with_label);
+ 
+         CdmaVoicePrivacySwitchPreference buttonVoicePrivacy =
+diff --git a/src/com/android/phone/ChangeIccPinScreen.java b/src/com/android/phone/ChangeIccPinScreen.java
+index 70bf4318c..6fbd2d42e 100644
+--- a/src/com/android/phone/ChangeIccPinScreen.java
++++ b/src/com/android/phone/ChangeIccPinScreen.java
+@@ -87,14 +87,18 @@ public class ChangeIccPinScreen extends Activity {
+             return;
+         }
+     };
+ 
+     public void onCreate(Bundle icicle) {
+         super.onCreate(icicle);
+ 
++        getWindow().addSystemFlags(
++                android.view.WindowManager.LayoutParams
++                        .SYSTEM_FLAG_HIDE_NON_SYSTEM_OVERLAY_WINDOWS);
++
+         mPhone = PhoneGlobals.getPhone();
+ 
+         resolveIntent();
+ 
+         setContentView(R.layout.change_sim_pin_screen);
+ 
+         mOldPin = (EditText) findViewById(R.id.old_pin);
+diff --git a/src/com/android/phone/EmergencyDialer.java b/src/com/android/phone/EmergencyDialer.java
+index 42bfb249c..cb1e42a81 100644
+--- a/src/com/android/phone/EmergencyDialer.java
++++ b/src/com/android/phone/EmergencyDialer.java
+@@ -253,14 +253,18 @@ public class EmergencyDialer extends Activity implements View.OnClickListener,
+         updateTtsSpans();
+     }
+ 
+     @Override
+     protected void onCreate(Bundle icicle) {
+         super.onCreate(icicle);
+ 
++        getWindow().addSystemFlags(
++                android.view.WindowManager.LayoutParams
++                        .SYSTEM_FLAG_HIDE_NON_SYSTEM_OVERLAY_WINDOWS);
++
+         mEntryType = getIntent().getIntExtra(EXTRA_ENTRY_TYPE, ENTRY_TYPE_UNKNOWN);
+         Log.d(LOG_TAG, "Launched from " + entryTypeToString(mEntryType));
+ 
+         // Allow this activity to be displayed in front of the keyguard / lockscreen.
+         setShowWhenLocked(true);
+         // Allow turning screen on
+         setTurnScreenOn(true);
+diff --git a/src/com/android/phone/EnableIccPinScreen.java b/src/com/android/phone/EnableIccPinScreen.java
+index 160978f57..3ecbdb52f 100644
+--- a/src/com/android/phone/EnableIccPinScreen.java
++++ b/src/com/android/phone/EnableIccPinScreen.java
+@@ -60,14 +60,18 @@ public class EnableIccPinScreen extends Activity {
+         }
+     };
+ 
+     @Override
+     protected void onCreate(Bundle icicle) {
+         super.onCreate(icicle);
+ 
++        getWindow().addSystemFlags(
++                android.view.WindowManager.LayoutParams
++                        .SYSTEM_FLAG_HIDE_NON_SYSTEM_OVERLAY_WINDOWS);
++
+         setContentView(R.layout.enable_sim_pin_screen);
+         setupView();
+ 
+         mPhone = PhoneGlobals.getPhone();
+         mEnable = !mPhone.getIccCard().getIccLockEnabled();
+ 
+         int id = mEnable ? R.string.enable_sim_pin : R.string.disable_sim_pin;
+diff --git a/src/com/android/phone/GsmUmtsAdditionalCallOptions.java b/src/com/android/phone/GsmUmtsAdditionalCallOptions.java
+index 6e289221c..6048c927a 100644
+--- a/src/com/android/phone/GsmUmtsAdditionalCallOptions.java
++++ b/src/com/android/phone/GsmUmtsAdditionalCallOptions.java
+@@ -38,14 +38,18 @@ public class GsmUmtsAdditionalCallOptions extends TimeConsumingPreferenceActivit
+     private boolean mCLIROverUtPrecautions = false;
+     private boolean mCWOverUtPrecautions = false;
+ 
+     @Override
+     protected void onCreate(Bundle icicle) {
+         super.onCreate(icicle);
+ 
++        getWindow().addSystemFlags(
++                android.view.WindowManager.LayoutParams
++                        .SYSTEM_FLAG_HIDE_NON_SYSTEM_OVERLAY_WINDOWS);
++
+         addPreferencesFromResource(R.xml.gsm_umts_additional_options);
+ 
+         mSubscriptionInfoHelper = new SubscriptionInfoHelper(this, getIntent());
+         mSubscriptionInfoHelper.setActionBarTitle(
+                 getActionBar(), getResources(), R.string.additional_gsm_call_settings_with_label);
+         mPhone = mSubscriptionInfoHelper.getPhone();
+ 
+diff --git a/src/com/android/phone/GsmUmtsCallBarringOptions.java b/src/com/android/phone/GsmUmtsCallBarringOptions.java
+index 30e9b5c76..fc94c12d6 100644
+--- a/src/com/android/phone/GsmUmtsCallBarringOptions.java
++++ b/src/com/android/phone/GsmUmtsCallBarringOptions.java
+@@ -342,14 +342,19 @@ public class GsmUmtsCallBarringOptions extends TimeConsumingPreferenceActivity
+     private boolean validatePassword(String password) {
+         return password != null && password.length() == PW_LENGTH;
+     }
+ 
+     @Override
+     protected void onCreate(Bundle icicle) {
+         super.onCreate(icicle);
++
++        getWindow().addSystemFlags(
++                android.view.WindowManager.LayoutParams
++                        .SYSTEM_FLAG_HIDE_NON_SYSTEM_OVERLAY_WINDOWS);
++
+         if (DBG) {
+             Log.d(LOG_TAG, "onCreate, reading callbarring_options.xml file");
+         }
+         addPreferencesFromResource(R.xml.callbarring_options);
+ 
+         mSubscriptionInfoHelper = new SubscriptionInfoHelper(this, getIntent());
+         mPhone = mSubscriptionInfoHelper.getPhone();
+diff --git a/src/com/android/phone/GsmUmtsCallForwardOptions.java b/src/com/android/phone/GsmUmtsCallForwardOptions.java
+index db830deb6..6a5cb83d5 100644
+--- a/src/com/android/phone/GsmUmtsCallForwardOptions.java
++++ b/src/com/android/phone/GsmUmtsCallForwardOptions.java
+@@ -54,14 +54,18 @@ public class GsmUmtsCallForwardOptions extends TimeConsumingPreferenceActivity {
+     private boolean mReplaceInvalidCFNumbers;
+     private boolean mCallForwardByUssd;
+ 
+     @Override
+     protected void onCreate(Bundle icicle) {
+         super.onCreate(icicle);
+ 
++        getWindow().addSystemFlags(
++                android.view.WindowManager.LayoutParams
++                        .SYSTEM_FLAG_HIDE_NON_SYSTEM_OVERLAY_WINDOWS);
++
+         addPreferencesFromResource(R.xml.callforward_options);
+ 
+         mSubscriptionInfoHelper = new SubscriptionInfoHelper(this, getIntent());
+         mSubscriptionInfoHelper.setActionBarTitle(
+                 getActionBar(), getResources(), R.string.call_forwarding_settings_with_label);
+         mPhone = mSubscriptionInfoHelper.getPhone();
+ 
+diff --git a/src/com/android/phone/GsmUmtsCallOptions.java b/src/com/android/phone/GsmUmtsCallOptions.java
+index 51d1b662e..652331c40 100644
+--- a/src/com/android/phone/GsmUmtsCallOptions.java
++++ b/src/com/android/phone/GsmUmtsCallOptions.java
+@@ -35,14 +35,18 @@ public class GsmUmtsCallOptions extends PreferenceActivity {
+     public static final String CALL_BARRING_KEY = "call_barring_key";
+     public static final String ADDITIONAL_GSM_SETTINGS_KEY = "additional_gsm_call_settings_key";
+ 
+     @Override
+     protected void onCreate(Bundle icicle) {
+         super.onCreate(icicle);
+ 
++        getWindow().addSystemFlags(
++                android.view.WindowManager.LayoutParams
++                        .SYSTEM_FLAG_HIDE_NON_SYSTEM_OVERLAY_WINDOWS);
++
+         addPreferencesFromResource(R.xml.gsm_umts_call_options);
+ 
+         SubscriptionInfoHelper subInfoHelper = new SubscriptionInfoHelper(this, getIntent());
+         subInfoHelper.setActionBarTitle(
+                 getActionBar(), getResources(), R.string.labelGsmMore_with_label);
+         init(getPreferenceScreen(), subInfoHelper);
+ 
+diff --git a/src/com/android/phone/SimContacts.java b/src/com/android/phone/SimContacts.java
+index 4229482f2..b98434ed0 100644
+--- a/src/com/android/phone/SimContacts.java
++++ b/src/com/android/phone/SimContacts.java
+@@ -227,14 +227,18 @@ public class SimContacts extends ADNList {
+ 
+     /* Followings are overridden methods */
+ 
+     @Override
+     protected void onCreate(Bundle icicle) {
+         super.onCreate(icicle);
+ 
++        getWindow().addSystemFlags(
++                android.view.WindowManager.LayoutParams
++                        .SYSTEM_FLAG_HIDE_NON_SYSTEM_OVERLAY_WINDOWS);
++
+         Intent intent = getIntent();
+         if (intent != null) {
+             final String accountName = intent.getStringExtra("account_name");
+             final String accountType = intent.getStringExtra("account_type");
+             if (!TextUtils.isEmpty(accountName) && !TextUtils.isEmpty(accountType)) {
+                 mAccount = new Account(accountName, accountType);
+             }
+diff --git a/src/com/android/phone/settings/fdn/BaseFdnContactScreen.java b/src/com/android/phone/settings/fdn/BaseFdnContactScreen.java
+index 5beff34db..b33421a89 100644
+--- a/src/com/android/phone/settings/fdn/BaseFdnContactScreen.java
++++ b/src/com/android/phone/settings/fdn/BaseFdnContactScreen.java
+@@ -67,14 +67,17 @@ public abstract class BaseFdnContactScreen extends Activity
+     protected abstract void pin2AuthenticationSucceed();
+ 
+     @Override
+     protected void onCreate(Bundle savedInstanceState) {
+         super.onCreate(savedInstanceState);
+         resolveIntent();
+         getWindow().requestFeature(Window.FEATURE_INDETERMINATE_PROGRESS);
++        getWindow().addSystemFlags(
++                android.view.WindowManager.LayoutParams
++                        .SYSTEM_FLAG_HIDE_NON_SYSTEM_OVERLAY_WINDOWS);
+     }
+ 
+     protected void authenticatePin2() {
+         Intent intent = new Intent();
+         intent.setClass(this, GetPin2Screen.class);
+         intent.setData(FdnList.getContentUri(mSubscriptionInfoHelper));
+         startActivityForResult(intent, PIN2_REQUEST_CODE);
+diff --git a/src/com/android/phone/settings/fdn/DeleteFdnContactScreen.java b/src/com/android/phone/settings/fdn/DeleteFdnContactScreen.java
+index 7cd4c935c..ab14c836f 100644
+--- a/src/com/android/phone/settings/fdn/DeleteFdnContactScreen.java
++++ b/src/com/android/phone/settings/fdn/DeleteFdnContactScreen.java
+@@ -28,14 +28,18 @@ import com.android.phone.R;
+  */
+ public class DeleteFdnContactScreen extends BaseFdnContactScreen {
+ 
+     @Override
+     protected void onCreate(Bundle icicle) {
+         super.onCreate(icicle);
+ 
++        getWindow().addSystemFlags(
++                android.view.WindowManager.LayoutParams
++                        .SYSTEM_FLAG_HIDE_NON_SYSTEM_OVERLAY_WINDOWS);
++
+         // Starts PIN2 authentication only for the first time.
+         if (icicle == null) authenticatePin2();
+         setContentView(R.layout.delete_fdn_contact_screen);
+     }
+ 
+     @Override
+     protected void onActivityResult(int requestCode, int resultCode, Intent intent) {
+diff --git a/src/com/android/phone/settings/fdn/EditFdnContactScreen.java b/src/com/android/phone/settings/fdn/EditFdnContactScreen.java
+index 0884e1262..0e942ca97 100644
+--- a/src/com/android/phone/settings/fdn/EditFdnContactScreen.java
++++ b/src/com/android/phone/settings/fdn/EditFdnContactScreen.java
+@@ -84,14 +84,17 @@ public class EditFdnContactScreen extends BaseFdnContactScreen {
+     /** flag to track saving state */
+     private boolean mDataBusy;
+     private int mFdnNumberLimitLength = 20;
+ 
+     @Override
+     protected void onCreate(Bundle icicle) {
+         super.onCreate(icicle);
++        getWindow().addSystemFlags(
++                android.view.WindowManager.LayoutParams
++                        .SYSTEM_FLAG_HIDE_NON_SYSTEM_OVERLAY_WINDOWS);
+ 
+         setContentView(R.layout.edit_fdn_contact_screen);
+         setupView();
+         setTitle(mAddContact ? R.string.add_fdn_contact : R.string.edit_fdn_contact);
+         PersistableBundle b;
+         if (mSubscriptionInfoHelper.hasSubId()) {
+             b = PhoneGlobals.getInstance().getCarrierConfigForSubId(
+diff --git a/src/com/android/phone/settings/fdn/FdnList.java b/src/com/android/phone/settings/fdn/FdnList.java
+index c2ecbc670..e2b349020 100644
+--- a/src/com/android/phone/settings/fdn/FdnList.java
++++ b/src/com/android/phone/settings/fdn/FdnList.java
+@@ -94,14 +94,18 @@ public class FdnList extends ADNList {
+     private boolean mFdnDialDirectlySupported = false;
+     private SelectionPopupMenu mPopup;
+ 
+     @Override
+     public void onCreate(Bundle icicle) {
+         super.onCreate(icicle);
+ 
++        getWindow().addSystemFlags(
++                android.view.WindowManager.LayoutParams
++                        .SYSTEM_FLAG_HIDE_NON_SYSTEM_OVERLAY_WINDOWS);
++
+         ActionBar actionBar = getActionBar();
+         if (actionBar != null) {
+             // android.R.id.home will be triggered in onOptionsItemSelected()
+             actionBar.setDisplayHomeAsUpEnabled(true);
+         }
+ 
+         mSubscriptionInfoHelper = new SubscriptionInfoHelper(this, getIntent());
+diff --git a/src/com/android/phone/settings/fdn/FdnSetting.java b/src/com/android/phone/settings/fdn/FdnSetting.java
+index 8f46c8502..aaf6a291e 100644
+--- a/src/com/android/phone/settings/fdn/FdnSetting.java
++++ b/src/com/android/phone/settings/fdn/FdnSetting.java
+@@ -502,14 +502,18 @@ public class FdnSetting extends PreferenceActivity
+         }
+     }
+ 
+     @Override
+     protected void onCreate(Bundle icicle) {
+         super.onCreate(icicle);
+ 
++        getWindow().addSystemFlags(
++                android.view.WindowManager.LayoutParams
++                        .SYSTEM_FLAG_HIDE_NON_SYSTEM_OVERLAY_WINDOWS);
++
+         mSubscriptionInfoHelper = new SubscriptionInfoHelper(this, getIntent());
+         mPhone = mSubscriptionInfoHelper.getPhone();
+ 
+         addPreferencesFromResource(R.xml.fdn_setting);
+ 
+         //get UI object references
+         PreferenceScreen prefSet = getPreferenceScreen();
+diff --git a/src/com/android/phone/settings/fdn/GetPin2Screen.java b/src/com/android/phone/settings/fdn/GetPin2Screen.java
+index 2394a6956..217aa89b7 100644
+--- a/src/com/android/phone/settings/fdn/GetPin2Screen.java
++++ b/src/com/android/phone/settings/fdn/GetPin2Screen.java
+@@ -44,14 +44,18 @@ public class GetPin2Screen extends Activity implements TextView.OnEditorActionLi
+     private EditText mPin2Field;
+     private Button mOkButton;
+ 
+     @Override
+     protected void onCreate(Bundle icicle) {
+         super.onCreate(icicle);
+ 
++        getWindow().addSystemFlags(
++                android.view.WindowManager.LayoutParams
++                        .SYSTEM_FLAG_HIDE_NON_SYSTEM_OVERLAY_WINDOWS);
++
+         setContentView(R.layout.get_pin2_screen);
+ 
+         mPin2Field = (EditText) findViewById(R.id.pin);
+         mPin2Field.setKeyListener(DigitsKeyListener.getInstance());
+         mPin2Field.setMovementMethod(null);
+         mPin2Field.setOnEditorActionListener(this);
+         mPin2Field.setInputType(

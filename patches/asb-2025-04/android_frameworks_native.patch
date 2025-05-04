@@ -1,0 +1,106 @@
+# PWD: frameworks/native
+diff --git a/services/inputflinger/dispatcher/InputDispatcher.cpp b/services/inputflinger/dispatcher/InputDispatcher.cpp
+index 85c60fa625..35457d5438 100644
+--- a/services/inputflinger/dispatcher/InputDispatcher.cpp
++++ b/services/inputflinger/dispatcher/InputDispatcher.cpp
+@@ -5777,17 +5777,16 @@ void InputDispatcher::doDispatchCycleFinishedLockedInterruptible(CommandEntry* c
+                                            connection->inputChannel->getConnectionToken(),
+                                            dispatchEntry->deliveryTime, commandEntry->consumeTime,
+                                            finishTime);
+     }
+ 
+     bool restartEvent;
+     if (dispatchEntry->eventEntry->type == EventEntry::Type::KEY) {
+-        KeyEntry& keyEntry = static_cast<KeyEntry&>(*(dispatchEntry->eventEntry));
+         restartEvent =
+-                afterKeyEventLockedInterruptible(connection, dispatchEntry, keyEntry, handled);
++                afterKeyEventLockedInterruptible(connection, dispatchEntry, handled);
+     } else if (dispatchEntry->eventEntry->type == EventEntry::Type::MOTION) {
+         MotionEntry& motionEntry = static_cast<MotionEntry&>(*(dispatchEntry->eventEntry));
+         restartEvent = afterMotionEventLockedInterruptible(connection, dispatchEntry, motionEntry,
+                                                            handled);
+     } else {
+         restartEvent = false;
+     }
+@@ -5896,15 +5895,25 @@ void InputDispatcher::processConnectionResponsiveLocked(const Connection& connec
+     }
+     // If not a monitor, must be a window
+     sendWindowResponsiveCommandLocked(connectionToken);
+ }
+ 
+ bool InputDispatcher::afterKeyEventLockedInterruptible(const sp<Connection>& connection,
+                                                        DispatchEntry* dispatchEntry,
+-                                                       KeyEntry& keyEntry, bool handled) {
++                                                       bool handled) {
++    // The dispatchEntry is currently valid, but it might point to a deleted object after we release
++    // the lock. For simplicity, make copies of the data of interest here and assume that
++    // 'dispatchEntry' is not valid after this section.
++    // Hold a strong reference to the EventEntry to ensure it's valid for the duration of this
++    // function, even if the DispatchEntry gets destroyed and releases its share of the ownership.
++    std::shared_ptr<EventEntry> eventEntry = dispatchEntry->eventEntry;
++    const bool hasForegroundTarget = dispatchEntry->hasForegroundTarget();
++    KeyEntry& keyEntry = static_cast<KeyEntry&>(*(eventEntry));
++    // To prevent misuse, ensure dispatchEntry is no longer valid.
++    dispatchEntry = nullptr;
+     if (keyEntry.flags & AKEY_EVENT_FLAG_FALLBACK) {
+         if (!handled) {
+             // Report the key as unhandled, since the fallback was not handled.
+             mReporter->reportUnhandledKey(keyEntry.id);
+         }
+         return false;
+     }
+@@ -5913,15 +5922,15 @@ bool InputDispatcher::afterKeyEventLockedInterruptible(const sp<Connection>& con
+     // Clear it out after dispatching the UP.
+     int32_t originalKeyCode = keyEntry.keyCode;
+     int32_t fallbackKeyCode = connection->inputState.getFallbackKey(originalKeyCode);
+     if (keyEntry.action == AKEY_EVENT_ACTION_UP) {
+         connection->inputState.removeFallbackKey(originalKeyCode);
+     }
+ 
+-    if (handled || !dispatchEntry->hasForegroundTarget()) {
++    if (handled || !hasForegroundTarget) {
+         // If the application handles the original key for which we previously
+         // generated a fallback or if the window is not a foreground window,
+         // then cancel the associated fallback key, if any.
+         if (fallbackKeyCode != -1) {
+             // Dispatch the unhandled key to the policy with the cancel flag.
+ #if DEBUG_OUTBOUND_EVENT_DETAILS
+             ALOGD("Unhandled key event: Asking policy to cancel fallback action.  "
+diff --git a/services/inputflinger/dispatcher/InputDispatcher.h b/services/inputflinger/dispatcher/InputDispatcher.h
+index aa1b998c9c..c07fd56d8b 100644
+--- a/services/inputflinger/dispatcher/InputDispatcher.h
++++ b/services/inputflinger/dispatcher/InputDispatcher.h
+@@ -647,15 +647,15 @@ private:
+     void doNotifySensorLockedInterruptible(CommandEntry* commandEntry) REQUIRES(mLock);
+     void doNotifyUntrustedTouchLockedInterruptible(CommandEntry* commandEntry) REQUIRES(mLock);
+     void doInterceptKeyBeforeDispatchingLockedInterruptible(CommandEntry* commandEntry)
+             REQUIRES(mLock);
+     void doDispatchCycleFinishedLockedInterruptible(CommandEntry* commandEntry) REQUIRES(mLock);
+     void doSetPointerCaptureLockedInterruptible(CommandEntry* commandEntry) REQUIRES(mLock);
+     bool afterKeyEventLockedInterruptible(const sp<Connection>& connection,
+-                                          DispatchEntry* dispatchEntry, KeyEntry& keyEntry,
++                                          DispatchEntry* dispatchEntry,
+                                           bool handled) REQUIRES(mLock);
+     bool afterMotionEventLockedInterruptible(const sp<Connection>& connection,
+                                              DispatchEntry* dispatchEntry, MotionEntry& motionEntry,
+                                              bool handled) REQUIRES(mLock);
+     void doPokeUserActivityLockedInterruptible(CommandEntry* commandEntry) REQUIRES(mLock);
+     void doOnPointerDownOutsideFocusLockedInterruptible(CommandEntry* commandEntry) REQUIRES(mLock);
+ 
+diff --git a/services/surfaceflinger/EffectLayer.h b/services/surfaceflinger/EffectLayer.h
+index 1dcb633251..de0a757672 100644
+--- a/services/surfaceflinger/EffectLayer.h
++++ b/services/surfaceflinger/EffectLayer.h
+@@ -60,11 +60,12 @@ protected:
+     sp<Layer> createClone() override;
+ 
+ private:
+     // Returns true if there is a valid color to fill.
+     bool fillsColor() const;
+     // Returns true if this layer has a blur value.
+     bool hasBlur() const;
++    bool needsInputInfo() const override { return fillsColor() || hasInputInfo(); }
+     bool hasSomethingToDraw() const { return fillsColor() || drawShadows() || hasBlur(); }
+ };
+ 
+ } // namespace android

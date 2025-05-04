@@ -1,0 +1,37 @@
+From 252856051b4a2af683cb4c5d7a8fed11ae16b33e Mon Sep 17 00:00:00 2001
+From: Aditya Singh <adityasngh@google.com>
+Date: Thu, 23 Jan 2025 22:02:41 -0800
+Subject: [PATCH 1/2] Fix for SAF loophole in the lastAccessedStack.
+
+When loading the last accessed stack, the code did not check if the file
+path (uri) should be blocked, thereby allowing an attacker to bypass the
+scoped storage restriction put on initial uri.
+This change adds the check when loading last accessed stack.
+
+Bug: 352294617
+Test: Manual as per http://b/352294617#comment4
+Flag: EXEMPT bugfix
+(cherry picked from https://googleplex-android-review.googlesource.com/q/commit:1c8ce190df41eb77fdfce5830caec4b117ed0ddf)
+Merged-In: I4de8bad7174273c9390da978e186ad6a85f27be5
+Change-Id: I4de8bad7174273c9390da978e186ad6a85f27be5
+---
+ src/com/android/documentsui/picker/ActionHandler.java | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/src/com/android/documentsui/picker/ActionHandler.java b/src/com/android/documentsui/picker/ActionHandler.java
+index 53a285110..9fe308ea4 100644
+--- a/src/com/android/documentsui/picker/ActionHandler.java
++++ b/src/com/android/documentsui/picker/ActionHandler.java
+@@ -188,6 +188,9 @@ class ActionHandler<T extends FragmentActivity & Addons> extends AbstractActionH
+     private void onLastAccessedStackLoaded(@Nullable DocumentStack stack) {
+         if (stack == null) {
+             loadDefaultLocation();
++        } else if (shouldPreemptivelyRestrictRequestedInitialUri(stack.peek().getDocumentUri())) {
++            // If the last accessed stack has restricted uri, load default location
++            loadDefaultLocation();
+         } else {
+             mState.stack.reset(stack);
+             mActivity.refreshCurrentRootAndDirectory(AnimationView.ANIM_NONE);
+-- 
+2.40.1
+

@@ -1,0 +1,179 @@
+# PWD: packages/apps/Settings
+diff --git a/res/values/config.xml b/res/values/config.xml
+index 908eedbda69..5af3207302b 100755
+--- a/res/values/config.xml
++++ b/res/values/config.xml
+@@ -239,14 +239,19 @@
+     <string name="config_package_installer_package_name" translatable="false">
+         com.android.packageinstaller
+     </string>
+ 
+     <!-- Settings intelligence interaction log intent action -->
+     <string name="config_settingsintelligence_log_action" translatable="false"></string>
+ 
++    <!-- Sound picker package name -->
++    <string name="config_sound_picker_package_name" translatable="false">
++        com.android.soundpicker
++    </string>
++
+     <!-- AOSP Emergency app package name -->
+     <string name="config_aosp_emergency_package_name" translatable="false">
+         com.android.emergency
+     </string>
+ 
+     <!-- AOSP Emergency app intent action -->
+     <string name="config_aosp_emergency_intent_action" translatable="false">
+diff --git a/src/com/android/settings/RingtonePreference.java b/src/com/android/settings/RingtonePreference.java
+index d283e390fc7..560fdc6df37 100644
+--- a/src/com/android/settings/RingtonePreference.java
++++ b/src/com/android/settings/RingtonePreference.java
+@@ -70,15 +70,16 @@ public class RingtonePreference extends Preference {
+                 com.android.internal.R.styleable.RingtonePreference, 0, 0);
+         mRingtoneType = a.getInt(com.android.internal.R.styleable.RingtonePreference_ringtoneType,
+                 RingtoneManager.TYPE_RINGTONE);
+         mShowDefault = a.getBoolean(com.android.internal.R.styleable.RingtonePreference_showDefault,
+                 true);
+         mShowSilent = a.getBoolean(com.android.internal.R.styleable.RingtonePreference_showSilent,
+                 true);
+-        setIntent(new Intent(RingtoneManager.ACTION_RINGTONE_PICKER));
++        setIntent(new Intent(RingtoneManager.ACTION_RINGTONE_PICKER)
++                .setPackage(context.getString(R.string.config_sound_picker_package_name)));
+         setUserId(UserHandle.myUserId());
+         a.recycle();
+     }
+ 
+     public void setUserId(int userId) {
+         mUserId = userId;
+         mUserContext = Utils.createPackageContextAsUser(getContext(), mUserId);
+diff --git a/src/com/android/settings/applications/AppInfoBase.java b/src/com/android/settings/applications/AppInfoBase.java
+index 9d098000fbc..51e51fc7483 100644
+--- a/src/com/android/settings/applications/AppInfoBase.java
++++ b/src/com/android/settings/applications/AppInfoBase.java
+@@ -30,14 +30,15 @@ import android.content.Intent;
+ import android.content.IntentFilter;
+ import android.content.pm.PackageInfo;
+ import android.content.pm.PackageManager;
+ import android.content.pm.PackageManager.NameNotFoundException;
+ import android.hardware.usb.IUsbManager;
+ import android.os.Bundle;
+ import android.os.IBinder;
++import android.os.RemoteException;
+ import android.os.ServiceManager;
+ import android.os.UserHandle;
+ import android.os.UserManager;
+ import android.text.TextUtils;
+ import android.util.Log;
+ 
+ import androidx.annotation.VisibleForTesting;
+@@ -168,32 +169,27 @@ public abstract class AppInfoBase extends SettingsPreferenceFragment
+ 
+     @VisibleForTesting
+     protected boolean hasInteractAcrossUsersPermission() {
+         Activity activity = getActivity();
+         if (activity == null) {
+             return false;
+         }
+-        String callingPackageName = null;
+         try {
+-            callingPackageName = ActivityManager.getService()
+-                .getLaunchedFromPackage(activity.getActivityToken());
+-        } catch (Exception e) {
+-            return false;
+-        }
+-        if (TextUtils.isEmpty(callingPackageName)) {
+-            Log.w(TAG, "Not able to get calling package name for permission check");
+-            return false;
+-        }
+-        if (mPm.checkPermission(Manifest.permission.INTERACT_ACROSS_USERS_FULL, callingPackageName)
+-                != PackageManager.PERMISSION_GRANTED) {
+-            Log.w(TAG, "Package " + callingPackageName + " does not have required permission "
+-                    + Manifest.permission.INTERACT_ACROSS_USERS_FULL);
++            int callerUid = ActivityManager.getService().getLaunchedFromUid(
++                    activity.getActivityToken());
++            if (ActivityManager.checkUidPermission(Manifest.permission.INTERACT_ACROSS_USERS_FULL,
++                    callerUid) != PackageManager.PERMISSION_GRANTED) {
++                Log.w(TAG, "Uid " + callerUid + " does not have required permission "
++                        + Manifest.permission.INTERACT_ACROSS_USERS_FULL);
++                return false;
++            }
++            return true;
++        } catch (RemoteException e) {
+             return false;
+         }
+-        return true;
+     }
+ 
+     protected void setIntentAndFinish(boolean appChanged) {
+         Log.i(TAG, "appChanged=" + appChanged);
+         Intent intent = new Intent();
+         intent.putExtra(ManageApplications.APP_CHG, appChanged);
+         SettingsActivity sa = (SettingsActivity) getActivity();
+diff --git a/src/com/android/settings/notification/NotificationAccessConfirmationActivity.java b/src/com/android/settings/notification/NotificationAccessConfirmationActivity.java
+index f01e23a5e8f..235ea00f70b 100644
+--- a/src/com/android/settings/notification/NotificationAccessConfirmationActivity.java
++++ b/src/com/android/settings/notification/NotificationAccessConfirmationActivity.java
+@@ -35,15 +35,14 @@ import android.content.pm.PackageItemInfo;
+ import android.content.pm.PackageManager;
+ import android.content.pm.ResolveInfo;
+ import android.os.Bundle;
+ import android.os.UserHandle;
+ import android.service.notification.NotificationListenerService;
+ import android.text.TextUtils;
+ import android.util.Slog;
+-import android.view.WindowManager;
+ import android.view.accessibility.AccessibilityEvent;
+ 
+ import com.android.internal.app.AlertActivity;
+ import com.android.internal.app.AlertController;
+ import com.android.settings.R;
+ 
+ import java.util.List;
+@@ -136,28 +135,14 @@ public class NotificationAccessConfirmationActivity extends Activity
+                 .create(this, this, getWindow())
+                 .installContent(p);
+         // Consistent with the permission dialog
+         // Used instead of p.mCancelable as that is only honored for AlertDialog
+         getWindow().setCloseOnTouchOutside(false); 
+     }
+ 
+-    @Override
+-    public void onResume() {
+-        super.onResume();
+-        getWindow().addFlags(
+-                WindowManager.LayoutParams.SYSTEM_FLAG_HIDE_NON_SYSTEM_OVERLAY_WINDOWS);
+-    }
+-
+-    @Override
+-    public void onPause() {
+-        getWindow().clearFlags(
+-                WindowManager.LayoutParams.SYSTEM_FLAG_HIDE_NON_SYSTEM_OVERLAY_WINDOWS);
+-        super.onPause();
+-    }
+-
+     private void onAllow() {
+         mNm.setNotificationListenerAccessGranted(mComponentName, true);
+ 
+         finish();
+     }
+ 
+     @Override
+diff --git a/src/com/android/settings/password/BiometricFragment.java b/src/com/android/settings/password/BiometricFragment.java
+index e4c08e73ff8..04c82e559a3 100644
+--- a/src/com/android/settings/password/BiometricFragment.java
++++ b/src/com/android/settings/password/BiometricFragment.java
+@@ -136,14 +136,15 @@ public class BiometricFragment extends InstrumentedFragment {
+                         promptInfo.getDeviceCredentialTitle(),
+                         promptInfo.getDeviceCredentialSubtitle(),
+                         promptInfo.getDeviceCredentialDescription())
+                 .setConfirmationRequired(promptInfo.isConfirmationRequested())
+                 .setDisallowBiometricsIfPolicyExists(
+                         promptInfo.isDisallowBiometricsIfPolicyExists())
+                 .setReceiveSystemEvents(true)
++                .setClassNameIfItIsConfirmDeviceCredentialActivity()
+                 .build();
+     }
+ 
+     @Override
+     public void onResume() {
+         super.onResume();
+ 

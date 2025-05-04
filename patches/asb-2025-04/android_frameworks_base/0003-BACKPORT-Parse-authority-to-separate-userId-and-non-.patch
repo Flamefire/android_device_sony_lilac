@@ -1,0 +1,53 @@
+From 9f755e4890425fe04edcb6aa47b409eed7c69a7e Mon Sep 17 00:00:00 2001
+From: Sumedh Sen <sumedhsen@google.com>
+Date: Thu, 19 Sep 2024 11:57:12 -0700
+Subject: [PATCH 03/15] [BACKPORT] Parse authority to separate userId and
+ non-user parts of it
+
+Callers may pass an authority of type `10@com.example` to this API. We
+must make sure to only find providers with authority `com.example` installed in user 10.
+
+Bug: 350456241
+
+Test: sts-tradefed run sts-dynamic-develop -m CtsSecurityTestCases -t android.security.cts.ContentProviderMultiUserTests#testAccessFromInitialUser --user-type PRIMARY
+
+Test: sts-tradefed run sts-dynamic-develop -m CtsSecurityTestCases -t android.security.cts.ContentProviderMultiUserTests --user-type SECONDARY
+
+Flag: EXEMPT. Bug fix only
+(cherry picked from https://googleplex-android-review.googlesource.com/q/commit:83b6e6cdf142302c706ad073c9d03970903fcc4f)
+Merged-In: I737a435795698bdc612dc3bf88c31e5c8f9c17a6
+Change-Id: I737a435795698bdc612dc3bf88c31e5c8f9c17a6
+---
+ .../com/android/server/pm/PackageManagerService.java     | 9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
+
+diff --git a/services/core/java/com/android/server/pm/PackageManagerService.java b/services/core/java/com/android/server/pm/PackageManagerService.java
+index 4033497985de..c92b8369fee2 100644
+--- a/services/core/java/com/android/server/pm/PackageManagerService.java
++++ b/services/core/java/com/android/server/pm/PackageManagerService.java
+@@ -156,6 +156,7 @@ import android.compat.annotation.ChangeId;
+ import android.compat.annotation.EnabledAfter;
+ import android.content.BroadcastReceiver;
+ import android.content.ComponentName;
++import android.content.ContentProvider;
+ import android.content.ContentResolver;
+ import android.content.Context;
+ import android.content.IIntentReceiver;
+@@ -11880,7 +11881,13 @@ public class PackageManagerService extends IPackageManager.Stub
+             int callingUid) {
+         if (!mUserManager.exists(userId)) return null;
+         flags = updateFlagsForComponent(flags, userId);
+-        final ProviderInfo providerInfo = mComponentResolver.queryProvider(name, flags, userId);
++
++        // Callers of this API may not always separate the userID and authority. Let's parse it
++        // before resolving
++        String authorityWithoutUserId = ContentProvider.getAuthorityWithoutUserId(name);
++        userId = ContentProvider.getUserIdFromAuthority(name, userId);
++        final ProviderInfo providerInfo = mComponentResolver.queryProvider(
++                authorityWithoutUserId, flags, userId);
+         boolean checkedGrants = false;
+         if (providerInfo != null) {
+             // Looking for cross-user grants before enforcing the typical cross-users permissions
+-- 
+2.40.1
+

@@ -1,0 +1,91 @@
+# PWD: packages/services/Telecomm
+diff --git a/src/com/android/server/telecom/ConnectionServiceWrapper.java b/src/com/android/server/telecom/ConnectionServiceWrapper.java
+index e01ae8f6d..c8b1c0bde 100755
+--- a/src/com/android/server/telecom/ConnectionServiceWrapper.java
++++ b/src/com/android/server/telecom/ConnectionServiceWrapper.java
+@@ -60,14 +60,15 @@ import java.util.Collections;
+ import java.util.HashMap;
+ import java.util.List;
+ import java.util.Map;
+ import java.util.Set;
+ import java.util.concurrent.ConcurrentHashMap;
+ import java.util.concurrent.ExecutorService;
+ import java.util.concurrent.Executors;
++import java.util.concurrent.RejectedExecutionException;
+ import java.util.concurrent.ScheduledExecutorService;
+ import java.util.concurrent.ScheduledFuture;
+ import java.util.concurrent.TimeUnit;
+ 
+ /**
+  * Wrapper for {@link IConnectionService}s, handles binding to {@link IConnectionService} and keeps
+  * track of when the object can safely be unbound. Other classes should not use
+@@ -1345,19 +1346,29 @@ public class ConnectionServiceWrapper extends ServiceBinder implements
+                                     Log.piiHandle(call.getHandle()) + " via:" +
+                                             getComponentName().getPackageName());
+                             response.handleCreateConferenceFailure(
+                                     new DisconnectCause(DisconnectCause.ERROR));
+                         }
+                     }
+                 };
+-                // Post cleanup to the executor service and cache the future, so we can cancel it if
+-                // needed.
+-                ScheduledFuture<?> future = mScheduledExecutor.schedule(r.getRunnableToCancel(),
+-                        SERVICE_BINDING_TIMEOUT, TimeUnit.MILLISECONDS);
+-                mScheduledFutureMap.put(call, future);
++                if (mScheduledExecutor != null && !mScheduledExecutor.isShutdown()) {
++                    try {
++                        // Post cleanup to the executor service and cache the future,
++                        // so we can cancel it if needed.
++                        ScheduledFuture<?> future = mScheduledExecutor.schedule(
++                                r.getRunnableToCancel(),SERVICE_BINDING_TIMEOUT,
++                                TimeUnit.MILLISECONDS);
++                        mScheduledFutureMap.put(call, future);
++                    } catch (RejectedExecutionException e) {
++                        Log.e(this, e, "createConference: mScheduledExecutor was "
++                                + "already shutdown");
++                    }
++                } else {
++                    Log.w(this, "createConference: Scheduled executor is null or shutdown");
++                }
+                 try {
+                     mServiceInterface.createConference(
+                             call.getConnectionManagerPhoneAccount(),
+                             callId,
+                             connectionRequest,
+                             call.shouldAttachToExistingConnection(),
+                             call.isUnknown(),
+@@ -1461,19 +1472,29 @@ public class ConnectionServiceWrapper extends ServiceBinder implements
+                                     Log.piiHandle(call.getHandle()) + " via:" +
+                                             getComponentName().getPackageName());
+                             response.handleCreateConnectionFailure(
+                                     new DisconnectCause(DisconnectCause.ERROR));
+                         }
+                     }
+                 };
+-                // Post cleanup to the executor service and cache the future, so we can cancel it if
+-                // needed.
+-                ScheduledFuture<?> future = mScheduledExecutor.schedule(r.getRunnableToCancel(),
+-                        SERVICE_BINDING_TIMEOUT, TimeUnit.MILLISECONDS);
+-                mScheduledFutureMap.put(call, future);
++                if (mScheduledExecutor != null && !mScheduledExecutor.isShutdown()) {
++                    try {
++                        // Post cleanup to the executor service and cache the future,
++                        // so we can cancel it if needed.
++                        ScheduledFuture<?> future = mScheduledExecutor.schedule(
++                                r.getRunnableToCancel(),SERVICE_BINDING_TIMEOUT,
++                                TimeUnit.MILLISECONDS);
++                        mScheduledFutureMap.put(call, future);
++                    } catch (RejectedExecutionException e) {
++                        Log.e(this, e, "createConnection: mScheduledExecutor was "
++                                + "already shutdown");
++                    }
++                } else {
++                    Log.w(this, "createConnection: Scheduled executor is null or shutdown");
++                }
+                 try {
+                     mServiceInterface.createConnection(
+                             call.getConnectionManagerPhoneAccount(),
+                             callId,
+                             connectionRequest,
+                             call.shouldAttachToExistingConnection(),
+                             call.isUnknown(),

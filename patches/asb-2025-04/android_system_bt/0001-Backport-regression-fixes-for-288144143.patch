@@ -1,0 +1,104 @@
+From ef8f9c6bb3f64c03fb6307e53b8e1f8c3356428e Mon Sep 17 00:00:00 2001
+From: Brian Delwiche <delwiche@google.com>
+Date: Tue, 28 Jan 2025 08:15:51 +0000
+Subject: [PATCH 1/2] Backport regression fixes for 288144143
+
+These are backports for the following AOSP changes:
+aosp/3424923
+aosp/3420039
+aosp/3394039
+
+which address regressions in the initial fix for above bug.
+
+Bug: 288144143
+Test: m libbluetooth
+Ignore-AOSP-First: security
+Tag: #security
+(cherry picked from https://googleplex-android-review.googlesource.com/q/commit:1b613f3748de40cde15bb4d5b99dc2894c8d184b)
+Merged-In: I78a249561fd8ccab38e32fe2e14d90e3b4420dcb
+Change-Id: I78a249561fd8ccab38e32fe2e14d90e3b4420dcb
+---
+ stack/btm/btm_ble.cc   | 36 ++++++++++++++++++++++++++++++++++++
+ stack/l2cap/l2c_ble.cc |  2 +-
+ 2 files changed, 37 insertions(+), 1 deletion(-)
+
+diff --git a/stack/btm/btm_ble.cc b/stack/btm/btm_ble.cc
+index 601d85be015..6542e46303d 100644
+--- a/stack/btm/btm_ble.cc
++++ b/stack/btm/btm_ble.cc
+@@ -1380,6 +1380,9 @@ tBTM_STATUS btm_ble_set_encryption(const RawAddress& bd_addr,
+   switch (sec_act) {
+     case BTM_BLE_SEC_ENCRYPT:
+       if (link_role == HCI_ROLE_CENTRAL) {
++        if (p_rec->is_le_device_encrypted()) {
++          return BTM_SUCCESS;
++        }
+         /* start link layer encryption using the security info stored */
+         cmd = btm_ble_start_encrypt(bd_addr, false, NULL);
+         break;
+@@ -1724,6 +1727,35 @@ void btm_ble_connected_from_address_with_type(
+                     address_with_type.type, addr_matched);
+ }
+ 
++static bool btm_ble_complete_evt_ignore(const tBTM_SEC_DEV_REC* p_dev_rec,
++                                        const tSMP_EVT_DATA* p_data) {
++  // Encryption request in peripheral role results in SMP Security request. SMP
++  // may generate a SMP_COMPLT_EVT failure event cases like below: 1) Some
++  // central devices don't handle cross-over between encryption and SMP security
++  // request 2) Link may get disconnected after the SMP security request was
++  // sent.
++  if (p_data->cmplt.reason != SMP_SUCCESS && !p_dev_rec->role_central &&
++      btm_cb.pairing_bda != p_dev_rec->bd_addr &&
++      btm_cb.pairing_bda != p_dev_rec->ble.pseudo_addr &&
++      p_dev_rec->is_le_link_key_known() &&
++      p_dev_rec->ble.key_type != BTM_LE_KEY_NONE) {
++    if (p_dev_rec->is_le_device_encrypted()) {
++      LOG_WARN("Bonded device %s is already encrypted, ignoring SMP failure",
++               PRIVATE_ADDRESS(p_dev_rec->bd_addr));
++      return true;
++    } else if (p_data->cmplt.reason == SMP_CONN_TOUT) {
++      LOG_WARN(
++          "Bonded device %s disconnected while waiting for encryption, "
++          "ignoring SMP failure",
++          PRIVATE_ADDRESS(p_dev_rec->bd_addr));
++      l2cu_start_post_bond_timer(p_dev_rec->ble_hci_handle);
++      return true;
++    }
++  }
++
++  return false;
++}
++
+ /*****************************************************************************
+  *  Function        btm_proc_smp_cback
+  *
+@@ -1771,6 +1803,10 @@ tBTM_STATUS btm_proc_smp_cback(tSMP_EVT event, const RawAddress& bd_addr,
+         FALLTHROUGH_INTENDED; /* FALLTHROUGH */
+ 
+       case SMP_COMPLT_EVT:
++        if (btm_ble_complete_evt_ignore(p_dev_rec, p_data)) {
++          return BTM_SUCCESS;
++        }
++
+         if (btm_cb.api.p_le_callback) {
+           /* the callback function implementation may change the IO
+            * capability... */
+diff --git a/stack/l2cap/l2c_ble.cc b/stack/l2cap/l2c_ble.cc
+index c878ef2a543..245cdb89d04 100644
+--- a/stack/l2cap/l2c_ble.cc
++++ b/stack/l2cap/l2c_ble.cc
+@@ -192,10 +192,10 @@ void l2cble_notify_le_connection(const RawAddress& bda) {
+   if (BTM_IsAclConnectionUp(bda, BT_TRANSPORT_LE) &&
+       p_lcb->link_state != LST_CONNECTED) {
+     /* update link status */
++    p_lcb->link_state = LST_CONNECTED;
+     // TODO Move this back into acl layer
+     btm_establish_continue_from_address(bda, BT_TRANSPORT_LE);
+     /* update l2cap link status and send callback */
+-    p_lcb->link_state = LST_CONNECTED;
+     l2cu_process_fixed_chnl_resp(p_lcb);
+   }
+ 
+-- 
+2.40.1
+

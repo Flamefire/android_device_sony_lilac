@@ -1,0 +1,34 @@
+From 37d27a6a9ea042f32b9908fe1abd7747af768562 Mon Sep 17 00:00:00 2001
+From: Wenhui Yang <wenhuiy@google.com>
+Date: Fri, 20 Dec 2024 14:31:05 -0800
+Subject: [PATCH 2/2] [DO NOT MERGE] Send dim layer in input list
+
+Consider dim layers when calculating occlusion in inputdispatcher.
+
+Bug: 277076451
+Test: app-debug.apk in the bug
+Test: go/wm-smoke
+Flag: EXEMPT bugfix
+(cherry picked from https://googleplex-android-review.googlesource.com/q/commit:edb242135c608c818e2bc25ab0b45d399923536c)
+(cherry picked from https://googleplex-android-review.googlesource.com/q/commit:34c02c270246ec98efe52cd162448a43d314d064)
+Merged-In: I4a2fec79c7a4512b18af132f20ac9afaf4df71ba
+Change-Id: I4a2fec79c7a4512b18af132f20ac9afaf4df71ba
+---
+ services/surfaceflinger/EffectLayer.h | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/services/surfaceflinger/EffectLayer.h b/services/surfaceflinger/EffectLayer.h
+index 1dcb633251..de0a757672 100644
+--- a/services/surfaceflinger/EffectLayer.h
++++ b/services/surfaceflinger/EffectLayer.h
+@@ -64,6 +64,7 @@ private:
+     bool fillsColor() const;
+     // Returns true if this layer has a blur value.
+     bool hasBlur() const;
++    bool needsInputInfo() const override { return fillsColor() || hasInputInfo(); }
+     bool hasSomethingToDraw() const { return fillsColor() || drawShadows() || hasBlur(); }
+ };
+ 
+-- 
+2.40.1
+

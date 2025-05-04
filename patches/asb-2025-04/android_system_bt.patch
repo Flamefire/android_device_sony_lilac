@@ -1,0 +1,137 @@
+# PWD: system/bt
+diff --git a/stack/avdt/avdt_msg.cc b/stack/avdt/avdt_msg.cc
+index 5e08d02872b..faf9fe5b9cb 100644
+--- a/stack/avdt/avdt_msg.cc
++++ b/stack/avdt/avdt_msg.cc
+@@ -1581,14 +1581,22 @@ void avdt_msg_ind(AvdtpCcb* p_ccb, BT_HDR* p_buf) {
+       ok = false;
+ 
+       /* send a general reject */
+       if (msg_type == AVDT_MSG_TYPE_CMD) {
+         avdt_msg_send_grej(p_ccb, sig, &msg);
+       }
+     }
++
++    /* validate reject/response against cached sig */
++    if (((msg_type == AVDT_MSG_TYPE_RSP) || (msg_type == AVDT_MSG_TYPE_REJ)) &&
++        (p_ccb->p_curr_cmd == nullptr || p_ccb->p_curr_cmd->event != sig)) {
++      AVDT_TRACE_WARNING(
++          "Dropping msg with mismatched sig; sig=%d", sig);
++      ok = false;
++    }
+   }
+ 
+   if (ok && !gen_rej) {
+     /* skip over header (msg length already verified during reassembly) */
+     p_buf->len -= AVDT_LEN_TYPE_SINGLE;
+ 
+     /* set up to parse message */
+diff --git a/stack/btm/btm_ble.cc b/stack/btm/btm_ble.cc
+index 601d85be015..6542e46303d 100644
+--- a/stack/btm/btm_ble.cc
++++ b/stack/btm/btm_ble.cc
+@@ -1376,14 +1376,17 @@ tBTM_STATUS btm_ble_set_encryption(const RawAddress& bd_addr,
+   if (sec_act == BTM_BLE_SEC_ENCRYPT_MITM) {
+     p_rec->security_required |= BTM_SEC_IN_MITM;
+   }
+ 
+   switch (sec_act) {
+     case BTM_BLE_SEC_ENCRYPT:
+       if (link_role == HCI_ROLE_CENTRAL) {
++        if (p_rec->is_le_device_encrypted()) {
++          return BTM_SUCCESS;
++        }
+         /* start link layer encryption using the security info stored */
+         cmd = btm_ble_start_encrypt(bd_addr, false, NULL);
+         break;
+       }
+       /* if salve role then fall through to call SMP_Pair below which will send
+          a sec_request to request the central to encrypt the link */
+       FALLTHROUGH_INTENDED; /* FALLTHROUGH */
+@@ -1720,14 +1723,43 @@ void btm_ble_connected(const RawAddress& bda, uint16_t handle, uint8_t enc_mode,
+ void btm_ble_connected_from_address_with_type(
+     const tBLE_BD_ADDR& address_with_type, uint16_t handle, uint8_t enc_mode,
+     uint8_t role, bool addr_matched) {
+   btm_ble_connected(address_with_type.bda, handle, enc_mode, role,
+                     address_with_type.type, addr_matched);
+ }
+ 
++static bool btm_ble_complete_evt_ignore(const tBTM_SEC_DEV_REC* p_dev_rec,
++                                        const tSMP_EVT_DATA* p_data) {
++  // Encryption request in peripheral role results in SMP Security request. SMP
++  // may generate a SMP_COMPLT_EVT failure event cases like below: 1) Some
++  // central devices don't handle cross-over between encryption and SMP security
++  // request 2) Link may get disconnected after the SMP security request was
++  // sent.
++  if (p_data->cmplt.reason != SMP_SUCCESS && !p_dev_rec->role_central &&
++      btm_cb.pairing_bda != p_dev_rec->bd_addr &&
++      btm_cb.pairing_bda != p_dev_rec->ble.pseudo_addr &&
++      p_dev_rec->is_le_link_key_known() &&
++      p_dev_rec->ble.key_type != BTM_LE_KEY_NONE) {
++    if (p_dev_rec->is_le_device_encrypted()) {
++      LOG_WARN("Bonded device %s is already encrypted, ignoring SMP failure",
++               PRIVATE_ADDRESS(p_dev_rec->bd_addr));
++      return true;
++    } else if (p_data->cmplt.reason == SMP_CONN_TOUT) {
++      LOG_WARN(
++          "Bonded device %s disconnected while waiting for encryption, "
++          "ignoring SMP failure",
++          PRIVATE_ADDRESS(p_dev_rec->bd_addr));
++      l2cu_start_post_bond_timer(p_dev_rec->ble_hci_handle);
++      return true;
++    }
++  }
++
++  return false;
++}
++
+ /*****************************************************************************
+  *  Function        btm_proc_smp_cback
+  *
+  *  Description     This function is the SMP callback handler.
+  *
+  *****************************************************************************/
+ tBTM_STATUS btm_proc_smp_cback(tSMP_EVT event, const RawAddress& bd_addr,
+@@ -1767,14 +1799,18 @@ tBTM_STATUS btm_proc_smp_cback(tSMP_EVT event, const RawAddress& bd_addr,
+         if (event != SMP_CONSENT_REQ_EVT) {
+           p_dev_rec->sec_state = BTM_SEC_STATE_AUTHENTICATING;
+         }
+         btm_cb.pairing_flags |= BTM_PAIR_FLAGS_LE_ACTIVE;
+         FALLTHROUGH_INTENDED; /* FALLTHROUGH */
+ 
+       case SMP_COMPLT_EVT:
++        if (btm_ble_complete_evt_ignore(p_dev_rec, p_data)) {
++          return BTM_SUCCESS;
++        }
++
+         if (btm_cb.api.p_le_callback) {
+           /* the callback function implementation may change the IO
+            * capability... */
+           BTM_TRACE_DEBUG("btm_cb.api.p_le_callback=0x%x",
+                           btm_cb.api.p_le_callback);
+           (*btm_cb.api.p_le_callback)(event, bd_addr,
+                                       (tBTM_LE_EVT_DATA*)p_data);
+diff --git a/stack/l2cap/l2c_ble.cc b/stack/l2cap/l2c_ble.cc
+index c878ef2a543..245cdb89d04 100644
+--- a/stack/l2cap/l2c_ble.cc
++++ b/stack/l2cap/l2c_ble.cc
+@@ -188,18 +188,18 @@ void l2cble_notify_le_connection(const RawAddress& bda) {
+     LOG_WARN("Received notification for le connection but no lcb found");
+     return;
+   }
+ 
+   if (BTM_IsAclConnectionUp(bda, BT_TRANSPORT_LE) &&
+       p_lcb->link_state != LST_CONNECTED) {
+     /* update link status */
++    p_lcb->link_state = LST_CONNECTED;
+     // TODO Move this back into acl layer
+     btm_establish_continue_from_address(bda, BT_TRANSPORT_LE);
+     /* update l2cap link status and send callback */
+-    p_lcb->link_state = LST_CONNECTED;
+     l2cu_process_fixed_chnl_resp(p_lcb);
+   }
+ 
+   /* For all channels, send the event through their FSMs */
+   for (tL2C_CCB* p_ccb = p_lcb->ccb_queue.p_first_ccb; p_ccb;
+        p_ccb = p_ccb->p_next_ccb) {
+     if (p_ccb->chnl_state == CST_CLOSED)

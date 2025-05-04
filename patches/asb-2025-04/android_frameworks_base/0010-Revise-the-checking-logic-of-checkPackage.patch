@@ -1,0 +1,50 @@
+From b048693c5e2402acc63e716512adf001b1a84c3a Mon Sep 17 00:00:00 2001
+From: Jackal Guo <jackalguo@google.com>
+Date: Tue, 26 Oct 2021 10:24:23 +0800
+Subject: [PATCH 10/15] Revise the checking logic of checkPackage
+
+This method used to do a quick check to validate if a package name
+belongs to a UID. However, it also returns positive when the given
+package isn't existed.
+
+Test: atest AppOpsTests CtsAppOpsTestCases AppEnumerationTests
+Bug: 203430648
+Change-Id: I5c4702df73829178775862cce8fbd43f2c3a3d8f
+---
+ .../com/android/server/appop/AppOpsService.java    | 14 +++++++++++---
+ 1 file changed, 11 insertions(+), 3 deletions(-)
+
+diff --git a/services/core/java/com/android/server/appop/AppOpsService.java b/services/core/java/com/android/server/appop/AppOpsService.java
+index a32cf10be8cf..8e93ca7becba 100644
+--- a/services/core/java/com/android/server/appop/AppOpsService.java
++++ b/services/core/java/com/android/server/appop/AppOpsService.java
+@@ -3308,15 +3308,23 @@ public class AppOpsService extends IAppOpsService.Stub {
+         Objects.requireNonNull(packageName);
+         try {
+             verifyAndGetBypass(uid, packageName, null);
+-            if (filterAppAccessUnlocked(packageName)) {
+-                return AppOpsManager.MODE_ERRORED;
++            // When the caller is the system, it's possible that the packageName is the special
++            // one (e.g., "root") which isn't actually existed.
++            if (resolveUid(packageName) == uid
++                    || (isPackageExisted(packageName) && !filterAppAccessUnlocked(packageName))) {
++                return AppOpsManager.MODE_ALLOWED;
+             }
+-            return AppOpsManager.MODE_ALLOWED;
++            return AppOpsManager.MODE_ERRORED;
+         } catch (SecurityException ignored) {
+             return AppOpsManager.MODE_ERRORED;
+         }
+     }
+ 
++    private boolean isPackageExisted(String packageName) {
++        return LocalServices.getService(PackageManagerInternal.class)
++                .getPackageSetting(packageName) != null;
++    }
++
+     /**
+      * This method will check with PackageManager to determine if the package provided should
+      * be visible to the {@link Binder#getCallingUid()}.
+-- 
+2.40.1
+

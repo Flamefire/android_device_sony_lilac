@@ -1,0 +1,41 @@
+# PWD: packages/modules/Permission
+diff --git a/PermissionController/src/com/android/permissioncontroller/role/model/Permissions.java b/PermissionController/src/com/android/permissioncontroller/role/model/Permissions.java
+index dee675bd0..ab56518f3 100644
+--- a/PermissionController/src/com/android/permissioncontroller/role/model/Permissions.java
++++ b/PermissionController/src/com/android/permissioncontroller/role/model/Permissions.java
+@@ -249,15 +249,16 @@ public class Permissions {
+             newFlags |= PackageManager.FLAG_PERMISSION_SYSTEM_FIXED;
+         }
+         int newMask = newFlags;
+         newMask |= PackageManager.FLAG_PERMISSION_REVIEW_REQUIRED;
+         if (!wasPermissionOrAppOpGranted) {
+             // If we've granted a permission which wasn't granted, it's no longer user set or fixed.
+             newMask |= PackageManager.FLAG_PERMISSION_USER_FIXED
+-                    | PackageManager.FLAG_PERMISSION_USER_SET;
++                    | PackageManager.FLAG_PERMISSION_USER_SET
++                    | PackageManager.FLAG_PERMISSION_ONE_TIME;
+         }
+         // If a component gets a permission for being the default handler A and also default handler
+         // B, we grant the weaker grant form. This only applies to default permission grant.
+         if (setGrantedByDefault && !setSystemFixed) {
+             int oldFlags = getPermissionFlags(packageName, permission, context);
+             if ((oldFlags & PackageManager.FLAG_PERMISSION_GRANTED_BY_DEFAULT) != 0
+                     && (oldFlags & PackageManager.FLAG_PERMISSION_SYSTEM_FIXED) != 0) {
+@@ -603,15 +604,16 @@ public class Permissions {
+         int flags = getPermissionFlags(packageName, permission, context);
+         int fixedFlags = PackageManager.FLAG_PERMISSION_POLICY_FIXED;
+         if (!overrideSystemFixed) {
+             fixedFlags |= PackageManager.FLAG_PERMISSION_SYSTEM_FIXED;
+         }
+         if (!overrideUserSetAndFixed) {
+             fixedFlags |= PackageManager.FLAG_PERMISSION_USER_FIXED
+-                    | PackageManager.FLAG_PERMISSION_USER_SET;
++                    | PackageManager.FLAG_PERMISSION_USER_SET
++                    | PackageManager.FLAG_PERMISSION_ONE_TIME;
+         }
+         return (flags & fixedFlags) != 0;
+     }
+ 
+     private static boolean isPermissionGrantedByDefault(@NonNull String packageName,
+             @NonNull String permission, @NonNull Context context) {
+         int flags = getPermissionFlags(packageName, permission, context);

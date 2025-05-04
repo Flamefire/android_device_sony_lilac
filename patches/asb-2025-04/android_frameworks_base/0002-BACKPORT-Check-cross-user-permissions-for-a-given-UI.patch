@@ -1,0 +1,104 @@
+From a98fb64511a612084249f984e66e90d1ac55c78e Mon Sep 17 00:00:00 2001
+From: Sumedh Sen <sumedhsen@google.com>
+Date: Thu, 3 Oct 2024 18:35:13 +0000
+Subject: [PATCH 02/15] [BACKPORT] Check cross user permissions for a given UID
+
+Instead of relying on Context#checkCallingOrSelfPermission, explicitly
+check permissions against a given UID. However, to maintain legacy
+behavior, replace custom UIDs with Binder.getCallingUid when enforcing
+permissions from a method.
+
+Also update tests affected by this change - by adding methods to mocked objects
+
+Bug: 350456241
+
+Test: sts-tradefed run sts-dynamic-develop -m CtsSecurityTestCases -t android.security.cts.ContentProviderMultiUserTests#testAccessFromInitialUser --user-type PRIMARY
+
+Test: sts-tradefed run sts-dynamic-develop -m CtsSecurityTestCases -t android.security.cts.ContentProviderMultiUserTests --user-type SECONDARY
+(cherry picked from https://googleplex-android-review.googlesource.com/q/commit:ba90590efd98c3c1c4579031fc6083d0a96dd849)
+Merged-In: Ib31cabff5714500471bd397c743e127c85751a5c
+Change-Id: Ib31cabff5714500471bd397c743e127c85751a5c
+---
+ .../server/pm/PackageManagerService.java        | 17 +++++++++++------
+ ...kageManagerComponentLabelIconOverrideTest.kt |  5 +++++
+ 2 files changed, 16 insertions(+), 6 deletions(-)
+
+diff --git a/services/core/java/com/android/server/pm/PackageManagerService.java b/services/core/java/com/android/server/pm/PackageManagerService.java
+index 65dab23df55f..4033497985de 100644
+--- a/services/core/java/com/android/server/pm/PackageManagerService.java
++++ b/services/core/java/com/android/server/pm/PackageManagerService.java
+@@ -2380,11 +2380,11 @@ public class PackageManagerService extends IPackageManager.Stub
+                 String resolvedType, int flags, int userId, int callingUid,
+                 boolean includeInstantApps) {
+             if (!mUserManager.exists(userId)) return Collections.emptyList();
+-            enforceCrossUserOrProfilePermission(callingUid,
++            enforceCrossUserOrProfilePermission(Binder.getCallingUid(),
+                     userId,
+                     false /*requireFullPermission*/,
+                     false /*checkShell*/,
+-                    "query intent receivers");
++                    "query intent services");
+             final String instantAppPkgName = getInstantAppPackageName(callingUid);
+             flags = updateFlagsForResolve(flags, userId, callingUid, includeInstantApps,
+                     false /* isImplicitImageCaptureIntentAndNotSetByDpc */);
+@@ -4089,10 +4089,10 @@ public class PackageManagerService extends IPackageManager.Stub
+                 return true;
+             }
+             if (requireFullPermission) {
+-                return hasPermission(Manifest.permission.INTERACT_ACROSS_USERS_FULL);
++                return hasPermission(Manifest.permission.INTERACT_ACROSS_USERS_FULL, callingUid);
+             }
+-            return hasPermission(android.Manifest.permission.INTERACT_ACROSS_USERS_FULL)
+-                    || hasPermission(Manifest.permission.INTERACT_ACROSS_USERS);
++            return hasPermission(android.Manifest.permission.INTERACT_ACROSS_USERS_FULL, callingUid)
++                    || hasPermission(Manifest.permission.INTERACT_ACROSS_USERS, callingUid);
+         }
+ 
+         /**
+@@ -4108,6 +4108,11 @@ public class PackageManagerService extends IPackageManager.Stub
+                     == PackageManager.PERMISSION_GRANTED;
+         }
+ 
++        private boolean hasPermission(String permission, int uid) {
++            return mContext.checkPermission(permission, /* pid= */ -1, uid)
++                    == PackageManager.PERMISSION_GRANTED;
++        }
++
+         public final boolean isCallerSameApp(String packageName, int uid) {
+             AndroidPackage pkg = mPackages.get(packageName);
+             return pkg != null
+@@ -11664,7 +11669,7 @@ public class PackageManagerService extends IPackageManager.Stub
+         final boolean listUninstalled = (flags & MATCH_KNOWN_PACKAGES) != 0;
+ 
+         enforceCrossUserPermission(
+-            callingUid,
++            Binder.getCallingUid(),
+             userId,
+             false /* requireFullPermission */,
+             false /* checkShell */,
+diff --git a/services/tests/PackageManagerComponentOverrideTests/src/com/android/server/pm/test/override/PackageManagerComponentLabelIconOverrideTest.kt b/services/tests/PackageManagerComponentOverrideTests/src/com/android/server/pm/test/override/PackageManagerComponentLabelIconOverrideTest.kt
+index b4f8b6edd139..0e769f0a06bc 100644
+--- a/services/tests/PackageManagerComponentOverrideTests/src/com/android/server/pm/test/override/PackageManagerComponentLabelIconOverrideTest.kt
++++ b/services/tests/PackageManagerComponentOverrideTests/src/com/android/server/pm/test/override/PackageManagerComponentLabelIconOverrideTest.kt
+@@ -49,6 +49,7 @@ import org.junit.BeforeClass
+ import org.junit.Test
+ import org.junit.runner.RunWith
+ import org.junit.runners.Parameterized
++import org.mockito.ArgumentMatchers.eq
+ import org.mockito.Mockito.any
+ import org.mockito.Mockito.anyInt
+ import org.mockito.Mockito.clearInvocations
+@@ -360,6 +361,10 @@ class PackageManagerComponentLabelIconOverrideTest {
+                     android.Manifest.permission.INTERACT_ACROSS_USERS_FULL)) {
+                 PackageManager.PERMISSION_GRANTED
+             }
++            whenever(this.checkPermission(
++                eq(android.Manifest.permission.INTERACT_ACROSS_USERS_FULL), anyInt(), anyInt())) {
++                PackageManager.PERMISSION_GRANTED
++            }
+         }
+         val mockInjector: PackageManagerService.Injector = mock {
+             whenever(this.lock) { PackageManagerTracedLock() }
+-- 
+2.40.1
+
