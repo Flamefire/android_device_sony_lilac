@@ -1,0 +1,214 @@
+# PWD: external/skia
+diff --git a/resources/images/bmp-size-32x32-8bpp.bmp b/resources/images/bmp-size-32x32-8bpp.bmp
+new file mode 100644
+index 0000000000000000000000000000000000000000..d2f800d673d9b8ed54ee53682689c7fa62c4c243
+GIT binary patch
+literal 2102
+zcmZ|Nu}>pM6vy$2F0oSK3a&ZlMzU^+L}AI6*8+qYMGDt&Zb%wPF(!@e>i7?ygwjA7
+zUz+2pL5lKs%w19d73nChm_Om#Gm*%5X4d9HbZ`CfTl{-7%i8<hi}Gugs{B%^Z#mPI
+zFH{xq`Cm&}8eF`IQoNK%ZoG4<y!Xn#_v*vdA8ck|L7*Kxf>K67gA-#RaPSC9Sp^LP
+z{;&cEk5FA#(+w;H4jw@%PL<Ozun;(S1pY|{4Fd~-gGW$`mkJsN76J#4pp4?*R2uQH
+z5IA^*d}~_M4J-r>9wFbh(R2d~frCfLUy0Rp0}FwJN6257Xu5%gz`-NruhMC{frY@q
+zBjm5yYr27jz`-M=pTGo7H?R;mcmyTfzbK7(=N9pB@CZt@f`);Gz`-NrpUr5xfrY@q
+zBjlgdYPx}iz`-NrpPP$_7+44#JVJgHoTeLC2pl{@eoVZk8(0V&JVJVeBxt&Ug}}ih
+zD9`<SrD0$paEM39kCxVS0}FwJN63$z(R2d~frCfLkEGRf0}FwJN63$>Xu5%gz`-Nr
+zN7-q*frY@qBjm^2Yr27jz^M<ncj|ZMg#DDdOD}bI7tg>EKjQ5p_5AtH&d&GLFJDo|
+z$H#xZqu###hg#%u;6WY-$m{j`V6ZcILH$ado}Qk(ySlo%yu7@KIdOeyFi83CZq83m
+zQqDk3$r*_2tNe74U)1Z5Q@&K?yK#T=lequo#l_=PODiiYKT<zXzfrHKzp3l%oD(lE
+zSNUF!Url3tpQnMiey<vsrh&zJ^5wYy9+mc=PN&y5*H2S@LoGKNji0E!gM))N)b#A^
+z?B?b^CvH3;CqCFGCq8@qFlQj;45a+^Vtvtg)_6iy`F@qJrYfjs)FbL=>Tv&Xe|Ua=
+zUaS2-ZxT~O@>;FdYOS{74C{-uyxDA4`7q~9q`WBN?!?VCmQRMm;W(`)@5S{+QO@(V
+zwZjPmV+LBSUR+<SmT7%AE~h4w@nkp}kH@`Us~4*%%d*>j)a`aUopyVzO+Frt#-kMS
+zMogY!a*DMhYM#e||Kv;@9UYB&+Z?@KzbyOZR@vR`Y<4;u?KZFW%kj&jQH-~F^<%!(
+z-Rf*IvO&Ji0JU9Jzu(`AwMlJI>#<^fdq0pSKFt|;5Xa^B>)GO#iaW6XeEA}u&DLk1
+Y<n!yt%ctwlsF;6lgL(e>{b#d(0n96$Q2+n{
+
+literal 0
+HcmV?d00001
+
+diff --git a/src/codec/SkBmpStandardCodec.cpp b/src/codec/SkBmpStandardCodec.cpp
+index 1f7593ed42..7ba19e4823 100644
+--- a/src/codec/SkBmpStandardCodec.cpp
++++ b/src/codec/SkBmpStandardCodec.cpp
+@@ -176,15 +176,15 @@ void SkBmpStandardCodec::initializeSwizzler(const SkImageInfo& dstInfo, const Op
+     SkEncodedInfo encodedInfo = this->swizzlerInfo();
+ 
+     // Get a pointer to the color table if it exists
+     const SkPMColor* colorPtr = get_color_ptr(fColorTable.get());
+ 
+     SkImageInfo swizzlerInfo = dstInfo;
+     SkCodec::Options swizzlerOptions = opts;
+-    if (this->colorXform()) {
++    if (this->xformOnDecode()) {
+         swizzlerInfo = swizzlerInfo.makeColorType(kXformSrcColorType);
+         if (kPremul_SkAlphaType == dstInfo.alphaType()) {
+             swizzlerInfo = swizzlerInfo.makeAlphaType(kUnpremul_SkAlphaType);
+         }
+ 
+         swizzlerOptions.fZeroInitialized = kNo_ZeroInitialized;
+     }
+diff --git a/src/core/SkBlurMF.cpp b/src/core/SkBlurMF.cpp
+index e175d2ef62..42cb9951f1 100644
+--- a/src/core/SkBlurMF.cpp
++++ b/src/core/SkBlurMF.cpp
+@@ -311,14 +311,17 @@ bool SkBlurMaskFilterImpl::filterRRectMask(SkMask* dst, const SkRRect& r,
+ static bool prepare_to_draw_into_mask(const SkRect& bounds, SkMask* mask) {
+     SkASSERT(mask != nullptr);
+ 
+     mask->fBounds = bounds.roundOut();
+     mask->fRowBytes = SkAlign4(mask->fBounds.width());
+     mask->fFormat = SkMask::kA8_Format;
+     const size_t size = mask->computeImageSize();
++    if (size == 0) {
++        return false;
++    }
+     mask->fImage = SkMask::AllocImage(size, SkMask::kZeroInit_Alloc);
+     if (nullptr == mask->fImage) {
+         return false;
+     }
+     return true;
+ }
+ 
+diff --git a/src/core/SkRegion.cpp b/src/core/SkRegion.cpp
+index 9176c7a55c..f97da2e9dd 100644
+--- a/src/core/SkRegion.cpp
++++ b/src/core/SkRegion.cpp
+@@ -49,16 +49,18 @@ public:
+     SkRegionPriv::RunType& operator[](int i) {
+         SkASSERT((unsigned)i < (unsigned)fCount);
+         return fPtr[i];
+     }
+     /** Resize the array to a size greater-than-or-equal-to count. */
+     void resizeToAtLeast(int count) {
+         if (count > fCount) {
+-            // leave at least 50% extra space for future growth.
+-            count += count >> 1;
++            // leave at least 50% extra space for future growth (unless adding would overflow)
++            SkSafeMath safe;
++            int newCount = safe.addInt(count, count >> 1);
++            count = safe ? newCount : SK_MaxS32;
+             fMalloc.realloc(count);
+             if (fPtr == fStack) {
+                 memcpy(fMalloc.get(), fStack, fCount * sizeof(SkRegionPriv::RunType));
+             }
+             fPtr = fMalloc.get();
+             fCount = count;
+         }
+diff --git a/src/effects/SkEmbossMaskFilter.cpp b/src/effects/SkEmbossMaskFilter.cpp
+index ef26520172..94ff73e908 100644
+--- a/src/effects/SkEmbossMaskFilter.cpp
++++ b/src/effects/SkEmbossMaskFilter.cpp
+@@ -91,19 +91,21 @@ bool SkEmbossMaskFilter::filterMask(SkMask* dst, const SkMask& src,
+         return true;
+     }
+ 
+     // create a larger buffer for the other two channels (should force fBlur to do this for us)
+ 
+     {
+         uint8_t* alphaPlane = dst->fImage;
+-        size_t   planeSize = dst->computeImageSize();
+-        if (0 == planeSize) {
+-            return false;   // too big to allocate, abort
++        size_t totalSize = dst->computeTotalImageSize();
++        if (totalSize == 0) {
++            return false;  // too big to allocate, abort
+         }
+-        dst->fImage = SkMask::AllocImage(planeSize * 3);
++        size_t planeSize = dst->computeImageSize();
++        SkASSERT(planeSize != 0);  // if totalSize didn't overflow, this can't either
++        dst->fImage = SkMask::AllocImage(totalSize);
+         memcpy(dst->fImage, alphaPlane, planeSize);
+         SkMask::FreeImage(alphaPlane);
+     }
+ 
+     // run the light direction through the matrix...
+     Light   light = fLight;
+     matrix.mapVectors((SkVector*)(void*)light.fDirection,
+diff --git a/src/pdf/SkDeflate.cpp b/src/pdf/SkDeflate.cpp
+index be3e182cd1..40631f1f06 100644
+--- a/src/pdf/SkDeflate.cpp
++++ b/src/pdf/SkDeflate.cpp
+@@ -6,24 +6,32 @@
+  */
+ 
+ #include "SkDeflate.h"
+ 
+ #include "SkData.h"
+ #include "SkMakeUnique.h"
+ #include "SkMalloc.h"
++#include "SkTFitsIn.h"
+ #include "SkTo.h"
+ #include "SkTraceEvent.h"
+ 
+ #include "zlib.h"
+ 
+ namespace {
+ 
+ // Different zlib implementations use different T.
+ // We've seen size_t and unsigned.
+ template <typename T> void* skia_alloc_func(void*, T items, T size) {
++    if (!SkTFitsIn<size_t>(size)) {
++        return nullptr;
++    }
++    const size_t maxItems = SIZE_MAX / size;
++    if (maxItems < items) {
++        return nullptr;
++    }
+     return sk_calloc_throw(SkToSizeT(items) * SkToSizeT(size));
+ }
+ 
+ void skia_free_func(void*, void* address) { sk_free(address); }
+ 
+ }  // namespace
+ 
+diff --git a/tests/CodecTest.cpp b/tests/CodecTest.cpp
+index 8c918a8395..c18e07cd79 100644
+--- a/tests/CodecTest.cpp
++++ b/tests/CodecTest.cpp
+@@ -5,14 +5,15 @@
+  * found in the LICENSE file.
+  */
+ 
+ #include "FakeStreams.h"
+ #include "Resources.h"
+ #include "SkAndroidCodec.h"
+ #include "SkAutoMalloc.h"
++#include "SkAutoPixmapStorage.h"
+ #include "SkBitmap.h"
+ #include "SkCanvas.h"
+ #include "SkCodec.h"
+ #include "SkCodecImageGenerator.h"
+ #include "SkColor.h"
+ #include "SkColorSpace.h"
+ #include "SkColorSpacePriv.h"
+@@ -1805,7 +1806,30 @@ DEF_TEST(Codec_crbug807324, r) {
+     for (int j = 0; j < kHeight; ++j) {
+         if (*bm.getAddr32(i, j) == SK_ColorTRANSPARENT) {
+             ERRORF(r, "image should not be transparent! %i, %i is 0", i, j);
+             return;
+         }
+     }
+ }
++
++DEF_TEST(Codec_bmp_indexed_colorxform, r) {
++    constexpr char path[] = "images/bmp-size-32x32-8bpp.bmp";
++    std::unique_ptr<SkStream> stream(GetResourceAsStream(path));
++    if (!stream) {
++        SkDebugf("Missing resource '%s'\n", path);
++        return;
++    }
++
++    std::unique_ptr<SkCodec> codec = SkCodec::MakeFromStream(std::move(stream));
++    REPORTER_ASSERT(r, codec);
++
++    // decode to a < 32bpp buffer with a color transform
++    const SkImageInfo decodeInfo = codec->getInfo().makeColorType(kRGB_565_SkColorType)
++                                                   .makeColorSpace(SkColorSpace::MakeSRGBLinear());
++    SkAutoPixmapStorage aps;
++    aps.alloc(decodeInfo);
++
++    // should not crash
++    auto res = codec->getPixels(aps);
++
++    REPORTER_ASSERT(r, res == SkCodec::kSuccess);
++}

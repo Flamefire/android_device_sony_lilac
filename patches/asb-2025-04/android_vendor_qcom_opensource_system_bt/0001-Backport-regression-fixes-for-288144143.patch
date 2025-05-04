@@ -1,0 +1,142 @@
+From 09f1f4b04755d01075223dfd124e05061ffc3fd6 Mon Sep 17 00:00:00 2001
+From: Brian Delwiche <delwiche@google.com>
+Date: Tue, 28 Jan 2025 08:15:51 +0000
+Subject: [PATCH 1/2] Backport regression fixes for 288144143
+
+These are backports for the following AOSP changes:
+aosp/3424923
+aosp/3420039
+aosp/3394039
+
+which address regressions in the initial fix for above bug.
+
+Bug: 288144143
+Test: m libbluetooth
+Ignore-AOSP-First: security
+Tag: #security
+(cherry picked from https://googleplex-android-review.googlesource.com/q/commit:1b613f3748de40cde15bb4d5b99dc2894c8d184b)
+Merged-In: I78a249561fd8ccab38e32fe2e14d90e3b4420dcb
+Change-Id: I78a249561fd8ccab38e32fe2e14d90e3b4420dcb
+---
+ stack/btm/btm_ble.cc      | 42 ++++++++++++++++++++++++++++++++++++++-
+ stack/btm/btm_int_types.h |  7 +++++++
+ stack/l2cap/l2c_ble.cc    |  2 +-
+ 3 files changed, 49 insertions(+), 2 deletions(-)
+
+diff --git a/stack/btm/btm_ble.cc b/stack/btm/btm_ble.cc
+index 56f4fa1cd..64bf1021c 100644
+--- a/stack/btm/btm_ble.cc
++++ b/stack/btm/btm_ble.cc
+@@ -41,6 +41,7 @@
+ #include "hcimsgs.h"
+ #include "log/log.h"
+ #include "l2c_int.h"
++#include "main/shim/dumpsys.h"
+ #include "openssl/mem.h"
+ #include "osi/include/log.h"
+ #include "osi/include/osi.h"
+@@ -1514,7 +1515,7 @@ void btm_ble_link_sec_check(const RawAddress& bd_addr,
+     BTM_TRACE_DEBUG("dev_rec sec_flags=0x%x", p_dev_rec->sec_flags);
+ 
+     /* currently encrpted  */
+-    if (p_dev_rec->sec_flags & BTM_SEC_LE_ENCRYPTED) {
++    if (p_dev_rec->is_le_device_encrypted()) {
+       if (p_dev_rec->sec_flags & BTM_SEC_LE_AUTHENTICATED)
+         cur_sec_level = BTM_LE_SEC_AUTHENTICATED;
+       else
+@@ -1586,6 +1587,9 @@ tBTM_STATUS btm_ble_set_encryption(const RawAddress& bd_addr,
+   switch (sec_act) {
+     case BTM_BLE_SEC_ENCRYPT:
+       if (link_role == BTM_ROLE_MASTER) {
++        if (p_rec->is_le_device_encrypted()) {
++          return BTM_SUCCESS;
++        }
+         /* start link layer encryption using the security info stored */
+         cmd = btm_ble_start_encrypt(bd_addr, false, NULL);
+         break;
+@@ -1946,6 +1950,38 @@ void btm_ble_connected(const RawAddress& bda, uint16_t handle, uint8_t enc_mode,
+   return;
+ }
+ 
++static bool btm_ble_complete_evt_ignore(const tBTM_SEC_DEV_REC* p_dev_rec,
++                                        const tSMP_EVT_DATA* p_data) {
++  // Encryption request in peripheral role results in SMP Security request. SMP
++  // may generate a SMP_COMPLT_EVT failure event cases like below: 1) Some
++  // central devices don't handle cross-over between encryption and SMP security
++  // request 2) Link may get disconnected after the SMP security request was
++  // sent.
++  if (p_data->cmplt.reason != SMP_SUCCESS && !p_dev_rec->role_master &&
++      btm_cb.pairing_bda != p_dev_rec->bd_addr &&
++      btm_cb.pairing_bda != p_dev_rec->ble.pseudo_addr &&
++      p_dev_rec->is_le_link_key_known() &&
++      p_dev_rec->ble.key_type != BTM_LE_KEY_NONE) {
++    if (p_dev_rec->is_le_device_encrypted()) {
++      LOG(WARNING) << __func__
++                   << "Bonded device "
++                   << PRIVATE_ADDRESS(p_dev_rec->bd_addr)
++                   << " is already encrypted, ignoring SMP failure";
++      return true;
++    } else if (p_data->cmplt.reason == SMP_CONN_TOUT) {
++      LOG(WARNING) << __func__
++                   << "Bonded device "
++                   << PRIVATE_ADDRESS(p_dev_rec->bd_addr)
++                   << " disconnected while waiting for encryption, "
++                      "ignoring SMP failure";
++      l2cu_start_post_bond_timer(p_dev_rec->ble_hci_handle);
++      return true;
++    }
++  }
++
++  return false;
++}
++
+ /*****************************************************************************
+  *  Function        btm_proc_smp_cback
+  *
+@@ -1993,6 +2029,10 @@ uint8_t btm_proc_smp_cback(tSMP_EVT event, const RawAddress& bd_addr,
+         FALLTHROUGH_INTENDED; /* FALLTHROUGH */
+ 
+       case SMP_COMPLT_EVT:
++        if (btm_ble_complete_evt_ignore(p_dev_rec, p_data)) {
++          return BTM_SUCCESS;
++        }
++
+         if (btm_cb.api.p_le_callback) {
+           /* the callback function implementation may change the IO
+            * capability... */
+diff --git a/stack/btm/btm_int_types.h b/stack/btm/btm_int_types.h
+index 433deaa00..580860f1b 100644
+--- a/stack/btm/btm_int_types.h
++++ b/stack/btm/btm_int_types.h
+@@ -555,6 +555,13 @@ typedef struct {
+ #define BTM_SEC_STATE_DISCONNECTING_BLE 8  /* disconnecting BLE */
+ #define BTM_SEC_STATE_DISCONNECTING_BOTH 9 /* disconnecting BR/EDR and BLE */
+ 
++  bool is_le_device_encrypted() const {
++    return sec_flags & BTM_SEC_LE_ENCRYPTED;
++  }
++  bool is_le_link_key_known() const {
++    return sec_flags & BTM_SEC_LE_LINK_KEY_KNOWN;
++  }
++
+   uint8_t sec_state;  /* Operating state                    */
+   bool is_security_state_idle() const {
+     return sec_state == BTM_SEC_STATE_IDLE;
+diff --git a/stack/l2cap/l2c_ble.cc b/stack/l2cap/l2c_ble.cc
+index 311f89643..dde385658 100644
+--- a/stack/l2cap/l2c_ble.cc
++++ b/stack/l2cap/l2c_ble.cc
+@@ -242,9 +242,9 @@ void l2cble_notify_le_connection(const RawAddress& bda) {
+ 
+   if (p_lcb != NULL && p_acl != NULL && p_lcb->link_state != LST_CONNECTED) {
+     /* update link status */
++    p_lcb->link_state = LST_CONNECTED;
+     btm_establish_continue(p_acl);
+     /* update l2cap link status and send callback */
+-    p_lcb->link_state = LST_CONNECTED;
+     l2cu_process_fixed_chnl_resp(p_lcb);
+   }
+ 
+-- 
+2.40.1
+

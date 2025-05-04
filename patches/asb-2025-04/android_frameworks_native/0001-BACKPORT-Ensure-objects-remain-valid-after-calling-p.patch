@@ -1,0 +1,264 @@
+From 023dc393a3b87dd3d93d9083972d74d5b5e4c89c Mon Sep 17 00:00:00 2001
+From: Siarhei Vishniakou <svv@google.com>
+Date: Tue, 14 Jan 2025 22:45:38 +0000
+Subject: [PATCH] BACKPORT: Ensure objects remain valid after calling policy
+
+The function
+afterKeyEventLockedInterruptable releases the lock and calls into
+policy. During this time, the call to "removeInputChannel" might come
+in. This call would cause the waitQueue to be drained. Therefore, the
+dispatchEntry that's stored in this queue would be deleted.
+
+Before this CL, we obtained a reference to the EventEntry object before
+calling policy. If there aren't any more strong pointers remaining to
+the EventEntry, the object would become deleted, and the reference would
+end up pointing to freed memory.
+
+Previous flow of events:
+- KeyEntry is allocated during setFocusedWindow call, as part of
+  "synthesizeCancelationEvents".
+- App calls "finish" on an event, and dispatcher notifies policy about
+  the unhandled key event. But dispatcher must release lock before
+  calling policy.
+- After dispatcher has released the lock, but before it called policy,
+  there is a binder call to "removeInputChannel" that comes in. That
+  causes the waitQueue to be drained, and deletes the DispatchEntry. If
+  the dispatch entry is the last remaining reference to the KeyEntry,
+  then the KeyEntry gets deleted, as well.
+- The dispatcher calls policy, and uses the reference to the KeyEntry
+  that it was provided. But that reference points to freed memory. This
+  causes a crash.
+
+To deal with this, make a few changes in this CL:
+- Since the "doDispatchCycleFinishedCommand" is stored in queue, it
+  should have a strong pointer to the connection object, and not just
+  a reference. That means the Connection object will be valid when the
+  command actually runs (otherwise, someone might delete it)
+- Inside afterKeyEventLockedInterruptable, assume that the dispatchEntry
+  will be deleted after the lock is released. Make copies of the data
+  that we need after the lock is regained:
+  1) Add refcount for EventEntry
+  2) Store the "hasForegroundTarget" into a separate variable
+     (technically, it's not necessary, but it allows us to remove all
+     usages of "dispatchEntry" in the rest of the function.
+
+As an alternative, we could re-look up the DispatchEntry in the
+waitQueue after we regain the lock, but that seems more complex in terms
+of implementation / readability.
+
+Bug: 343129193
+Test: atest --host inputflinger_tests
+(cherry picked from https://googleplex-android-review.googlesource.com/q/commit:299fd8ed96d30b5a83f0f8476c591b457cff4acb)
+Merged-In: Ibea7117e4c85cd1e98bbd01872ce249cbb2d54bd
+Change-Id: Ibea7117e4c85cd1e98bbd01872ce249cbb2d54bd
+---
+ services/inputflinger/InputDispatcher.cpp | 95 ++++++++++++++---------
+ services/inputflinger/InputDispatcher.h   |  2 +-
+ 2 files changed, 61 insertions(+), 36 deletions(-)
+
+diff --git a/services/inputflinger/InputDispatcher.cpp b/services/inputflinger/InputDispatcher.cpp
+index 927db0e85d..1dc3633609 100644
+--- a/services/inputflinger/InputDispatcher.cpp
++++ b/services/inputflinger/InputDispatcher.cpp
+@@ -4211,9 +4211,7 @@ void InputDispatcher::doDispatchCycleFinishedLockedInterruptible(
+ 
+         bool restartEvent;
+         if (dispatchEntry->eventEntry->type == EventEntry::TYPE_KEY) {
+-            KeyEntry* keyEntry = static_cast<KeyEntry*>(dispatchEntry->eventEntry);
+-            restartEvent = afterKeyEventLockedInterruptible(connection,
+-                    dispatchEntry, keyEntry, handled);
++            restartEvent = afterKeyEventLockedInterruptible(connection, dispatchEntry, handled);
+         } else if (dispatchEntry->eventEntry->type == EventEntry::TYPE_MOTION) {
+             MotionEntry* motionEntry = static_cast<MotionEntry*>(dispatchEntry->eventEntry);
+             restartEvent = afterMotionEventLockedInterruptible(connection,
+@@ -4242,25 +4240,52 @@ void InputDispatcher::doDispatchCycleFinishedLockedInterruptible(
+     }
+ }
+ 
++template <typename T>
++class RefcountedPointer {
++    T* evt;
++public:
++    explicit RefcountedPointer(T* ptr): evt(ptr) {
++        if(evt)
++            evt->refCount += 1;
++    }
++    ~RefcountedPointer() {
++        if(evt)
++            evt->release();
++    }
++    RefcountedPointer(const RefcountedPointer&) = delete;
++    RefcountedPointer& operator=(const RefcountedPointer&) = delete;
++    T& operator*() { return *evt; }
++};
++
+ bool InputDispatcher::afterKeyEventLockedInterruptible(const sp<Connection>& connection,
+-        DispatchEntry* dispatchEntry, KeyEntry* keyEntry, bool handled) {
+-    if (keyEntry->flags & AKEY_EVENT_FLAG_FALLBACK) {
++        DispatchEntry* dispatchEntry, bool handled) {
++    // The dispatchEntry is currently valid, but it might point to a deleted object after we release
++    // the lock. For simplicity, make copies of the data of interest here and assume that
++    // 'dispatchEntry' is not valid after this section.
++    // Hold a strong reference to the EventEntry to ensure it's valid for the duration of this
++    // function, even if the DispatchEntry gets destroyed and releases its share of the ownership.
++    RefcountedPointer<EventEntry> eventEntry(dispatchEntry->eventEntry);
++    const bool hasForegroundTarget = dispatchEntry->hasForegroundTarget();
++    KeyEntry& keyEntry = static_cast<KeyEntry&>(*(eventEntry));
++    // To prevent misuse, ensure dispatchEntry is no longer valid.
++    dispatchEntry = nullptr;
++    if (keyEntry.flags & AKEY_EVENT_FLAG_FALLBACK) {
+         if (!handled) {
+             // Report the key as unhandled, since the fallback was not handled.
+-            mReporter->reportUnhandledKey(keyEntry->sequenceNum);
++            mReporter->reportUnhandledKey(keyEntry.sequenceNum);
+         }
+         return false;
+     }
+ 
+     // Get the fallback key state.
+     // Clear it out after dispatching the UP.
+-    int32_t originalKeyCode = keyEntry->keyCode;
++    int32_t originalKeyCode = keyEntry.keyCode;
+     int32_t fallbackKeyCode = connection->inputState.getFallbackKey(originalKeyCode);
+-    if (keyEntry->action == AKEY_EVENT_ACTION_UP) {
++    if (keyEntry.action == AKEY_EVENT_ACTION_UP) {
+         connection->inputState.removeFallbackKey(originalKeyCode);
+     }
+ 
+-    if (handled || !dispatchEntry->hasForegroundTarget()) {
++    if (handled || !hasForegroundTarget) {
+         // If the application handles the original key for which we previously
+         // generated a fallback or if the window is not a foreground window,
+         // then cancel the associated fallback key, if any.
+@@ -4269,17 +4294,17 @@ bool InputDispatcher::afterKeyEventLockedInterruptible(const sp<Connection>& con
+ #if DEBUG_OUTBOUND_EVENT_DETAILS
+             ALOGD("Unhandled key event: Asking policy to cancel fallback action.  "
+                     "keyCode=%d, action=%d, repeatCount=%d, policyFlags=0x%08x",
+-                    keyEntry->keyCode, keyEntry->action, keyEntry->repeatCount,
+-                    keyEntry->policyFlags);
++                    keyEntry.keyCode, keyEntry.action, keyEntry.repeatCount,
++                    keyEntry.policyFlags);
+ #endif
+             KeyEvent event;
+-            initializeKeyEvent(&event, keyEntry);
++            initializeKeyEvent(&event, &keyEntry);
+             event.setFlags(event.getFlags() | AKEY_EVENT_FLAG_CANCELED);
+ 
+             mLock.unlock();
+ 
+             mPolicy->dispatchUnhandledKey(connection->inputChannel->getToken(),
+-                                          &event, keyEntry->policyFlags, &event);
++                                          &event, keyEntry.policyFlags, &event);
+ 
+             mLock.lock();
+ 
+@@ -4298,15 +4323,15 @@ bool InputDispatcher::afterKeyEventLockedInterruptible(const sp<Connection>& con
+         // If the application did not handle a non-fallback key, first check
+         // that we are in a good state to perform unhandled key event processing
+         // Then ask the policy what to do with it.
+-        bool initialDown = keyEntry->action == AKEY_EVENT_ACTION_DOWN
+-                && keyEntry->repeatCount == 0;
++        bool initialDown = keyEntry.action == AKEY_EVENT_ACTION_DOWN
++                && keyEntry.repeatCount == 0;
+         if (fallbackKeyCode == -1 && !initialDown) {
+ #if DEBUG_OUTBOUND_EVENT_DETAILS
+             ALOGD("Unhandled key event: Skipping unhandled key event processing "
+                     "since this is not an initial down.  "
+                     "keyCode=%d, action=%d, repeatCount=%d, policyFlags=0x%08x",
+-                    originalKeyCode, keyEntry->action, keyEntry->repeatCount,
+-                    keyEntry->policyFlags);
++                    originalKeyCode, keyEntry.action, keyEntry.repeatCount,
++                    keyEntry.policyFlags);
+ #endif
+             return false;
+         }
+@@ -4315,16 +4340,16 @@ bool InputDispatcher::afterKeyEventLockedInterruptible(const sp<Connection>& con
+ #if DEBUG_OUTBOUND_EVENT_DETAILS
+         ALOGD("Unhandled key event: Asking policy to perform fallback action.  "
+                 "keyCode=%d, action=%d, repeatCount=%d, policyFlags=0x%08x",
+-                keyEntry->keyCode, keyEntry->action, keyEntry->repeatCount,
+-                keyEntry->policyFlags);
++                keyEntry.keyCode, keyEntry.action, keyEntry.repeatCount,
++                keyEntry.policyFlags);
+ #endif
+         KeyEvent event;
+-        initializeKeyEvent(&event, keyEntry);
++        initializeKeyEvent(&event, &keyEntry);
+ 
+         mLock.unlock();
+ 
+         bool fallback = mPolicy->dispatchUnhandledKey(connection->inputChannel->getToken(),
+-                                                      &event, keyEntry->policyFlags, &event);
++                                                      &event, keyEntry.policyFlags, &event);
+ 
+         mLock.lock();
+ 
+@@ -4372,7 +4397,7 @@ bool InputDispatcher::afterKeyEventLockedInterruptible(const sp<Connection>& con
+ 
+             fallback = false;
+             fallbackKeyCode = AKEYCODE_UNKNOWN;
+-            if (keyEntry->action != AKEY_EVENT_ACTION_UP) {
++            if (keyEntry.action != AKEY_EVENT_ACTION_UP) {
+                 connection->inputState.setFallbackKey(originalKeyCode,
+                                                       fallbackKeyCode);
+             }
+@@ -4394,22 +4419,22 @@ bool InputDispatcher::afterKeyEventLockedInterruptible(const sp<Connection>& con
+ 
+         if (fallback) {
+             // Restart the dispatch cycle using the fallback key.
+-            keyEntry->eventTime = event.getEventTime();
+-            keyEntry->deviceId = event.getDeviceId();
+-            keyEntry->source = event.getSource();
+-            keyEntry->displayId = event.getDisplayId();
+-            keyEntry->flags = event.getFlags() | AKEY_EVENT_FLAG_FALLBACK;
+-            keyEntry->keyCode = fallbackKeyCode;
+-            keyEntry->scanCode = event.getScanCode();
+-            keyEntry->metaState = event.getMetaState();
+-            keyEntry->repeatCount = event.getRepeatCount();
+-            keyEntry->downTime = event.getDownTime();
+-            keyEntry->syntheticRepeat = false;
++            keyEntry.eventTime = event.getEventTime();
++            keyEntry.deviceId = event.getDeviceId();
++            keyEntry.source = event.getSource();
++            keyEntry.displayId = event.getDisplayId();
++            keyEntry.flags = event.getFlags() | AKEY_EVENT_FLAG_FALLBACK;
++            keyEntry.keyCode = fallbackKeyCode;
++            keyEntry.scanCode = event.getScanCode();
++            keyEntry.metaState = event.getMetaState();
++            keyEntry.repeatCount = event.getRepeatCount();
++            keyEntry.downTime = event.getDownTime();
++            keyEntry.syntheticRepeat = false;
+ 
+ #if DEBUG_OUTBOUND_EVENT_DETAILS
+             ALOGD("Unhandled key event: Dispatching fallback key.  "
+                     "originalKeyCode=%d, fallbackKeyCode=%d, fallbackMetaState=%08x",
+-                    originalKeyCode, fallbackKeyCode, keyEntry->metaState);
++                    originalKeyCode, fallbackKeyCode, keyEntry.metaState);
+ #endif
+             return true; // restart the event
+         } else {
+@@ -4418,7 +4443,7 @@ bool InputDispatcher::afterKeyEventLockedInterruptible(const sp<Connection>& con
+ #endif
+ 
+             // Report the key as unhandled, since there is no fallback key.
+-            mReporter->reportUnhandledKey(keyEntry->sequenceNum);
++            mReporter->reportUnhandledKey(keyEntry.sequenceNum);
+         }
+     }
+     return false;
+diff --git a/services/inputflinger/InputDispatcher.h b/services/inputflinger/InputDispatcher.h
+index d287a0a571..a4a70f8d92 100644
+--- a/services/inputflinger/InputDispatcher.h
++++ b/services/inputflinger/InputDispatcher.h
+@@ -1270,7 +1270,7 @@ private:
+             REQUIRES(mLock);
+     void doDispatchCycleFinishedLockedInterruptible(CommandEntry* commandEntry) REQUIRES(mLock);
+     bool afterKeyEventLockedInterruptible(const sp<Connection>& connection,
+-            DispatchEntry* dispatchEntry, KeyEntry* keyEntry, bool handled) REQUIRES(mLock);
++            DispatchEntry* dispatchEntry, bool handled) REQUIRES(mLock);
+     bool afterMotionEventLockedInterruptible(const sp<Connection>& connection,
+             DispatchEntry* dispatchEntry, MotionEntry* motionEntry, bool handled) REQUIRES(mLock);
+     void doPokeUserActivityLockedInterruptible(CommandEntry* commandEntry) REQUIRES(mLock);
+-- 
+2.40.1
+

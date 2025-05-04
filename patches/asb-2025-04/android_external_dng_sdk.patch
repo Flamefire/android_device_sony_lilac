@@ -1,0 +1,82 @@
+# PWD: external/dng_sdk
+diff --git a/source/dng_ifd.cpp b/source/dng_ifd.cpp
+index 7f22065..bf3fb2c 100644
+--- a/source/dng_ifd.cpp
++++ b/source/dng_ifd.cpp
+@@ -347,15 +347,16 @@ bool dng_ifd::ParseTag (dng_stream &stream,
+ 			}
+ 				
+ 		case tcBitsPerSample:
+ 			{
+ 			
+ 			CheckTagType (parentCode, tagCode, tagType, ttShort);
+ 			
+-			CheckTagCount (parentCode, tagCode, tagCount, 1, 0x0FFFF);
++			if (!CheckTagCount (parentCode, tagCode, tagCount, 1, 0x0FFFF))
++				return false;
+ 			
+ 			#if qDNGValidate
+ 			
+ 			if (gVerbose)
+ 				{
+ 				printf ("BitsPerSample:");
+ 				}
+@@ -969,15 +970,16 @@ bool dng_ifd::ParseTag (dng_stream &stream,
+ 			}
+ 				
+ 		case tcExtraSamples:
+ 			{
+ 			
+ 			CheckTagType (parentCode, tagCode, tagType, ttShort);
+ 			
+-			CheckTagCount (parentCode, tagCode, tagCount, 1, fSamplesPerPixel);
++			if (!CheckTagCount (parentCode, tagCode, tagCount, 1, fSamplesPerPixel))
++				return false;
+ 			
+ 			#if qDNGValidate
+ 			
+ 			if (gVerbose)
+ 				{
+ 				printf ("ExtraSamples:");
+ 				}
+@@ -1021,15 +1023,16 @@ bool dng_ifd::ParseTag (dng_stream &stream,
+ 			}
+ 				
+ 		case tcSampleFormat:
+ 			{
+ 			
+ 			CheckTagType (parentCode, tagCode, tagType, ttShort);
+ 			
+-			CheckTagCount (parentCode, tagCode, tagCount, fSamplesPerPixel);
++			if (!CheckTagCount (parentCode, tagCode, tagCount, fSamplesPerPixel))
++				return false;
+ 			
+ 			#if qDNGValidate
+ 			
+ 			if (gVerbose)
+ 				{
+ 				printf ("SampleFormat:");
+ 				}
+diff --git a/source/dng_lossless_jpeg.cpp b/source/dng_lossless_jpeg.cpp
+index 9d0d01a..8802f32 100644
+--- a/source/dng_lossless_jpeg.cpp
++++ b/source/dng_lossless_jpeg.cpp
+@@ -1612,14 +1612,18 @@ inline int32 dng_lossless_decoder::get_bit ()
+  *
+  *--------------------------------------------------------------
+  */
+  
+ inline int32 dng_lossless_decoder::HuffDecode (HuffmanTable *htbl)
+ 	{
+ 	
++	if (htbl == nullptr) {
++		ThrowBadFormat ();
++	}
++
+     // If the huffman code is less than 8 bits, we can use the fast
+     // table lookup to get its value.  It's more than 8 bits about
+     // 3-4% of the time.
+ 
+     int32 code = show_bits8 ();
+     
+     if (htbl->numbits [code])

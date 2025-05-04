@@ -1,0 +1,48 @@
+From df23f6e76af7bb9ff32274b2daf8ceac613802d4 Mon Sep 17 00:00:00 2001
+From: arangelov <arangelov@google.com>
+Date: Mon, 20 Apr 2020 16:18:32 +0100
+Subject: [PATCH 06/12] [BACKPORT] Use startActivityAsCaller instead of
+ startActivity.
+
+Also make canForward return null for ACTION_CHOOSER.
+
+Fixes: 154225763
+Test: manual
+Test: atest IntentForwarderActivityTest
+Change-Id: If035607a751af857a39f42e45633a35b44e3e83e
+---
+ .../internal/app/IntentForwarderActivity.java  | 18 +-----------------
+ 1 file changed, 1 insertion(+), 17 deletions(-)
+
+diff --git a/core/java/com/android/internal/app/IntentForwarderActivity.java b/core/java/com/android/internal/app/IntentForwarderActivity.java
+index a5f055f09562..b3233e700cd3 100644
+--- a/core/java/com/android/internal/app/IntentForwarderActivity.java
++++ b/core/java/com/android/internal/app/IntentForwarderActivity.java
+@@ -199,23 +199,7 @@ public class IntentForwarderActivity extends Activity  {
+ 
+         Intent intentToCheck = forwardIntent;
+         if (Intent.ACTION_CHOOSER.equals(forwardIntent.getAction())) {
+-            // The EXTRA_INITIAL_INTENTS may not be allowed to be forwarded.
+-            if (forwardIntent.hasExtra(Intent.EXTRA_INITIAL_INTENTS)) {
+-                Slog.wtf(TAG, "An chooser intent with extra initial intents cannot be forwarded to"
+-                        + " a different user");
+-                return null;
+-            }
+-            if (forwardIntent.hasExtra(Intent.EXTRA_REPLACEMENT_EXTRAS)) {
+-                Slog.wtf(TAG, "A chooser intent with replacement extras cannot be forwarded to a"
+-                        + " different user");
+-                return null;
+-            }
+-            intentToCheck = forwardIntent.getParcelableExtra(Intent.EXTRA_INTENT);
+-            if (intentToCheck == null) {
+-                Slog.wtf(TAG, "Cannot forward a chooser intent with no extra "
+-                        + Intent.EXTRA_INTENT);
+-                return null;
+-            }
++            return null;
+         }
+         if (forwardIntent.getSelector() != null) {
+             intentToCheck = forwardIntent.getSelector();
+-- 
+2.40.1
+

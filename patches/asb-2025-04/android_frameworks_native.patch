@@ -1,0 +1,1079 @@
+# PWD: frameworks/native
+diff --git a/libs/binder/IPCThreadState.cpp b/libs/binder/IPCThreadState.cpp
+index 9a561cba64..8dbaecbe95 100644
+--- a/libs/binder/IPCThreadState.cpp
++++ b/libs/binder/IPCThreadState.cpp
+@@ -1303,24 +1303,23 @@ void IPCThreadState::threadDestructor(void *st)
+         }
+ #endif
+                 delete self;
+         }
+ }
+ 
+ 
+-void IPCThreadState::freeBuffer(Parcel* parcel, const uint8_t* data,
++void IPCThreadState::freeBuffer(Parcel* /*parcel*/, const uint8_t* data,
+                                 size_t /*dataSize*/,
+                                 const binder_size_t* /*objects*/,
+                                 size_t /*objectsSize*/, void* /*cookie*/)
+ {
+     //ALOGI("Freeing parcel %p", &parcel);
+     IF_LOG_COMMANDS() {
+         alog << "Writing BC_FREE_BUFFER for " << data << endl;
+     }
+     ALOG_ASSERT(data != NULL, "Called with NULL data");
+-    if (parcel != nullptr) parcel->closeFileDescriptors();
+     IPCThreadState* state = self();
+     state->mOut.writeInt32(BC_FREE_BUFFER);
+     state->mOut.writePointer((uintptr_t)data);
+ }
+ 
+ }; // namespace android
+diff --git a/libs/binder/Parcel.cpp b/libs/binder/Parcel.cpp
+index 56e698ecc7..3d5a8514dd 100644
+--- a/libs/binder/Parcel.cpp
++++ b/libs/binder/Parcel.cpp
+@@ -777,14 +777,18 @@ void* Parcel::writeInplace(size_t len)
+     }
+ 
+     if ((mDataPos+padded) <= mDataCapacity) {
+ restart_write:
+         //printf("Writing %ld bytes, padded to %ld\n", len, padded);
+         uint8_t* const data = mData+mDataPos;
+ 
++        if (status_t status = validateReadData(mDataPos + padded); status != OK) {
++            return nullptr; // drops status
++        }
++
+         // Need to pad at end?
+         if (padded != len) {
+ #if BYTE_ORDER == BIG_ENDIAN
+             static const uint32_t mask[4] = {
+                 0x00000000, 0xffffff00, 0xffff0000, 0xff000000
+             };
+ #endif
+@@ -1371,14 +1375,18 @@ status_t Parcel::write(const FlattenableHelperInterface& val)
+ 
+ status_t Parcel::writeObject(const flat_binder_object& val, bool nullMetaData)
+ {
+     const bool enoughData = (mDataPos+sizeof(val)) <= mDataCapacity;
+     const bool enoughObjects = mObjectsSize < mObjectsCapacity;
+     if (enoughData && enoughObjects) {
+ restart_write:
++        if (status_t status = validateReadData(mDataPos + sizeof(val)); status != OK) {
++            return status;
++        }
++
+         *reinterpret_cast<flat_binder_object*>(mData+mDataPos) = val;
+ 
+         // remember if it's a file descriptor
+         if (val.hdr.type == BINDER_TYPE_FD) {
+             if (!mAllowFds) {
+                 // fail before modifying our object index
+                 return FDS_NOT_ALLOWED;
+@@ -1682,14 +1690,18 @@ T Parcel::readAligned() const {
+ 
+ template<class T>
+ status_t Parcel::writeAligned(T val) {
+     COMPILE_TIME_ASSERT_FUNCTION_SCOPE(PAD_SIZE_UNSAFE(sizeof(T)) == sizeof(T));
+ 
+     if ((mDataPos+sizeof(val)) <= mDataCapacity) {
+ restart_write:
++        if (status_t status = validateReadData(mDataPos + sizeof(val)); status != OK) {
++            return status;
++        }
++
+         *reinterpret_cast<T*>(mData+mDataPos) = val;
+         return finishWrite(sizeof(val));
+     }
+ 
+     status_t err = growData(sizeof(val));
+     if (err == NO_ERROR) goto restart_write;
+     return err;
+@@ -2522,19 +2534,23 @@ const flat_binder_object* Parcel::readObject(bool nullMetaData) const
+              this, DPOS);
+     }
+     return nullptr;
+ }
+ 
+ void Parcel::closeFileDescriptors()
+ {
++    truncateFileDescriptors(0);
++}
++
++void Parcel::truncateFileDescriptors(size_t newObjectsSize) {
+     size_t i = mObjectsSize;
+     if (i > 0) {
+         //ALOGI("Closing file descriptors for %zu objects...", i);
+     }
+-    while (i > 0) {
++    while (i > newObjectsSize) {
+         i--;
+         const flat_binder_object* flat
+             = reinterpret_cast<flat_binder_object*>(mData+mObjects[i]);
+         if (flat->hdr.type == BINDER_TYPE_FD) {
+             //ALOGI("Closing fd: %ld", flat->handle);
+             close(flat->handle);
+         }
+@@ -2658,14 +2674,15 @@ void Parcel::freeData()
+ }
+ 
+ void Parcel::freeDataNoInit()
+ {
+     if (mOwner) {
+         LOG_ALLOC("Parcel %p: freeing other owner data", this);
+         //ALOGI("Freeing data ref of %p (pid=%d)", this, getpid());
++        closeFileDescriptors();
+         mOwner(this, mData, mDataSize, mObjects, mObjectsSize, mOwnerCookie);
+     } else {
+         LOG_ALLOC("Parcel %p: freeing allocated data", this);
+         releaseObjects();
+         if (mData) {
+             LOG_ALLOC("Parcel %p: freeing with %zu capacity", this, mDataCapacity);
+             pthread_mutex_lock(&gParcelGlobalAllocSizeLock);
+@@ -2688,14 +2705,22 @@ status_t Parcel::growData(size_t len)
+ {
+     if (len > INT32_MAX) {
+         // don't accept size_t values which may have come from an
+         // inadvertent conversion from a negative int.
+         return BAD_VALUE;
+     }
+ 
++    if (mDataPos > mDataSize) {
++        // b/370831157 - this case used to abort. We also don't expect mDataPos < mDataSize, but
++        // this would only waste a bit of memory, so it's okay.
++        ALOGE("growData only expected at the end of a Parcel. pos: %zu, size: %zu, capacity: %zu",
++              mDataPos, len, mDataCapacity);
++        return BAD_VALUE;
++    }
++
+     if (len > SIZE_MAX - mDataSize) return NO_MEMORY; // overflow
+     if (mDataSize + len > SIZE_MAX / 3) return NO_MEMORY; // overflow
+     size_t newSize = ((mDataSize+len)*3)/2;
+     return (newSize <= mDataSize)
+             ? (status_t) NO_MEMORY
+             : continueWrite(newSize);
+ }
+@@ -2761,16 +2786,17 @@ status_t Parcel::continueWrite(size_t desired)
+     // If shrinking, first adjust for any objects that appear
+     // after the new data size.
+     size_t objectsSize = mObjectsSize;
+     if (desired < mDataSize) {
+         if (desired == 0) {
+             objectsSize = 0;
+         } else {
++            validateReadData(mDataSize); // hack to sort the objects
+             while (objectsSize > 0) {
+-                if (mObjects[objectsSize-1] < desired)
++                if (mObjects[objectsSize-1] + sizeof(flat_binder_object) <= desired)
+                     break;
+                 objectsSize--;
+             }
+         }
+     }
+ 
+     if (mOwner) {
+@@ -2807,16 +2833,26 @@ status_t Parcel::continueWrite(size_t desired)
+         }
+ 
+         if (mData) {
+             memcpy(data, mData, mDataSize < desired ? mDataSize : desired);
+         }
+         if (objects && mObjects) {
+             memcpy(objects, mObjects, objectsSize*sizeof(binder_size_t));
++            // All FDs are owned when `mOwner`, even when `cookie == 0`. When
++            // we switch to `!mOwner`, we need to explicitly mark the FDs as
++            // owned.
++            for (size_t i = 0; i < objectsSize; i++) {
++                flat_binder_object* flat = reinterpret_cast<flat_binder_object*>(data + objects[i]);
++                if (flat->hdr.type == BINDER_TYPE_FD) {
++                    flat->cookie = 1;
++                }
++            }
+         }
+         //ALOGI("Freeing data ref of %p (pid=%d)", this, getpid());
++        truncateFileDescriptors(objectsSize);
+         mOwner(this, mData, mDataSize, mObjects, mObjectsSize, mOwnerCookie);
+         mOwner = nullptr;
+ 
+         LOG_ALLOC("Parcel %p: taking ownership of %zu capacity", this, desired);
+         pthread_mutex_lock(&gParcelGlobalAllocSizeLock);
+         gParcelGlobalAllocSize += desired;
+         gParcelGlobalAllocCount++;
+diff --git a/libs/binder/include/binder/Parcel.h b/libs/binder/include/binder/Parcel.h
+index e5219a5590..5444d9e93f 100644
+--- a/libs/binder/include/binder/Parcel.h
++++ b/libs/binder/include/binder/Parcel.h
+@@ -399,14 +399,17 @@ public:
+     bool                replaceCallingWorkSourceUid(uid_t uid);
+     // Returns the work source provided by the caller. This can only be trusted for trusted calling
+     // uid.
+     uid_t               readCallingWorkSourceUid();
+     void                readRequestHeaders() const;
+ 
+ private:
++    // Close all file descriptors in the parcel at object positions >= newObjectsSize.
++    __attribute__((__visibility__("hidden"))) void truncateFileDescriptors(size_t newObjectsSize);
++
+     typedef void        (*release_func)(Parcel* parcel,
+                                         const uint8_t* data, size_t dataSize,
+                                         const binder_size_t* objects, size_t objectsSize,
+                                         void* cookie);
+                         
+     uintptr_t           ipcData() const;
+     size_t              ipcDataSize() const;
+diff --git a/libs/binder/tests/Android.bp b/libs/binder/tests/Android.bp
+index c451780dd7..fd04985726 100644
+--- a/libs/binder/tests/Android.bp
++++ b/libs/binder/tests/Android.bp
+@@ -55,15 +55,17 @@ cc_test {
+ }
+ 
+ cc_test {
+     name: "binderLibTest_IPC_32",
+     srcs: ["binderLibTest.cpp"],
+     defaults: ["binder_test_defaults"],
+     shared_libs: [
++        "libbase",
+         "libbinder",
++        "liblog",
+         "libutils",
+     ],
+     compile_multilib: "32",
+     cflags: ["-DBINDER_IPC_32BIT=1"],
+ }
+ 
+ cc_test {
+@@ -73,15 +75,17 @@ cc_test {
+         },
+     },
+ 
+     defaults: ["binder_test_defaults"],
+     name: "binderLibTest",
+     srcs: ["binderLibTest.cpp"],
+     shared_libs: [
++        "libbase",
+         "libbinder",
++        "liblog",
+         "libutils",
+     ],
+ }
+ 
+ cc_test {
+     name: "binderThroughputTest",
+     srcs: ["binderThroughputTest.cpp"],
+diff --git a/libs/binder/tests/binderLibTest.cpp b/libs/binder/tests/binderLibTest.cpp
+index 78f11594b9..a2673fc617 100644
+--- a/libs/binder/tests/binderLibTest.cpp
++++ b/libs/binder/tests/binderLibTest.cpp
+@@ -19,24 +19,28 @@
+ #include <poll.h>
+ #include <pthread.h>
+ #include <stdio.h>
+ #include <stdlib.h>
+ 
+ #include <gtest/gtest.h>
+ 
++#include <android-base/logging.h>
++#include <android-base/unique_fd.h>
+ #include <binder/Binder.h>
+ #include <binder/IBinder.h>
+ #include <binder/IPCThreadState.h>
+ #include <binder/IServiceManager.h>
+ 
+ #include <sys/epoll.h>
++#include <sys/mman.h>
+ 
+ #define ARRAY_SIZE(array) (sizeof array / sizeof array[0])
+ 
+ using namespace android;
++using android::base::unique_fd;
+ 
+ static ::testing::AssertionResult IsPageAligned(void *buf) {
+     if (((unsigned long)buf & ((unsigned long)PAGE_SIZE - 1)) == 0)
+         return ::testing::AssertionSuccess();
+     else
+         return ::testing::AssertionFailure() << buf << " is not page aligned";
+ }
+@@ -63,14 +67,16 @@ enum BinderLibTestTranscationCode {
+     BINDER_LIB_TEST_SET_ERROR_TRANSACTION,
+     BINDER_LIB_TEST_GET_STATUS_TRANSACTION,
+     BINDER_LIB_TEST_ADD_STRONG_REF_TRANSACTION,
+     BINDER_LIB_TEST_LINK_DEATH_TRANSACTION,
+     BINDER_LIB_TEST_WRITE_FILE_TRANSACTION,
+     BINDER_LIB_TEST_WRITE_PARCEL_FILE_DESCRIPTOR_TRANSACTION,
+     BINDER_LIB_TEST_PROMOTE_WEAK_REF_TRANSACTION,
++    BINDER_LIB_TEST_GET_FILE_DESCRIPTORS_OWNED_TRANSACTION,
++    BINDER_LIB_TEST_GET_FILE_DESCRIPTORS_UNOWNED_TRANSACTION,
+     BINDER_LIB_TEST_EXIT_TRANSACTION,
+     BINDER_LIB_TEST_DELAYED_EXIT_TRANSACTION,
+     BINDER_LIB_TEST_GET_PTR_SIZE_TRANSACTION,
+     BINDER_LIB_TEST_CREATE_BINDER_TRANSACTION,
+     BINDER_LIB_TEST_GET_WORK_SOURCE_TRANSACTION,
+     BINDER_LIB_TEST_ECHO_VECTOR,
+ };
+@@ -379,14 +385,43 @@ class TestDeathRecipient : public IBinder::DeathRecipient, public BinderLibTestE
+     private:
+         virtual void binderDied(const wp<IBinder>& who) {
+             (void)who;
+             triggerEvent();
+         };
+ };
+ 
++ssize_t countFds() {
++    DIR* dir = opendir("/proc/self/fd/");
++    if (dir == nullptr) return -1;
++    ssize_t ret = 0;
++    dirent* ent;
++    while ((ent = readdir(dir)) != nullptr) ret++;
++    closedir(dir);
++    return ret;
++}
++
++struct FdLeakDetector {
++    int startCount;
++
++    FdLeakDetector() {
++        // This log statement is load bearing. We have to log something before
++        // counting FDs to make sure the logging system is initialized, otherwise
++        // the sockets it opens will look like a leak.
++        ALOGW("FdLeakDetector counting FDs.");
++        startCount = countFds();
++    }
++    ~FdLeakDetector() {
++        int endCount = countFds();
++        if (startCount != endCount) {
++            ADD_FAILURE() << "fd count changed (" << startCount << " -> " << endCount
++                          << ") fd leak?";
++        }
++    }
++};
++
+ TEST_F(BinderLibTest, NopTransaction) {
+     status_t ret;
+     Parcel data, reply;
+     ret = m_server->transact(BINDER_LIB_TEST_NOP_TRANSACTION, data, &reply);
+     EXPECT_EQ(NO_ERROR, ret);
+ }
+ 
+@@ -798,14 +833,108 @@ TEST_F(BinderLibTest, PassParcelFileDescriptor) {
+     EXPECT_EQ(writebuf, readbuf);
+ 
+     waitForReadData(read_end.get(), 5000); /* wait for other proccess to close pipe */
+ 
+     EXPECT_EQ(0, read(read_end.get(), readbuf.data(), datasize));
+ }
+ 
++TEST_F(BinderLibTest, RecvOwnedFileDescriptors) {
++    FdLeakDetector fd_leak_detector;
++
++    Parcel data;
++    Parcel reply;
++    EXPECT_EQ(NO_ERROR,
++              m_server->transact(BINDER_LIB_TEST_GET_FILE_DESCRIPTORS_OWNED_TRANSACTION, data,
++                                 &reply));
++    unique_fd a, b;
++    EXPECT_EQ(OK, reply.readUniqueFileDescriptor(&a));
++    EXPECT_EQ(OK, reply.readUniqueFileDescriptor(&b));
++}
++
++// Used to trigger fdsan error (b/239222407).
++TEST_F(BinderLibTest, RecvOwnedFileDescriptorsAndWriteInt) {
++    GTEST_SKIP() << "triggers fdsan false positive: b/370824489";
++
++    FdLeakDetector fd_leak_detector;
++
++    Parcel data;
++    Parcel reply;
++    EXPECT_EQ(NO_ERROR,
++              m_server->transact(BINDER_LIB_TEST_GET_FILE_DESCRIPTORS_OWNED_TRANSACTION, data,
++                                 &reply));
++    reply.setDataPosition(reply.dataSize());
++    reply.writeInt32(0);
++    reply.setDataPosition(0);
++    unique_fd a, b;
++    EXPECT_EQ(OK, reply.readUniqueFileDescriptor(&a));
++    EXPECT_EQ(OK, reply.readUniqueFileDescriptor(&b));
++}
++
++// Used to trigger fdsan error (b/239222407).
++TEST_F(BinderLibTest, RecvOwnedFileDescriptorsAndTruncate) {
++    GTEST_SKIP() << "triggers fdsan false positive: b/370824489";
++
++    FdLeakDetector fd_leak_detector;
++
++    Parcel data;
++    Parcel reply;
++    EXPECT_EQ(NO_ERROR,
++              m_server->transact(BINDER_LIB_TEST_GET_FILE_DESCRIPTORS_OWNED_TRANSACTION, data,
++                                 &reply));
++    reply.setDataSize(reply.dataSize() - sizeof(flat_binder_object));
++    unique_fd a, b;
++    EXPECT_EQ(OK, reply.readUniqueFileDescriptor(&a));
++    EXPECT_EQ(BAD_TYPE, reply.readUniqueFileDescriptor(&b));
++}
++
++TEST_F(BinderLibTest, RecvUnownedFileDescriptors) {
++    FdLeakDetector fd_leak_detector;
++
++    Parcel data;
++    Parcel reply;
++    EXPECT_EQ(NO_ERROR,
++              m_server->transact(BINDER_LIB_TEST_GET_FILE_DESCRIPTORS_UNOWNED_TRANSACTION, data,
++                                 &reply));
++    unique_fd a, b;
++    EXPECT_EQ(OK, reply.readUniqueFileDescriptor(&a));
++    EXPECT_EQ(OK, reply.readUniqueFileDescriptor(&b));
++}
++
++// Used to trigger fdsan error (b/239222407).
++TEST_F(BinderLibTest, RecvUnownedFileDescriptorsAndWriteInt) {
++    FdLeakDetector fd_leak_detector;
++
++    Parcel data;
++    Parcel reply;
++    EXPECT_EQ(NO_ERROR,
++              m_server->transact(BINDER_LIB_TEST_GET_FILE_DESCRIPTORS_UNOWNED_TRANSACTION, data,
++                                 &reply));
++    reply.setDataPosition(reply.dataSize());
++    reply.writeInt32(0);
++    reply.setDataPosition(0);
++    unique_fd a, b;
++    EXPECT_EQ(OK, reply.readUniqueFileDescriptor(&a));
++    EXPECT_EQ(OK, reply.readUniqueFileDescriptor(&b));
++}
++
++// Used to trigger fdsan error (b/239222407).
++TEST_F(BinderLibTest, RecvUnownedFileDescriptorsAndTruncate) {
++    FdLeakDetector fd_leak_detector;
++
++    Parcel data;
++    Parcel reply;
++    EXPECT_EQ(NO_ERROR,
++              m_server->transact(BINDER_LIB_TEST_GET_FILE_DESCRIPTORS_UNOWNED_TRANSACTION, data,
++                                 &reply));
++    reply.setDataSize(reply.dataSize() - sizeof(flat_binder_object));
++    unique_fd a, b;
++    EXPECT_EQ(OK, reply.readUniqueFileDescriptor(&a));
++    EXPECT_EQ(BAD_TYPE, reply.readUniqueFileDescriptor(&b));
++}
++
+ TEST_F(BinderLibTest, PromoteLocal) {
+     sp<IBinder> strong = new BBinder();
+     wp<IBinder> weak = strong;
+     sp<IBinder> strong_from_weak = weak.promote();
+     EXPECT_TRUE(strong != nullptr);
+     EXPECT_EQ(strong, strong_from_weak);
+     strong = nullptr;
+@@ -1353,14 +1482,48 @@ class BinderLibTestService : public BBinder
+                     exit(EXIT_FAILURE);
+ 
+                 if (strong == nullptr) {
+                     reply->setError(1);
+                 }
+                 return NO_ERROR;
+             }
++            case BINDER_LIB_TEST_GET_FILE_DESCRIPTORS_OWNED_TRANSACTION: {
++                unique_fd fd1(memfd_create("memfd1", MFD_CLOEXEC));
++                if (!fd1.ok()) {
++                    PLOG(ERROR) << "memfd_create failed";
++                    return UNKNOWN_ERROR;
++                }
++                unique_fd fd2(memfd_create("memfd2", MFD_CLOEXEC));
++                if (!fd2.ok()) {
++                    PLOG(ERROR) << "memfd_create failed";
++                    return UNKNOWN_ERROR;
++                }
++                status_t ret;
++                ret = reply->writeFileDescriptor(fd1.release(), true);
++                if (ret != NO_ERROR) {
++                    return ret;
++                }
++                ret = reply->writeFileDescriptor(fd2.release(), true);
++                if (ret != NO_ERROR) {
++                    return ret;
++                }
++                return NO_ERROR;
++            }
++            case BINDER_LIB_TEST_GET_FILE_DESCRIPTORS_UNOWNED_TRANSACTION: {
++                status_t ret;
++                ret = reply->writeFileDescriptor(STDOUT_FILENO, false);
++                if (ret != NO_ERROR) {
++                    return ret;
++                }
++                ret = reply->writeFileDescriptor(STDERR_FILENO, false);
++                if (ret != NO_ERROR) {
++                    return ret;
++                }
++                return NO_ERROR;
++            }
+             case BINDER_LIB_TEST_DELAYED_EXIT_TRANSACTION:
+                 alarm(10);
+                 return NO_ERROR;
+             case BINDER_LIB_TEST_EXIT_TRANSACTION:
+                 while (wait(nullptr) != -1 || errno != ECHILD)
+                     ;
+                 exit(EXIT_SUCCESS);
+diff --git a/libs/gui/LayerState.cpp b/libs/gui/LayerState.cpp
+index 6066421faf..293f042de2 100644
+--- a/libs/gui/LayerState.cpp
++++ b/libs/gui/LayerState.cpp
+@@ -233,14 +233,35 @@ void DisplayState::merge(const DisplayState& other) {
+     if (other.what & eDisplaySizeChanged) {
+         what |= eDisplaySizeChanged;
+         width = other.width;
+         height = other.height;
+     }
+ }
+ 
++void DisplayState::sanitize(bool privileged) {
++    if (what & DisplayState::eLayerStackChanged) {
++        if (!privileged) {
++            what &= ~DisplayState::eLayerStackChanged;
++            ALOGE("Stripped attempt to set eLayerStackChanged in sanitize");
++        }
++    }
++    if (what & DisplayState::eDisplayProjectionChanged) {
++        if (!privileged) {
++            what &= ~DisplayState::eDisplayProjectionChanged;
++            ALOGE("Stripped attempt to set eDisplayProjectionChanged in sanitize");
++        }
++    }
++    if (what & DisplayState::eSurfaceChanged) {
++        if (!privileged) {
++            what &= ~DisplayState::eSurfaceChanged;
++            ALOGE("Stripped attempt to set eSurfaceChanged in sanitize");
++        }
++    }
++}
++
+ void layer_state_t::merge(const layer_state_t& other) {
+     if (other.what & ePositionChanged) {
+         what |= ePositionChanged;
+         x = other.x;
+         y = other.y;
+     }
+     if (other.what & eLayerChanged) {
+diff --git a/libs/gui/include/gui/LayerState.h b/libs/gui/include/gui/LayerState.h
+index f438eb3d01..8a07602e41 100644
+--- a/libs/gui/include/gui/LayerState.h
++++ b/libs/gui/include/gui/LayerState.h
+@@ -227,14 +227,15 @@ struct DisplayState {
+         eLayerStackChanged = 0x02,
+         eDisplayProjectionChanged = 0x04,
+         eDisplaySizeChanged = 0x08
+     };
+ 
+     DisplayState();
+     void merge(const DisplayState& other);
++    void sanitize(bool privileged);
+ 
+     uint32_t what;
+     sp<IBinder> token;
+     sp<IGraphicBufferProducer> surface;
+     uint32_t layerStack;
+ 
+     // These states define how layers are projected onto the physical display.
+diff --git a/libs/sensor/ISensorServer.cpp b/libs/sensor/ISensorServer.cpp
+index 5200545a53..b2f1ba2507 100644
+--- a/libs/sensor/ISensorServer.cpp
++++ b/libs/sensor/ISensorServer.cpp
+@@ -62,15 +62,19 @@ public:
+         remote()->transact(GET_SENSOR_LIST, data, &reply);
+         Sensor s;
+         Vector<Sensor> v;
+         uint32_t n = reply.readUint32();
+         v.setCapacity(n);
+         while (n) {
+             n--;
+-            reply.read(s);
++            if(reply.read(s) != OK) {
++                ALOGE("Failed to read reply from getSensorList");
++                v.clear();
++                break;
++            }
+             v.add(s);
+         }
+         return v;
+     }
+ 
+     virtual Vector<Sensor> getDynamicSensorList(const String16& opPackageName)
+     {
+@@ -80,15 +84,19 @@ public:
+         remote()->transact(GET_DYNAMIC_SENSOR_LIST, data, &reply);
+         Sensor s;
+         Vector<Sensor> v;
+         uint32_t n = reply.readUint32();
+         v.setCapacity(n);
+         while (n) {
+             n--;
+-            reply.read(s);
++            if(reply.read(s) != OK) {
++                ALOGE("Failed to read reply from getDynamicSensorList");
++                v.clear();
++                break;
++            }
+             v.add(s);
+         }
+         return v;
+     }
+ 
+     virtual sp<ISensorEventConnection> createSensorEventConnection(const String8& packageName,
+              int mode, const String16& opPackageName)
+diff --git a/libs/sensor/Sensor.cpp b/libs/sensor/Sensor.cpp
+index abc910302c..9d8c6c34e3 100644
+--- a/libs/sensor/Sensor.cpp
++++ b/libs/sensor/Sensor.cpp
+@@ -587,13 +587,19 @@ bool Sensor::unflattenString8(void const*& buffer, size_t& size, String8& output
+         return false;
+     }
+     FlattenableUtils::read(buffer, size, len);
+     if (size < len) {
+         return false;
+     }
+     outputString8.setTo(static_cast<char const*>(buffer), len);
++
++    if (size < FlattenableUtils::align<4>(len)) {
++        ALOGE("Malformed Sensor String8 field. Should be in a 4-byte aligned buffer but is not.");
++        return false;
++    }
+     FlattenableUtils::advance(buffer, size, FlattenableUtils::align<4>(len));
++
+     return true;
+ }
+ 
+ // ----------------------------------------------------------------------------
+ }; // namespace android
+diff --git a/libs/sensor/SensorManager.cpp b/libs/sensor/SensorManager.cpp
+index 96d5eb9d1f..7f927d026e 100644
+--- a/libs/sensor/SensorManager.cpp
++++ b/libs/sensor/SensorManager.cpp
+@@ -88,14 +88,24 @@ SensorManager& SensorManager::getInstanceForPackage(const String16& packageName)
+         // Stash the per package sensor manager.
+         sPackageInstances.insert(std::make_pair(opPackageName, sensorManager));
+     }
+ 
+     return *sensorManager;
+ }
+ 
++void SensorManager::removeInstanceForPackage(const String16& packageName) {
++    Mutex::Autolock _l(sLock);
++    auto iterator = sPackageInstances.find(packageName);
++    if (iterator != sPackageInstances.end()) {
++        SensorManager* sensorManager = iterator->second;
++        delete sensorManager;
++        sPackageInstances.erase(iterator);
++    }
++}
++
+ SensorManager::SensorManager(const String16& opPackageName)
+     : mSensorList(nullptr), mOpPackageName(opPackageName), mDirectConnectionHandle(1) {
+     Mutex::Autolock _l(mLock);
+     assertStateLocked();
+ }
+ 
+ SensorManager::~SensorManager() {
+@@ -158,14 +168,16 @@ status_t SensorManager::assertStateLocked() {
+         };
+ 
+         mDeathObserver = new DeathObserver(*const_cast<SensorManager *>(this));
+         IInterface::asBinder(mSensorServer)->linkToDeath(mDeathObserver);
+ 
+         mSensors = mSensorServer->getSensorList(mOpPackageName);
+         size_t count = mSensors.size();
++        // If count is 0, mSensorList will be non-null. This is old
++        // existing behavior and callers expect this.
+         mSensorList =
+                 static_cast<Sensor const**>(malloc(count * sizeof(Sensor*)));
+         LOG_ALWAYS_FATAL_IF(mSensorList == nullptr, "mSensorList NULL");
+ 
+         for (size_t i=0 ; i<count ; i++) {
+             mSensorList[i] = mSensors.array() + i;
+         }
+diff --git a/libs/sensor/include/sensor/SensorManager.h b/libs/sensor/include/sensor/SensorManager.h
+index f09c9c67b4..127f74f4b2 100644
+--- a/libs/sensor/include/sensor/SensorManager.h
++++ b/libs/sensor/include/sensor/SensorManager.h
+@@ -50,14 +50,15 @@ class Sensor;
+ class SensorEventQueue;
+ // ----------------------------------------------------------------------------
+ 
+ class SensorManager : public ASensorManager
+ {
+ public:
+     static SensorManager& getInstanceForPackage(const String16& packageName);
++    static void removeInstanceForPackage(const String16& packageName);
+     ~SensorManager();
+ 
+     ssize_t getSensorList(Sensor const* const** list);
+     ssize_t getDynamicSensorList(Vector<Sensor>& list);
+     Sensor const* getDefaultSensor(int type);
+     sp<SensorEventQueue> createEventQueue(String8 packageName = String8(""), int mode = 0);
+     bool isDataInjectionEnabled();
+diff --git a/services/inputflinger/InputDispatcher.cpp b/services/inputflinger/InputDispatcher.cpp
+index 927db0e85d..1dc3633609 100644
+--- a/services/inputflinger/InputDispatcher.cpp
++++ b/services/inputflinger/InputDispatcher.cpp
+@@ -4207,17 +4207,15 @@ void InputDispatcher::doDispatchCycleFinishedLockedInterruptible(
+                     connection->getWindowName().c_str(), eventDuration * 0.000001f);
+             dispatchEntry->eventEntry->appendDescription(msg);
+             ALOGI("%s", msg.c_str());
+         }
+ 
+         bool restartEvent;
+         if (dispatchEntry->eventEntry->type == EventEntry::TYPE_KEY) {
+-            KeyEntry* keyEntry = static_cast<KeyEntry*>(dispatchEntry->eventEntry);
+-            restartEvent = afterKeyEventLockedInterruptible(connection,
+-                    dispatchEntry, keyEntry, handled);
++            restartEvent = afterKeyEventLockedInterruptible(connection, dispatchEntry, handled);
+         } else if (dispatchEntry->eventEntry->type == EventEntry::TYPE_MOTION) {
+             MotionEntry* motionEntry = static_cast<MotionEntry*>(dispatchEntry->eventEntry);
+             restartEvent = afterMotionEventLockedInterruptible(connection,
+                     dispatchEntry, motionEntry, handled);
+         } else {
+             restartEvent = false;
+         }
+@@ -4238,52 +4236,79 @@ void InputDispatcher::doDispatchCycleFinishedLockedInterruptible(
+         }
+ 
+         // Start the next dispatch cycle for this connection.
+         startDispatchCycleLocked(now(), connection);
+     }
+ }
+ 
++template <typename T>
++class RefcountedPointer {
++    T* evt;
++public:
++    explicit RefcountedPointer(T* ptr): evt(ptr) {
++        if(evt)
++            evt->refCount += 1;
++    }
++    ~RefcountedPointer() {
++        if(evt)
++            evt->release();
++    }
++    RefcountedPointer(const RefcountedPointer&) = delete;
++    RefcountedPointer& operator=(const RefcountedPointer&) = delete;
++    T& operator*() { return *evt; }
++};
++
+ bool InputDispatcher::afterKeyEventLockedInterruptible(const sp<Connection>& connection,
+-        DispatchEntry* dispatchEntry, KeyEntry* keyEntry, bool handled) {
+-    if (keyEntry->flags & AKEY_EVENT_FLAG_FALLBACK) {
++        DispatchEntry* dispatchEntry, bool handled) {
++    // The dispatchEntry is currently valid, but it might point to a deleted object after we release
++    // the lock. For simplicity, make copies of the data of interest here and assume that
++    // 'dispatchEntry' is not valid after this section.
++    // Hold a strong reference to the EventEntry to ensure it's valid for the duration of this
++    // function, even if the DispatchEntry gets destroyed and releases its share of the ownership.
++    RefcountedPointer<EventEntry> eventEntry(dispatchEntry->eventEntry);
++    const bool hasForegroundTarget = dispatchEntry->hasForegroundTarget();
++    KeyEntry& keyEntry = static_cast<KeyEntry&>(*(eventEntry));
++    // To prevent misuse, ensure dispatchEntry is no longer valid.
++    dispatchEntry = nullptr;
++    if (keyEntry.flags & AKEY_EVENT_FLAG_FALLBACK) {
+         if (!handled) {
+             // Report the key as unhandled, since the fallback was not handled.
+-            mReporter->reportUnhandledKey(keyEntry->sequenceNum);
++            mReporter->reportUnhandledKey(keyEntry.sequenceNum);
+         }
+         return false;
+     }
+ 
+     // Get the fallback key state.
+     // Clear it out after dispatching the UP.
+-    int32_t originalKeyCode = keyEntry->keyCode;
++    int32_t originalKeyCode = keyEntry.keyCode;
+     int32_t fallbackKeyCode = connection->inputState.getFallbackKey(originalKeyCode);
+-    if (keyEntry->action == AKEY_EVENT_ACTION_UP) {
++    if (keyEntry.action == AKEY_EVENT_ACTION_UP) {
+         connection->inputState.removeFallbackKey(originalKeyCode);
+     }
+ 
+-    if (handled || !dispatchEntry->hasForegroundTarget()) {
++    if (handled || !hasForegroundTarget) {
+         // If the application handles the original key for which we previously
+         // generated a fallback or if the window is not a foreground window,
+         // then cancel the associated fallback key, if any.
+         if (fallbackKeyCode != -1) {
+             // Dispatch the unhandled key to the policy with the cancel flag.
+ #if DEBUG_OUTBOUND_EVENT_DETAILS
+             ALOGD("Unhandled key event: Asking policy to cancel fallback action.  "
+                     "keyCode=%d, action=%d, repeatCount=%d, policyFlags=0x%08x",
+-                    keyEntry->keyCode, keyEntry->action, keyEntry->repeatCount,
+-                    keyEntry->policyFlags);
++                    keyEntry.keyCode, keyEntry.action, keyEntry.repeatCount,
++                    keyEntry.policyFlags);
+ #endif
+             KeyEvent event;
+-            initializeKeyEvent(&event, keyEntry);
++            initializeKeyEvent(&event, &keyEntry);
+             event.setFlags(event.getFlags() | AKEY_EVENT_FLAG_CANCELED);
+ 
+             mLock.unlock();
+ 
+             mPolicy->dispatchUnhandledKey(connection->inputChannel->getToken(),
+-                                          &event, keyEntry->policyFlags, &event);
++                                          &event, keyEntry.policyFlags, &event);
+ 
+             mLock.lock();
+ 
+             // Cancel the fallback key.
+             if (fallbackKeyCode != AKEYCODE_UNKNOWN) {
+                 CancelationOptions options(CancelationOptions::CANCEL_FALLBACK_EVENTS,
+                                            "application handled the original non-fallback key "
+@@ -4294,41 +4319,41 @@ bool InputDispatcher::afterKeyEventLockedInterruptible(const sp<Connection>& con
+             }
+             connection->inputState.removeFallbackKey(originalKeyCode);
+         }
+     } else {
+         // If the application did not handle a non-fallback key, first check
+         // that we are in a good state to perform unhandled key event processing
+         // Then ask the policy what to do with it.
+-        bool initialDown = keyEntry->action == AKEY_EVENT_ACTION_DOWN
+-                && keyEntry->repeatCount == 0;
++        bool initialDown = keyEntry.action == AKEY_EVENT_ACTION_DOWN
++                && keyEntry.repeatCount == 0;
+         if (fallbackKeyCode == -1 && !initialDown) {
+ #if DEBUG_OUTBOUND_EVENT_DETAILS
+             ALOGD("Unhandled key event: Skipping unhandled key event processing "
+                     "since this is not an initial down.  "
+                     "keyCode=%d, action=%d, repeatCount=%d, policyFlags=0x%08x",
+-                    originalKeyCode, keyEntry->action, keyEntry->repeatCount,
+-                    keyEntry->policyFlags);
++                    originalKeyCode, keyEntry.action, keyEntry.repeatCount,
++                    keyEntry.policyFlags);
+ #endif
+             return false;
+         }
+ 
+         // Dispatch the unhandled key to the policy.
+ #if DEBUG_OUTBOUND_EVENT_DETAILS
+         ALOGD("Unhandled key event: Asking policy to perform fallback action.  "
+                 "keyCode=%d, action=%d, repeatCount=%d, policyFlags=0x%08x",
+-                keyEntry->keyCode, keyEntry->action, keyEntry->repeatCount,
+-                keyEntry->policyFlags);
++                keyEntry.keyCode, keyEntry.action, keyEntry.repeatCount,
++                keyEntry.policyFlags);
+ #endif
+         KeyEvent event;
+-        initializeKeyEvent(&event, keyEntry);
++        initializeKeyEvent(&event, &keyEntry);
+ 
+         mLock.unlock();
+ 
+         bool fallback = mPolicy->dispatchUnhandledKey(connection->inputChannel->getToken(),
+-                                                      &event, keyEntry->policyFlags, &event);
++                                                      &event, keyEntry.policyFlags, &event);
+ 
+         mLock.lock();
+ 
+         if (connection->status != Connection::STATUS_NORMAL) {
+             connection->inputState.removeFallbackKey(originalKeyCode);
+             return false;
+         }
+@@ -4368,15 +4393,15 @@ bool InputDispatcher::afterKeyEventLockedInterruptible(const sp<Connection>& con
+             CancelationOptions options(CancelationOptions::CANCEL_FALLBACK_EVENTS,
+                                        "canceling fallback, policy no longer desires it");
+             options.keyCode = fallbackKeyCode;
+             synthesizeCancelationEventsForConnectionLocked(connection, options);
+ 
+             fallback = false;
+             fallbackKeyCode = AKEYCODE_UNKNOWN;
+-            if (keyEntry->action != AKEY_EVENT_ACTION_UP) {
++            if (keyEntry.action != AKEY_EVENT_ACTION_UP) {
+                 connection->inputState.setFallbackKey(originalKeyCode,
+                                                       fallbackKeyCode);
+             }
+         }
+ 
+ #if DEBUG_OUTBOUND_EVENT_DETAILS
+         {
+@@ -4390,39 +4415,39 @@ bool InputDispatcher::afterKeyEventLockedInterruptible(const sp<Connection>& con
+             ALOGD("Unhandled key event: %zu currently tracked fallback keys%s.",
+                     fallbackKeys.size(), msg.c_str());
+         }
+ #endif
+ 
+         if (fallback) {
+             // Restart the dispatch cycle using the fallback key.
+-            keyEntry->eventTime = event.getEventTime();
+-            keyEntry->deviceId = event.getDeviceId();
+-            keyEntry->source = event.getSource();
+-            keyEntry->displayId = event.getDisplayId();
+-            keyEntry->flags = event.getFlags() | AKEY_EVENT_FLAG_FALLBACK;
+-            keyEntry->keyCode = fallbackKeyCode;
+-            keyEntry->scanCode = event.getScanCode();
+-            keyEntry->metaState = event.getMetaState();
+-            keyEntry->repeatCount = event.getRepeatCount();
+-            keyEntry->downTime = event.getDownTime();
+-            keyEntry->syntheticRepeat = false;
++            keyEntry.eventTime = event.getEventTime();
++            keyEntry.deviceId = event.getDeviceId();
++            keyEntry.source = event.getSource();
++            keyEntry.displayId = event.getDisplayId();
++            keyEntry.flags = event.getFlags() | AKEY_EVENT_FLAG_FALLBACK;
++            keyEntry.keyCode = fallbackKeyCode;
++            keyEntry.scanCode = event.getScanCode();
++            keyEntry.metaState = event.getMetaState();
++            keyEntry.repeatCount = event.getRepeatCount();
++            keyEntry.downTime = event.getDownTime();
++            keyEntry.syntheticRepeat = false;
+ 
+ #if DEBUG_OUTBOUND_EVENT_DETAILS
+             ALOGD("Unhandled key event: Dispatching fallback key.  "
+                     "originalKeyCode=%d, fallbackKeyCode=%d, fallbackMetaState=%08x",
+-                    originalKeyCode, fallbackKeyCode, keyEntry->metaState);
++                    originalKeyCode, fallbackKeyCode, keyEntry.metaState);
+ #endif
+             return true; // restart the event
+         } else {
+ #if DEBUG_OUTBOUND_EVENT_DETAILS
+             ALOGD("Unhandled key event: No fallback key.");
+ #endif
+ 
+             // Report the key as unhandled, since there is no fallback key.
+-            mReporter->reportUnhandledKey(keyEntry->sequenceNum);
++            mReporter->reportUnhandledKey(keyEntry.sequenceNum);
+         }
+     }
+     return false;
+ }
+ 
+ bool InputDispatcher::afterMotionEventLockedInterruptible(const sp<Connection>& connection,
+         DispatchEntry* dispatchEntry, MotionEntry* motionEntry, bool handled) {
+diff --git a/services/inputflinger/InputDispatcher.h b/services/inputflinger/InputDispatcher.h
+index d287a0a571..a4a70f8d92 100644
+--- a/services/inputflinger/InputDispatcher.h
++++ b/services/inputflinger/InputDispatcher.h
+@@ -1266,15 +1266,15 @@ private:
+     void doNotifyInputChannelBrokenLockedInterruptible(CommandEntry* commandEntry) REQUIRES(mLock);
+     void doNotifyFocusChangedLockedInterruptible(CommandEntry* commandEntry) REQUIRES(mLock);
+     void doNotifyANRLockedInterruptible(CommandEntry* commandEntry) REQUIRES(mLock);
+     void doInterceptKeyBeforeDispatchingLockedInterruptible(CommandEntry* commandEntry)
+             REQUIRES(mLock);
+     void doDispatchCycleFinishedLockedInterruptible(CommandEntry* commandEntry) REQUIRES(mLock);
+     bool afterKeyEventLockedInterruptible(const sp<Connection>& connection,
+-            DispatchEntry* dispatchEntry, KeyEntry* keyEntry, bool handled) REQUIRES(mLock);
++            DispatchEntry* dispatchEntry, bool handled) REQUIRES(mLock);
+     bool afterMotionEventLockedInterruptible(const sp<Connection>& connection,
+             DispatchEntry* dispatchEntry, MotionEntry* motionEntry, bool handled) REQUIRES(mLock);
+     void doPokeUserActivityLockedInterruptible(CommandEntry* commandEntry) REQUIRES(mLock);
+     void initializeKeyEvent(KeyEvent* event, const KeyEntry* entry);
+     void doOnPointerDownOutsideFocusLockedInterruptible(CommandEntry* commandEntry)
+             REQUIRES(mLock);
+ 
+diff --git a/services/sensorservice/hidl/SensorManager.cpp b/services/sensorservice/hidl/SensorManager.cpp
+index 938060063f..0a4e68412d 100644
+--- a/services/sensorservice/hidl/SensorManager.cpp
++++ b/services/sensorservice/hidl/SensorManager.cpp
+@@ -56,14 +56,17 @@ SensorManager::~SensorManager() {
+     mStopThread = true;
+     if (mLooper != nullptr) {
+         mLooper->wake();
+     }
+     if (mPollThread.joinable()) {
+         mPollThread.join();
+     }
++
++    ::android::SensorManager::removeInstanceForPackage(
++            String16(ISensorManager::descriptor));
+ }
+ 
+ // Methods from ::android::frameworks::sensorservice::V1_0::ISensorManager follow.
+ Return<void> SensorManager::getSensorList(getSensorList_cb _hidl_cb) {
+     ::android::Sensor const* const* list;
+     ssize_t count = getInternalManager().getSensorList(&list);
+     if (count < 0 || !list) {
+diff --git a/services/surfaceflinger/SurfaceFlinger.cpp b/services/surfaceflinger/SurfaceFlinger.cpp
+index db26808cc2..21e9e8eb96 100644
+--- a/services/surfaceflinger/SurfaceFlinger.cpp
++++ b/services/surfaceflinger/SurfaceFlinger.cpp
+@@ -3671,15 +3671,15 @@ bool SurfaceFlinger::flushTransactionQueues() {
+         Mutex::Autolock _l(mStateLock);
+ 
+         auto it = mTransactionQueues.begin();
+         while (it != mTransactionQueues.end()) {
+             auto& [applyToken, transactionQueue] = *it;
+ 
+             while (!transactionQueue.empty()) {
+-                const auto& transaction = transactionQueue.front();
++                auto& transaction = transactionQueue.front();
+                 if (!transactionIsReadyToBeApplied(transaction.desiredPresentTime,
+                                                    transaction.states)) {
+                     setTransactionFlags(eTransactionFlushNeeded);
+                     break;
+                 }
+                 transactions.push_back(transaction);
+                 applyTransactionState(transaction.states, transaction.displays, transaction.flags,
+@@ -3790,20 +3790,25 @@ void SurfaceFlinger::setTransactionState(const Vector<ComposerState>& states,
+         mTransactionQueues[applyToken].emplace(states, displays, flags, desiredPresentTime,
+                                                uncacheBuffer, listenerCallbacks, postTime,
+                                                privileged);
+         setTransactionFlags(eTransactionFlushNeeded);
+         return;
+     }
+ 
+-    applyTransactionState(states, displays, flags, inputWindowCommands, desiredPresentTime,
++    Vector<DisplayState> displaysList;
++    for (auto& d : displays) {
++        displaysList.add(d);
++    }
++
++    applyTransactionState(states, displaysList, flags, inputWindowCommands, desiredPresentTime,
+                           uncacheBuffer, listenerCallbacks, postTime, privileged);
+ }
+ 
+ void SurfaceFlinger::applyTransactionState(const Vector<ComposerState>& states,
+-                                           const Vector<DisplayState>& displays, uint32_t flags,
++                                           Vector<DisplayState>& displays, uint32_t flags,
+                                            const InputWindowCommands& inputWindowCommands,
+                                            const int64_t desiredPresentTime,
+                                            const client_cache_t& uncacheBuffer,
+                                            const std::vector<ListenerCallbacks>& listenerCallbacks,
+                                            const int64_t postTime, bool privileged,
+                                            bool isMainThread) {
+     uint32_t transactionFlags = 0;
+@@ -3820,15 +3825,16 @@ void SurfaceFlinger::applyTransactionState(const Vector<ComposerState>& states,
+                         "waiting for previous animation frame");
+                 mAnimTransactionPending = false;
+                 break;
+             }
+         }
+     }
+ 
+-    for (const DisplayState& display : displays) {
++    for (DisplayState& display : displays) {
++        display.sanitize(privileged);
+         transactionFlags |= setDisplayStateLocked(display);
+     }
+ 
+     // In case the client has sent a Transaction that should receive callbacks but without any
+     // SurfaceControls that should be included in the callback, send the listener and callbackIds
+     // to the callback thread so it can send an empty callback
+     if (!listenerCallbacks.empty()) {
+diff --git a/services/surfaceflinger/SurfaceFlinger.h b/services/surfaceflinger/SurfaceFlinger.h
+index e58caa63b3..c4578d0dbb 100644
+--- a/services/surfaceflinger/SurfaceFlinger.h
++++ b/services/surfaceflinger/SurfaceFlinger.h
+@@ -564,17 +564,16 @@ private:
+      * is necessary to perform a refresh during this vsync.
+      */
+     bool handlePageFlip();
+ 
+     /* ------------------------------------------------------------------------
+      * Transactions
+      */
+-    void applyTransactionState(const Vector<ComposerState>& state,
+-                               const Vector<DisplayState>& displays, uint32_t flags,
+-                               const InputWindowCommands& inputWindowCommands,
++    void applyTransactionState(const Vector<ComposerState>& state, Vector<DisplayState>& displays,
++                               uint32_t flags, const InputWindowCommands& inputWindowCommands,
+                                const int64_t desiredPresentTime,
+                                const client_cache_t& uncacheBuffer,
+                                const std::vector<ListenerCallbacks>& listenerCallbacks,
+                                const int64_t postTime, bool privileged, bool isMainThread = false)
+             REQUIRES(mStateLock);
+     // Returns true if at least one transaction was flushed
+     bool flushTransactionQueues();

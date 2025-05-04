@@ -1,0 +1,682 @@
+# PWD: packages/services/Telephony
+diff --git a/src/com/android/phone/ADNList.java b/src/com/android/phone/ADNList.java
+index 18b48fad5..bcf1a8914 100644
+--- a/src/com/android/phone/ADNList.java
++++ b/src/com/android/phone/ADNList.java
+@@ -77,14 +77,17 @@ public class ADNList extends ListActivity {
+ 
+     protected int mInitialSelection = -1;
+ 
+     @Override
+     protected void onCreate(Bundle icicle) {
+         super.onCreate(icicle);
+         getWindow().requestFeature(Window.FEATURE_INDETERMINATE_PROGRESS);
++        getWindow().addSystemFlags(
++                android.view.WindowManager.LayoutParams
++                        .SYSTEM_FLAG_HIDE_NON_SYSTEM_OVERLAY_WINDOWS);
+         setContentView(R.layout.adn_list);
+         mEmptyText = (TextView) findViewById(android.R.id.empty);
+         mQueryHandler = new QueryHandler(getContentResolver());
+     }
+ 
+     @Override
+     protected void onResume() {
+diff --git a/src/com/android/phone/CallFeaturesSetting.java b/src/com/android/phone/CallFeaturesSetting.java
+index ea9dd3fc4..df425dafb 100644
+--- a/src/com/android/phone/CallFeaturesSetting.java
++++ b/src/com/android/phone/CallFeaturesSetting.java
+@@ -243,14 +243,18 @@ public class CallFeaturesSetting extends PreferenceActivity
+     }
+ 
+     @Override
+     protected void onCreate(Bundle icicle) {
+         super.onCreate(icicle);
+         if (DBG) log("onCreate: Intent is " + getIntent());
+ 
++        getWindow().addSystemFlags(
++                android.view.WindowManager.LayoutParams
++                        .SYSTEM_FLAG_HIDE_NON_SYSTEM_OVERLAY_WINDOWS);
++
+         // Make sure we are running as an admin user.
+         if (!UserManager.get(this).isAdminUser()) {
+             Toast.makeText(this, R.string.call_settings_admin_user_only,
+                     Toast.LENGTH_SHORT).show();
+             finish();
+             return;
+         }
+diff --git a/src/com/android/phone/CdmaCallOptions.java b/src/com/android/phone/CdmaCallOptions.java
+index acfa496f2..9a0a0b70e 100644
+--- a/src/com/android/phone/CdmaCallOptions.java
++++ b/src/com/android/phone/CdmaCallOptions.java
+@@ -34,14 +34,18 @@ public class CdmaCallOptions extends PreferenceActivity {
+     private static final String BUTTON_VP_KEY = "button_voice_privacy_key";
+     private SwitchPreference mButtonVoicePrivacy;
+ 
+     @Override
+     protected void onCreate(Bundle icicle) {
+         super.onCreate(icicle);
+ 
++        getWindow().addSystemFlags(
++                android.view.WindowManager.LayoutParams
++                        .SYSTEM_FLAG_HIDE_NON_SYSTEM_OVERLAY_WINDOWS);
++
+         addPreferencesFromResource(R.xml.cdma_call_privacy);
+ 
+         SubscriptionInfoHelper subInfoHelper = new SubscriptionInfoHelper(this, getIntent());
+         subInfoHelper.setActionBarTitle(
+                 getActionBar(), getResources(), R.string.labelCdmaMore_with_label);
+ 
+         mButtonVoicePrivacy = (SwitchPreference) findPreference(BUTTON_VP_KEY);
+diff --git a/src/com/android/phone/ChangeIccPinScreen.java b/src/com/android/phone/ChangeIccPinScreen.java
+index 70bf4318c..6fbd2d42e 100644
+--- a/src/com/android/phone/ChangeIccPinScreen.java
++++ b/src/com/android/phone/ChangeIccPinScreen.java
+@@ -87,14 +87,18 @@ public class ChangeIccPinScreen extends Activity {
+             return;
+         }
+     };
+ 
+     public void onCreate(Bundle icicle) {
+         super.onCreate(icicle);
+ 
++        getWindow().addSystemFlags(
++                android.view.WindowManager.LayoutParams
++                        .SYSTEM_FLAG_HIDE_NON_SYSTEM_OVERLAY_WINDOWS);
++
+         mPhone = PhoneGlobals.getPhone();
+ 
+         resolveIntent();
+ 
+         setContentView(R.layout.change_sim_pin_screen);
+ 
+         mOldPin = (EditText) findViewById(R.id.old_pin);
+diff --git a/src/com/android/phone/EmergencyDialer.java b/src/com/android/phone/EmergencyDialer.java
+index 03a2e57cf..c47e09484 100644
+--- a/src/com/android/phone/EmergencyDialer.java
++++ b/src/com/android/phone/EmergencyDialer.java
+@@ -254,14 +254,18 @@ public class EmergencyDialer extends Activity implements View.OnClickListener,
+         updateTtsSpans();
+     }
+ 
+     @Override
+     protected void onCreate(Bundle icicle) {
+         super.onCreate(icicle);
+ 
++        getWindow().addSystemFlags(
++                android.view.WindowManager.LayoutParams
++                        .SYSTEM_FLAG_HIDE_NON_SYSTEM_OVERLAY_WINDOWS);
++
+         mMetricsLogger = new EmergencyDialerMetricsLogger(this);
+ 
+         mEntryType = getIntent().getIntExtra(EXTRA_ENTRY_TYPE, ENTRY_TYPE_UNKNOWN);
+         Log.d(LOG_TAG, "Launched from " + entryTypeToString(mEntryType));
+ 
+         // Allow this activity to be displayed in front of the keyguard / lockscreen.
+         setShowWhenLocked(true);
+diff --git a/src/com/android/phone/EnableIccPinScreen.java b/src/com/android/phone/EnableIccPinScreen.java
+index 160978f57..3ecbdb52f 100644
+--- a/src/com/android/phone/EnableIccPinScreen.java
++++ b/src/com/android/phone/EnableIccPinScreen.java
+@@ -60,14 +60,18 @@ public class EnableIccPinScreen extends Activity {
+         }
+     };
+ 
+     @Override
+     protected void onCreate(Bundle icicle) {
+         super.onCreate(icicle);
+ 
++        getWindow().addSystemFlags(
++                android.view.WindowManager.LayoutParams
++                        .SYSTEM_FLAG_HIDE_NON_SYSTEM_OVERLAY_WINDOWS);
++
+         setContentView(R.layout.enable_sim_pin_screen);
+         setupView();
+ 
+         mPhone = PhoneGlobals.getPhone();
+         mEnable = !mPhone.getIccCard().getIccLockEnabled();
+ 
+         int id = mEnable ? R.string.enable_sim_pin : R.string.disable_sim_pin;
+diff --git a/src/com/android/phone/GsmUmtsAdditionalCallOptions.java b/src/com/android/phone/GsmUmtsAdditionalCallOptions.java
+index 6e289221c..6048c927a 100644
+--- a/src/com/android/phone/GsmUmtsAdditionalCallOptions.java
++++ b/src/com/android/phone/GsmUmtsAdditionalCallOptions.java
+@@ -38,14 +38,18 @@ public class GsmUmtsAdditionalCallOptions extends TimeConsumingPreferenceActivit
+     private boolean mCLIROverUtPrecautions = false;
+     private boolean mCWOverUtPrecautions = false;
+ 
+     @Override
+     protected void onCreate(Bundle icicle) {
+         super.onCreate(icicle);
+ 
++        getWindow().addSystemFlags(
++                android.view.WindowManager.LayoutParams
++                        .SYSTEM_FLAG_HIDE_NON_SYSTEM_OVERLAY_WINDOWS);
++
+         addPreferencesFromResource(R.xml.gsm_umts_additional_options);
+ 
+         mSubscriptionInfoHelper = new SubscriptionInfoHelper(this, getIntent());
+         mSubscriptionInfoHelper.setActionBarTitle(
+                 getActionBar(), getResources(), R.string.additional_gsm_call_settings_with_label);
+         mPhone = mSubscriptionInfoHelper.getPhone();
+ 
+diff --git a/src/com/android/phone/GsmUmtsCallBarringOptions.java b/src/com/android/phone/GsmUmtsCallBarringOptions.java
+index a6f984405..ca25e66fa 100644
+--- a/src/com/android/phone/GsmUmtsCallBarringOptions.java
++++ b/src/com/android/phone/GsmUmtsCallBarringOptions.java
+@@ -348,14 +348,19 @@ public class GsmUmtsCallBarringOptions extends TimeConsumingPreferenceActivity
+     private boolean validatePassword(String password) {
+         return password != null && password.length() == PW_LENGTH;
+     }
+ 
+     @Override
+     protected void onCreate(Bundle icicle) {
+         super.onCreate(icicle);
++
++        getWindow().addSystemFlags(
++                android.view.WindowManager.LayoutParams
++                        .SYSTEM_FLAG_HIDE_NON_SYSTEM_OVERLAY_WINDOWS);
++
+         if (DBG) {
+             Log.d(LOG_TAG, "onCreate, reading callbarring_options.xml file");
+         }
+         addPreferencesFromResource(R.xml.callbarring_options);
+ 
+         mSubscriptionInfoHelper = new SubscriptionInfoHelper(this, getIntent());
+         mPhone = mSubscriptionInfoHelper.getPhone();
+diff --git a/src/com/android/phone/GsmUmtsCallForwardOptions.java b/src/com/android/phone/GsmUmtsCallForwardOptions.java
+index b8ea8fd46..007a2d3f6 100644
+--- a/src/com/android/phone/GsmUmtsCallForwardOptions.java
++++ b/src/com/android/phone/GsmUmtsCallForwardOptions.java
+@@ -1,14 +1,17 @@
+ package com.android.phone;
+ 
+ import android.app.ActionBar;
++import android.content.ContentProvider;
+ import android.content.Intent;
+ import android.database.Cursor;
+ import android.os.Bundle;
+ import android.os.PersistableBundle;
++import android.os.Process;
++import android.os.UserHandle;
+ import android.preference.Preference;
+ import android.preference.PreferenceScreen;
+ import android.telephony.CarrierConfigManager;
+ import android.util.Log;
+ import android.view.MenuItem;
+ 
+ import com.android.internal.telephony.CallForwardInfo;
+@@ -50,14 +53,18 @@ public class GsmUmtsCallForwardOptions extends TimeConsumingPreferenceActivity {
+     private boolean mReplaceInvalidCFNumbers;
+     private boolean mCallForwardByUssd;
+ 
+     @Override
+     protected void onCreate(Bundle icicle) {
+         super.onCreate(icicle);
+ 
++        getWindow().addSystemFlags(
++                android.view.WindowManager.LayoutParams
++                        .SYSTEM_FLAG_HIDE_NON_SYSTEM_OVERLAY_WINDOWS);
++
+         addPreferencesFromResource(R.xml.callforward_options);
+ 
+         mSubscriptionInfoHelper = new SubscriptionInfoHelper(this, getIntent());
+         mSubscriptionInfoHelper.setActionBarTitle(
+                 getActionBar(), getResources(), R.string.call_forwarding_settings_with_label);
+         mPhone = mSubscriptionInfoHelper.getPhone();
+ 
+@@ -180,14 +187,23 @@ public class GsmUmtsCallForwardOptions extends TimeConsumingPreferenceActivity {
+         Log.d(LOG_TAG, "onActivityResult: done");
+         if (resultCode != RESULT_OK) {
+             Log.d(LOG_TAG, "onActivityResult: contact picker result not OK.");
+             return;
+         }
+         Cursor cursor = null;
+         try {
++            // check if the URI returned by the user belongs to the user
++            final int currentUser = UserHandle.getUserId(Process.myUid());
++            if (currentUser
++                    != ContentProvider.getUserIdFromUri(data.getData(), currentUser)) {
++
++                Log.w(LOG_TAG, "onActivityResult: Contact data of different user, "
++                        + "cannot access");
++                return;
++            }
+             cursor = getContentResolver().query(data.getData(),
+                 NUM_PROJECTION, null, null, null);
+             if ((cursor == null) || (!cursor.moveToFirst())) {
+                 Log.d(LOG_TAG, "onActivityResult: bad contact data, no results found.");
+                 return;
+             }
+ 
+diff --git a/src/com/android/phone/GsmUmtsCallOptions.java b/src/com/android/phone/GsmUmtsCallOptions.java
+index 51d1b662e..652331c40 100644
+--- a/src/com/android/phone/GsmUmtsCallOptions.java
++++ b/src/com/android/phone/GsmUmtsCallOptions.java
+@@ -35,14 +35,18 @@ public class GsmUmtsCallOptions extends PreferenceActivity {
+     public static final String CALL_BARRING_KEY = "call_barring_key";
+     public static final String ADDITIONAL_GSM_SETTINGS_KEY = "additional_gsm_call_settings_key";
+ 
+     @Override
+     protected void onCreate(Bundle icicle) {
+         super.onCreate(icicle);
+ 
++        getWindow().addSystemFlags(
++                android.view.WindowManager.LayoutParams
++                        .SYSTEM_FLAG_HIDE_NON_SYSTEM_OVERLAY_WINDOWS);
++
+         addPreferencesFromResource(R.xml.gsm_umts_call_options);
+ 
+         SubscriptionInfoHelper subInfoHelper = new SubscriptionInfoHelper(this, getIntent());
+         subInfoHelper.setActionBarTitle(
+                 getActionBar(), getResources(), R.string.labelGsmMore_with_label);
+         init(getPreferenceScreen(), subInfoHelper);
+ 
+diff --git a/src/com/android/phone/PhoneInterfaceManager.java b/src/com/android/phone/PhoneInterfaceManager.java
+index aad961f14..cae6ef13b 100755
+--- a/src/com/android/phone/PhoneInterfaceManager.java
++++ b/src/com/android/phone/PhoneInterfaceManager.java
+@@ -17,14 +17,15 @@
+ package com.android.phone;
+ 
+ import static android.content.pm.PackageManager.PERMISSION_GRANTED;
+ 
+ import static com.android.internal.telephony.PhoneConstants.SUBSCRIPTION_KEY;
+ 
+ import android.Manifest.permission;
++import android.annotation.NonNull;
+ import android.annotation.Nullable;
+ import android.app.AppOpsManager;
+ import android.app.PendingIntent;
+ import android.content.ComponentName;
+ import android.content.ContentResolver;
+ import android.content.Context;
+ import android.content.Intent;
+@@ -82,14 +83,15 @@ import android.telephony.Rlog;
+ import android.telephony.ServiceState;
+ import android.telephony.SignalStrength;
+ import android.telephony.SubscriptionInfo;
+ import android.telephony.SubscriptionManager;
+ import android.telephony.TelephonyHistogram;
+ import android.telephony.TelephonyManager;
+ import android.telephony.TelephonyScanManager;
++import android.telephony.UiccAccessRule;
+ import android.telephony.UiccCardInfo;
+ import android.telephony.UiccSlotInfo;
+ import android.telephony.UssdResponse;
+ import android.telephony.VisualVoicemailSmsFilterSettings;
+ import android.telephony.cdma.CdmaCellLocation;
+ import android.telephony.data.ApnSetting;
+ import android.telephony.data.ApnSetting.ApnType;
+@@ -2662,28 +2664,28 @@ public class PhoneInterfaceManager extends ITelephony.Stub {
+         }
+     }
+ 
+     @Override
+     public void enableVisualVoicemailSmsFilter(String callingPackage, int subId,
+             VisualVoicemailSmsFilterSettings settings) {
+         mAppOps.checkPackage(Binder.getCallingUid(), callingPackage);
+-
++        enforceVisualVoicemailPackage(callingPackage, subId);
+         final long identity = Binder.clearCallingIdentity();
+         try {
+             VisualVoicemailSmsFilterConfig.enableVisualVoicemailSmsFilter(
+                     mApp, callingPackage, subId, settings);
+         } finally {
+             Binder.restoreCallingIdentity(identity);
+         }
+     }
+ 
+     @Override
+     public void disableVisualVoicemailSmsFilter(String callingPackage, int subId) {
+         mAppOps.checkPackage(Binder.getCallingUid(), callingPackage);
+-
++        enforceVisualVoicemailPackage(callingPackage, subId);
+         final long identity = Binder.clearCallingIdentity();
+         try {
+             VisualVoicemailSmsFilterConfig.disableVisualVoicemailSmsFilter(
+                     mApp, callingPackage, subId);
+         } finally {
+             Binder.restoreCallingIdentity(identity);
+         }
+@@ -4804,22 +4806,26 @@ public class PhoneInterfaceManager extends ITelephony.Stub {
+         SubscriptionController subController = SubscriptionController.getInstance();
+         if (privilegeFromSim == TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS
+                 || subController == null) return privilegeFromSim;
+ 
+         int uid = Binder.getCallingUid();
+         PackageManager pkgMgr = phone.getContext().getPackageManager();
+         String[] packages = pkgMgr.getPackagesForUid(uid);
++        if (packages == null) {
++            return privilegeFromSim;
++        }
+ 
+         final long identity = Binder.clearCallingIdentity();
+         try {
+-            SubscriptionInfo subInfo = subController.getSubscriptionInfo(phone.getSubId());
+-            SubscriptionManager subManager = (SubscriptionManager)
+-                    phone.getContext().getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE);
++            int subId = phone.getSubId();
++            SubscriptionInfo subInfo = subController.getSubscriptionInfo(subId);
++            List<UiccAccessRule> carrierConfigAccessRules = subInfo.getCarrierConfigAccessRules();
++
+             for (String pkg : packages) {
+-                if (subManager.canManageSubscription(subInfo, pkg)) {
++                if (hasCarrierConfigAccess(pkg, pkgMgr, carrierConfigAccessRules)) {
+                     return TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS;
+                 }
+             }
+             return privilegeFromSim;
+         } finally {
+             Binder.restoreCallingIdentity(identity);
+         }
+@@ -4830,24 +4836,59 @@ public class PhoneInterfaceManager extends ITelephony.Stub {
+         //load access rules from carrier configs, and check those as well: b/139133814
+         SubscriptionController subController = SubscriptionController.getInstance();
+         if (privilegeFromSim == TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS
+                 || subController == null) return privilegeFromSim;
+ 
+         final long identity = Binder.clearCallingIdentity();
+         try {
+-            SubscriptionInfo subInfo = subController.getSubscriptionInfo(phone.getSubId());
+-            SubscriptionManager subManager = (SubscriptionManager)
+-                    phone.getContext().getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE);
+-            return subManager.canManageSubscription(subInfo, pkgName)
++            int subId = phone.getSubId();
++            SubscriptionInfo subInfo = subController.getSubscriptionInfo(subId);
++            List<UiccAccessRule> carrierConfigAccessRules = subInfo.getCarrierConfigAccessRules();
++
++            return hasCarrierConfigAccess(pkgName, phone.getContext().getPackageManager(),
++                carrierConfigAccessRules)
+                 ? TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS : privilegeFromSim;
+         } finally {
+             Binder.restoreCallingIdentity(identity);
+         }
+     }
+ 
++    /**
++     * Check whether carrier privilege status can be granted to the provided app for this
++     * subscription based on the carrier config access rules of the subscription.
++     *
++     * @param packageName package name of the app to check
++     * @param packageManager package manager
++     * @param carrierConfigAccessRules carrier config access rules of the subscription
++     * @return true if the app is included in the mCarrierConfigAccessRules of this subscription.
++     */
++    private boolean hasCarrierConfigAccess(String packageName, PackageManager packageManager,
++        @NonNull List<UiccAccessRule> carrierConfigAccessRules) {
++        if ((packageName == null) || (carrierConfigAccessRules.isEmpty())) {
++            return false;
++        }
++
++        PackageInfo packageInfo;
++        try {
++            packageInfo = packageManager.getPackageInfo(packageName,
++                PackageManager.GET_SIGNING_CERTIFICATES);
++        } catch (PackageManager.NameNotFoundException e) {
++            logv("Unknown package: " + packageName);
++            return false;
++        }
++
++        for (UiccAccessRule rule : carrierConfigAccessRules) {
++            if (rule.getCarrierPrivilegeStatus(packageInfo)
++                == TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS) {
++                return true;
++            }
++        }
++        return false;
++    }
++
+     @Override
+     public int getCarrierPrivilegeStatus(int subId) {
+         final Phone phone = getPhone(subId);
+         if (phone == null) {
+             loge("getCarrierPrivilegeStatus: Invalid subId");
+             return TelephonyManager.CARRIER_PRIVILEGE_STATUS_NO_ACCESS;
+         }
+diff --git a/src/com/android/phone/SimContacts.java b/src/com/android/phone/SimContacts.java
+index 4229482f2..b98434ed0 100644
+--- a/src/com/android/phone/SimContacts.java
++++ b/src/com/android/phone/SimContacts.java
+@@ -227,14 +227,18 @@ public class SimContacts extends ADNList {
+ 
+     /* Followings are overridden methods */
+ 
+     @Override
+     protected void onCreate(Bundle icicle) {
+         super.onCreate(icicle);
+ 
++        getWindow().addSystemFlags(
++                android.view.WindowManager.LayoutParams
++                        .SYSTEM_FLAG_HIDE_NON_SYSTEM_OVERLAY_WINDOWS);
++
+         Intent intent = getIntent();
+         if (intent != null) {
+             final String accountName = intent.getStringExtra("account_name");
+             final String accountType = intent.getStringExtra("account_type");
+             if (!TextUtils.isEmpty(accountName) && !TextUtils.isEmpty(accountType)) {
+                 mAccount = new Account(accountName, accountType);
+             }
+diff --git a/src/com/android/phone/settings/VoicemailSettingsActivity.java b/src/com/android/phone/settings/VoicemailSettingsActivity.java
+index 2efa81c1e..484834fbc 100644
+--- a/src/com/android/phone/settings/VoicemailSettingsActivity.java
++++ b/src/com/android/phone/settings/VoicemailSettingsActivity.java
+@@ -13,22 +13,25 @@
+  * See the License for the specific language governing permissions and
+  * limitations under the License
+  */
+ 
+ package com.android.phone.settings;
+ 
+ import android.app.Dialog;
++import android.content.ContentProvider;
+ import android.content.DialogInterface;
+ import android.content.Intent;
+ import android.database.Cursor;
+ import android.os.AsyncResult;
+ import android.os.Bundle;
+ import android.os.Handler;
+ import android.os.Message;
+ import android.os.PersistableBundle;
++import android.os.Process;
++import android.os.UserHandle;
+ import android.os.UserManager;
+ import android.preference.Preference;
+ import android.preference.PreferenceActivity;
+ import android.preference.PreferenceScreen;
+ import android.provider.ContactsContract.CommonDataKinds;
+ import android.provider.Settings;
+ import android.telecom.PhoneAccountHandle;
+@@ -517,14 +520,25 @@ public class VoicemailSettingsActivity extends PreferenceActivity
+             if (resultCode != RESULT_OK) {
+                 if (DBG) log("onActivityResult: contact picker result not OK.");
+                 return;
+             }
+ 
+             Cursor cursor = null;
+             try {
++                // check if the URI returned by the user belongs to the user
++                final int currentUser = UserHandle.getUserId(Process.myUid());
++                if (currentUser
++                        != ContentProvider.getUserIdFromUri(data.getData(), currentUser)) {
++
++                    if (DBG) {
++                        log("onActivityResult: Contact data of different user, "
++                                + "cannot access");
++                    }
++                    return;
++                }
+                 cursor = getContentResolver().query(data.getData(),
+                     new String[] { CommonDataKinds.Phone.NUMBER }, null, null, null);
+                 if ((cursor == null) || (!cursor.moveToFirst())) {
+                     if (DBG) log("onActivityResult: bad contact data, no results found.");
+                     return;
+                 }
+                 if (mSubMenuVoicemailSettings != null) {
+diff --git a/src/com/android/phone/settings/fdn/DeleteFdnContactScreen.java b/src/com/android/phone/settings/fdn/DeleteFdnContactScreen.java
+index 92baa97ea..2f63b9b11 100644
+--- a/src/com/android/phone/settings/fdn/DeleteFdnContactScreen.java
++++ b/src/com/android/phone/settings/fdn/DeleteFdnContactScreen.java
+@@ -60,14 +60,18 @@ public class DeleteFdnContactScreen extends Activity {
+ 
+     @Override
+     protected void onCreate(Bundle icicle) {
+         super.onCreate(icicle);
+ 
+         resolveIntent();
+ 
++        getWindow().addSystemFlags(
++                android.view.WindowManager.LayoutParams
++                        .SYSTEM_FLAG_HIDE_NON_SYSTEM_OVERLAY_WINDOWS);
++
+         authenticatePin2();
+ 
+         getWindow().requestFeature(Window.FEATURE_INDETERMINATE_PROGRESS);
+         setContentView(R.layout.delete_fdn_contact_screen);
+     }
+ 
+     @Override
+diff --git a/src/com/android/phone/settings/fdn/EditFdnContactScreen.java b/src/com/android/phone/settings/fdn/EditFdnContactScreen.java
+index c358e27c9..5c9879811 100644
+--- a/src/com/android/phone/settings/fdn/EditFdnContactScreen.java
++++ b/src/com/android/phone/settings/fdn/EditFdnContactScreen.java
+@@ -14,25 +14,30 @@
+  * limitations under the License.
+  */
+ 
+ package com.android.phone.settings.fdn;
+ 
+ import static android.view.Window.PROGRESS_VISIBILITY_OFF;
+ import static android.view.Window.PROGRESS_VISIBILITY_ON;
++import static android.app.Activity.RESULT_OK;
++
+ 
+ import android.app.Activity;
+ import android.content.AsyncQueryHandler;
++import android.content.ContentProvider;
+ import android.content.ContentResolver;
+ import android.content.ContentValues;
+ import android.content.Intent;
+ import android.content.res.Resources;
+ import android.database.Cursor;
+ import android.net.Uri;
+ import android.os.Bundle;
+ import android.os.Handler;
++import android.os.Process;
++import android.os.UserHandle;
+ import android.provider.ContactsContract.CommonDataKinds;
+ import android.telephony.PhoneNumberUtils;
+ import android.text.Editable;
+ import android.text.Selection;
+ import android.text.Spannable;
+ import android.text.TextUtils;
+ import android.text.TextWatcher;
+@@ -100,14 +105,17 @@ public class EditFdnContactScreen extends Activity {
+     }
+     /** flag to track saving state */
+     private boolean mDataBusy;
+ 
+     @Override
+     protected void onCreate(Bundle icicle) {
+         super.onCreate(icicle);
++        getWindow().addSystemFlags(
++                android.view.WindowManager.LayoutParams
++                        .SYSTEM_FLAG_HIDE_NON_SYSTEM_OVERLAY_WINDOWS);
+ 
+         resolveIntent();
+ 
+         getWindow().requestFeature(Window.FEATURE_INDETERMINATE_PROGRESS);
+         setContentView(R.layout.edit_fdn_contact_screen);
+         setupView();
+         setTitle(mAddContact ? R.string.add_fdn_contact : R.string.edit_fdn_contact);
+@@ -148,14 +156,22 @@ public class EditFdnContactScreen extends Activity {
+             case CONTACTS_PICKER_CODE:
+                 if (resultCode != RESULT_OK) {
+                     if (DBG) log("onActivityResult: cancelled.");
+                     return;
+                 }
+                 Cursor cursor = null;
+                 try {
++                    // check if the URI returned by the user belongs to the user
++                    final int currentUser = UserHandle.getUserId(Process.myUid());
++                    if (currentUser
++                            != ContentProvider.getUserIdFromUri(intent.getData(), currentUser)) {
++                        Log.w(LOG_TAG, "onActivityResult: Contact data of different user, "
++                                + "cannot access");
++                        return;
++                    }
+                     cursor = getContentResolver().query(intent.getData(),
+                         NUM_PROJECTION, null, null, null);
+                     if ((cursor == null) || (!cursor.moveToFirst())) {
+                         Log.w(LOG_TAG,"onActivityResult: bad contact data, no results found.");
+                         return;
+                     }
+                     mNameField.setText(cursor.getString(0));
+diff --git a/src/com/android/phone/settings/fdn/FdnList.java b/src/com/android/phone/settings/fdn/FdnList.java
+index c2ecbc670..e2b349020 100644
+--- a/src/com/android/phone/settings/fdn/FdnList.java
++++ b/src/com/android/phone/settings/fdn/FdnList.java
+@@ -94,14 +94,18 @@ public class FdnList extends ADNList {
+     private boolean mFdnDialDirectlySupported = false;
+     private SelectionPopupMenu mPopup;
+ 
+     @Override
+     public void onCreate(Bundle icicle) {
+         super.onCreate(icicle);
+ 
++        getWindow().addSystemFlags(
++                android.view.WindowManager.LayoutParams
++                        .SYSTEM_FLAG_HIDE_NON_SYSTEM_OVERLAY_WINDOWS);
++
+         ActionBar actionBar = getActionBar();
+         if (actionBar != null) {
+             // android.R.id.home will be triggered in onOptionsItemSelected()
+             actionBar.setDisplayHomeAsUpEnabled(true);
+         }
+ 
+         mSubscriptionInfoHelper = new SubscriptionInfoHelper(this, getIntent());
+diff --git a/src/com/android/phone/settings/fdn/FdnSetting.java b/src/com/android/phone/settings/fdn/FdnSetting.java
+index 8b5afa4f8..fb0a09825 100644
+--- a/src/com/android/phone/settings/fdn/FdnSetting.java
++++ b/src/com/android/phone/settings/fdn/FdnSetting.java
+@@ -482,14 +482,18 @@ public class FdnSetting extends PreferenceActivity
+         }
+     }
+ 
+     @Override
+     protected void onCreate(Bundle icicle) {
+         super.onCreate(icicle);
+ 
++        getWindow().addSystemFlags(
++                android.view.WindowManager.LayoutParams
++                        .SYSTEM_FLAG_HIDE_NON_SYSTEM_OVERLAY_WINDOWS);
++
+         mSubscriptionInfoHelper = new SubscriptionInfoHelper(this, getIntent());
+         mPhone = mSubscriptionInfoHelper.getPhone();
+ 
+         addPreferencesFromResource(R.xml.fdn_setting);
+ 
+         //get UI object references
+         PreferenceScreen prefSet = getPreferenceScreen();
+diff --git a/src/com/android/phone/settings/fdn/GetPin2Screen.java b/src/com/android/phone/settings/fdn/GetPin2Screen.java
+index 2394a6956..217aa89b7 100644
+--- a/src/com/android/phone/settings/fdn/GetPin2Screen.java
++++ b/src/com/android/phone/settings/fdn/GetPin2Screen.java
+@@ -44,14 +44,18 @@ public class GetPin2Screen extends Activity implements TextView.OnEditorActionLi
+     private EditText mPin2Field;
+     private Button mOkButton;
+ 
+     @Override
+     protected void onCreate(Bundle icicle) {
+         super.onCreate(icicle);
+ 
++        getWindow().addSystemFlags(
++                android.view.WindowManager.LayoutParams
++                        .SYSTEM_FLAG_HIDE_NON_SYSTEM_OVERLAY_WINDOWS);
++
+         setContentView(R.layout.get_pin2_screen);
+ 
+         mPin2Field = (EditText) findViewById(R.id.pin);
+         mPin2Field.setKeyListener(DigitsKeyListener.getInstance());
+         mPin2Field.setMovementMethod(null);
+         mPin2Field.setOnEditorActionListener(this);
+         mPin2Field.setInputType(

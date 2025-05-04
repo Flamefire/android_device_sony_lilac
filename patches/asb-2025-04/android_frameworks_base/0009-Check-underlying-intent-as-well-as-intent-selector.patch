@@ -1,0 +1,89 @@
+From 4ff57d2c479cc5f97959687e91e91b217e62b0ce Mon Sep 17 00:00:00 2001
+From: oli <olit@google.com>
+Date: Tue, 28 Jan 2025 16:28:31 +0000
+Subject: [PATCH 09/12] Check underlying intent as well as intent selector
+
+When checking if an intent can be forwarded across profiles, the
+selector action is checked rather than the intent itself.
+This means badIntents can be spoofed with a different selector and
+launched across profiles.
+
+Bug: 376674080
+Test: manually tested
+Flag: EXEMPT bugfix
+(cherry picked from https://googleplex-android-review.googlesource.com/q/commit:fc28861349e0113f807016501da3e1fd963b59fa)
+(cherry picked from https://googleplex-android-review.googlesource.com/q/commit:6e534e7eb72e380626be9c265800e1371e512108)
+Merged-In: If04e1020fc5a09f04630ba08d7e3b3012f2aa577
+Change-Id: If04e1020fc5a09f04630ba08d7e3b3012f2aa577
+---
+ .../internal/app/IntentForwarderActivity.java | 33 ++++++++++++++-----
+ 1 file changed, 24 insertions(+), 9 deletions(-)
+
+diff --git a/core/java/com/android/internal/app/IntentForwarderActivity.java b/core/java/com/android/internal/app/IntentForwarderActivity.java
+index b3233e700cd3..4bc57e0ea1a5 100644
+--- a/core/java/com/android/internal/app/IntentForwarderActivity.java
++++ b/core/java/com/android/internal/app/IntentForwarderActivity.java
+@@ -26,6 +26,7 @@ import android.app.ActivityTaskManager;
+ import android.app.ActivityThread;
+ import android.app.AppGlobals;
+ import android.app.admin.DevicePolicyManager;
++import android.content.ContentResolver;
+ import android.content.Intent;
+ import android.content.pm.ActivityInfo;
+ import android.content.pm.IPackageManager;
+@@ -192,29 +193,43 @@ public class IntentForwarderActivity extends Activity  {
+      * forwarding if it can be forwarded, {@code null} otherwise.
+      */
+     Intent canForward(Intent incomingIntent, int targetUserId)  {
++        int sourceUserId = getUserId();
++        IPackageManager packageManager = mInjector.getIPackageManager();
++        ContentResolver contentResolver = getContentResolver();
+         Intent forwardIntent = new Intent(incomingIntent);
+         forwardIntent.addFlags(
+                 Intent.FLAG_ACTIVITY_FORWARD_RESULT | Intent.FLAG_ACTIVITY_PREVIOUS_IS_TOP);
+         sanitizeIntent(forwardIntent);
+ 
+-        Intent intentToCheck = forwardIntent;
+-        if (Intent.ACTION_CHOOSER.equals(forwardIntent.getAction())) {
++        if (!canForwardInner(forwardIntent, sourceUserId, targetUserId, packageManager,
++                contentResolver)) {
+             return null;
+         }
+         if (forwardIntent.getSelector() != null) {
+-            intentToCheck = forwardIntent.getSelector();
++            sanitizeIntent(forwardIntent.getSelector());
++            if (!canForwardInner(forwardIntent.getSelector(), sourceUserId, targetUserId,
++                    packageManager, contentResolver)) {
++                return null;
++            }
++        }
++        return forwardIntent;
++    }
++
++    private static boolean canForwardInner(Intent intent, int sourceUserId, int targetUserId,
++            IPackageManager packageManager, ContentResolver contentResolver) {
++        if (Intent.ACTION_CHOOSER.equals(intent.getAction())) {
++            return false;
+         }
+-        String resolvedType = intentToCheck.resolveTypeIfNeeded(getContentResolver());
+-        sanitizeIntent(intentToCheck);
++        String resolvedType = intent.resolveTypeIfNeeded(contentResolver);
+         try {
+-            if (mInjector.getIPackageManager().
+-                    canForwardTo(intentToCheck, resolvedType, getUserId(), targetUserId)) {
+-                return forwardIntent;
++            if (packageManager.canForwardTo(
++                    intent, resolvedType, sourceUserId, targetUserId)) {
++                return true;
+             }
+         } catch (RemoteException e) {
+             Slog.e(TAG, "PackageManagerService is dead?");
+         }
+-        return null;
++        return false;
+     }
+ 
+     /**
+-- 
+2.40.1
+

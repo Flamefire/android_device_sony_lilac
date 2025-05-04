@@ -1,0 +1,124 @@
+From b0d8938357c756d2899e35b66ad048ba634ccbf6 Mon Sep 17 00:00:00 2001
+From: Julia Reynolds <juliacr@google.com>
+Date: Fri, 8 Apr 2022 17:55:02 -0400
+Subject: [PATCH 04/12] Modify handling of notifs with invalid sounds
+
+Previously, if an app posted a notification with an invalid sound
+and they targeted P+, we would not post the notification.
+
+However, sounds are often not in the control of apps, and apps
+should not be blamed if those sounds get corrupted.
+
+With this cl, rather than dropping the notification if the app
+provides an invalid uri, we will replace the sound with the default
+notification sound.
+
+Bug: 227770797
+Fixes: 201488127
+Test: NotificationRecordTest; modify sms sounds to be invalid and ensure
+notification is posted with sound
+
+Change-Id: Id438b7ea6912b13cfb79a09fe700474ad17879de
+---
+ .../notification/NotificationRecord.java      | 18 ++++++++-----
+ .../notification/NotificationRecordTest.java  | 27 +++++++++++++++++--
+ 2 files changed, 37 insertions(+), 8 deletions(-)
+
+diff --git a/services/core/java/com/android/server/notification/NotificationRecord.java b/services/core/java/com/android/server/notification/NotificationRecord.java
+index 9426bac7fd6c..b2c7406c95f1 100644
+--- a/services/core/java/com/android/server/notification/NotificationRecord.java
++++ b/services/core/java/com/android/server/notification/NotificationRecord.java
+@@ -1190,14 +1190,14 @@ public final class NotificationRecord {
+     protected void calculateGrantableUris() {
+         final Notification notification = getNotification();
+         notification.visitUris((uri) -> {
+-            visitGrantableUri(uri, false);
++            visitGrantableUri(uri, false, false);
+         });
+ 
+         if (notification.getChannelId() != null) {
+             NotificationChannel channel = getChannel();
+             if (channel != null) {
+                 visitGrantableUri(channel.getSound(), (channel.getUserLockedFields()
+-                        & NotificationChannel.USER_LOCKED_SOUND) != 0);
++                        & NotificationChannel.USER_LOCKED_SOUND) != 0, true);
+             }
+         }
+     }
+@@ -1210,7 +1210,7 @@ public final class NotificationRecord {
+      * {@link #mGrantableUris}. Otherwise, this will either log or throw
+      * {@link SecurityException} depending on target SDK of enqueuing app.
+      */
+-    private void visitGrantableUri(Uri uri, boolean userOverriddenUri) {
++    private void visitGrantableUri(Uri uri, boolean userOverriddenUri, boolean isSound) {
+         if (uri == null || !ContentResolver.SCHEME_CONTENT.equals(uri.getScheme())) return;
+ 
+         // We can't grant Uri permissions from system
+@@ -1231,10 +1231,16 @@ public final class NotificationRecord {
+             mGrantableUris.add(uri);
+         } catch (SecurityException e) {
+             if (!userOverriddenUri) {
+-                if (mTargetSdkVersion >= Build.VERSION_CODES.P) {
+-                    throw e;
++                if (isSound) {
++                    mSound = Settings.System.DEFAULT_NOTIFICATION_URI;
++                    Log.w(TAG, "Replacing " + uri + " from " + sourceUid + ": " + e.getMessage());
+                 } else {
+-                    Log.w(TAG, "Ignoring " + uri + " from " + sourceUid + ": " + e.getMessage());
++                    if (mTargetSdkVersion >= Build.VERSION_CODES.P) {
++                        throw e;
++                    } else {
++                        Log.w(TAG,
++                                "Ignoring " + uri + " from " + sourceUid + ": " + e.getMessage());
++                    }
+                 }
+             }
+         } finally {
+diff --git a/services/tests/uiservicestests/src/com/android/server/notification/NotificationRecordTest.java b/services/tests/uiservicestests/src/com/android/server/notification/NotificationRecordTest.java
+index fab6b7fd0d77..ee205c194ec8 100644
+--- a/services/tests/uiservicestests/src/com/android/server/notification/NotificationRecordTest.java
++++ b/services/tests/uiservicestests/src/com/android/server/notification/NotificationRecordTest.java
+@@ -755,8 +755,10 @@ public class NotificationRecordTest extends UiServiceTestCase {
+         when(ugm.checkGrantUriPermission(anyInt(), eq(null), any(Uri.class),
+                 anyInt(), anyInt())).thenThrow(new SecurityException());
+ 
+-        Notification n = mock(Notification.class);
+-        when(n.getChannelId()).thenReturn(channel.getId());
++        channel.setSound(null, null);
++        Notification n = new Notification.Builder(mContext, channel.getId())
++                .setSmallIcon(Icon.createWithContentUri(Uri.parse("content://something")))
++                .build();
+         StatusBarNotification sbn =
+                 new StatusBarNotification(PKG_P, PKG_P, id1, tag1, uid, uid, n, mUser, null, uid);
+         NotificationRecord record = new NotificationRecord(mMockContext, sbn, channel);
+@@ -771,6 +773,27 @@ public class NotificationRecordTest extends UiServiceTestCase {
+         }
+     }
+ 
++    @Test
++    public void testCalculateGrantableUris_PappProvided_invalidSound() {
++        IActivityManager am = mock(IActivityManager.class);
++        UriGrantsManagerInternal ugm = mock(UriGrantsManagerInternal.class);
++        when(ugm.checkGrantUriPermission(anyInt(), eq(null), any(Uri.class),
++                anyInt(), anyInt())).thenThrow(new SecurityException());
++
++        channel.setSound(Uri.parse("content://something"), mock(AudioAttributes.class));
++
++        Notification n = mock(Notification.class);
++        when(n.getChannelId()).thenReturn(channel.getId());
++        StatusBarNotification sbn =
++                new StatusBarNotification(PKG_P, PKG_P, id1, tag1, uid, uid, n, mUser, null, uid);
++        NotificationRecord record = new NotificationRecord(mMockContext, sbn, channel);
++        record.mAm = am;
++        record.mUgmInternal = ugm;
++
++        record.calculateGrantableUris();
++        assertEquals(Settings.System.DEFAULT_NOTIFICATION_URI, record.getSound());
++    }
++
+     @Test
+     public void testCalculateGrantableUris_PuserOverridden() {
+         IActivityManager am = mock(IActivityManager.class);
+-- 
+2.40.1
+

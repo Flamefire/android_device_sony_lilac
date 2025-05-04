@@ -1,0 +1,47 @@
+From eac2a5409ab01bb7efc962afa014427d007e257c Mon Sep 17 00:00:00 2001
+From: Sumedh Sen <sumedhsen@google.com>
+Date: Thu, 16 Jan 2025 11:38:56 -0800
+Subject: [PATCH 07/12] [BACKPORT] Get calling package name using a reliable
+ API
+
+getCallingPackage() is unreliable due to reasons listed here:
+go/getcallingpackage-misuse. Replace it with getLaunchedFromPackage
+
+Test: Manual. Install an APK and ensure app is installed
+Bug: 364604008
+(cherry picked from https://googleplex-android-review.googlesource.com/q/commit:934ceb1dc4ee64d6bf3bf16e63e5ec4861be20ca)
+Merged-In: If94ea6566fa3f3b461efaeffff7b074693003c9a
+Change-Id: If94ea6566fa3f3b461efaeffff7b074693003c9a
+---
+ .../src/com/android/packageinstaller/InstallStart.java    | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/packages/PackageInstaller/src/com/android/packageinstaller/InstallStart.java b/packages/PackageInstaller/src/com/android/packageinstaller/InstallStart.java
+index 881f4b183f40..0875a5cc277c 100644
+--- a/packages/PackageInstaller/src/com/android/packageinstaller/InstallStart.java
++++ b/packages/PackageInstaller/src/com/android/packageinstaller/InstallStart.java
+@@ -21,6 +21,7 @@ import static com.android.packageinstaller.PackageUtil.getMaxTargetSdkVersionFor
+ import android.Manifest;
+ import android.annotation.Nullable;
+ import android.app.Activity;
++import android.app.ActivityTaskManager;
+ import android.app.ActivityManager;
+ import android.app.AppGlobals;
+ import android.content.ContentResolver;
+@@ -52,7 +53,12 @@ public class InstallStart extends Activity {
+         super.onCreate(savedInstanceState);
+         mIPackageManager = AppGlobals.getPackageManager();
+         Intent intent = getIntent();
+-        String callingPackage = getCallingPackage();
++        String callingPackage;
++        try {
++            callingPackage = ActivityTaskManager.getService().getLaunchedFromPackage(getActivityToken());
++        } catch (RemoteException e) {
++            throw e.rethrowFromSystemServer();
++        }
+ 
+         final boolean isSessionInstall =
+                 PackageInstaller.ACTION_CONFIRM_INSTALL.equals(intent.getAction());
+-- 
+2.40.1
+
