@@ -14,10 +14,13 @@ YELLOW='\033[0;33m'
 NC='\033[0m'
 PATCH_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+function showError {
+    echo -e "${RED}ERROR: $@${NC}" && false
+}
+
 repo_root=$(readlink -f "$PATCH_ROOT/../../../..")
 if [ ! -d "$repo_root/device/sony/lilac/patches" ]; then
-  echo -e "${RED}Failed to find repository root at $repo_root"
-  exit 1
+  showError "Failed to find repository root at $repo_root"
 fi
 
 numApplied=0
