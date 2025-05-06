@@ -1,4 +1,4 @@
-From 2bb7e8ad846a6482ba7b0f4cb22f23a13472b868 Mon Sep 17 00:00:00 2001
+From f1d992e58fcf51dc0df3db54e44862ed3cd0f1b2 Mon Sep 17 00:00:00 2001
 From: Jack Yu <jackcwyu@google.com>
 Date: Thu, 28 Jul 2022 19:42:27 +0800
 Subject: [PATCH] Only primary user is allowed to control secure nfc
@@ -15,7 +15,7 @@ Merged-In: I945490ef1e62af479a732c9a260ed94bdd8bc313
  2 files changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/src/com/android/settings/nfc/SecureNfcEnabler.java b/src/com/android/settings/nfc/SecureNfcEnabler.java
-index f31a382a57..ad5c4ab7e8 100644
+index f31a382a571..ad5c4ab7e83 100644
 --- a/src/com/android/settings/nfc/SecureNfcEnabler.java
 +++ b/src/com/android/settings/nfc/SecureNfcEnabler.java
 @@ -61,7 +61,7 @@ public class SecureNfcEnabler extends BaseNfcEnabler {
@@ -28,7 +28,7 @@ index f31a382a57..ad5c4ab7e8 100644
          }
          return true;
 diff --git a/src/com/android/settings/nfc/SecureNfcPreferenceController.java b/src/com/android/settings/nfc/SecureNfcPreferenceController.java
-index 2ff685e5a0..ab87ddba34 100644
+index 2ff685e5a0b..ab87ddba34c 100644
 --- a/src/com/android/settings/nfc/SecureNfcPreferenceController.java
 +++ b/src/com/android/settings/nfc/SecureNfcPreferenceController.java
 @@ -104,7 +104,7 @@ public class SecureNfcPreferenceController extends TogglePreferenceController

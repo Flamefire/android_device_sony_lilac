@@ -1,4 +1,4 @@
-From fceef4e87a87813f39576ad460cf83995bafbfdd Mon Sep 17 00:00:00 2001
+From bb1486d58a558d71da10743cb8c1f80a885a69fb Mon Sep 17 00:00:00 2001
 From: Taran Singh <tarandeep@google.com>
 Date: Fri, 19 May 2023 23:17:47 +0000
 Subject: [PATCH 2/2] DO NOT MERGE: Prevent non-system IME from becoming device
@@ -21,7 +21,7 @@ Change-Id: I6470d1684d707f4b1e86f8b456be0b4e0af5f188
  1 file changed, 64 insertions(+), 56 deletions(-)
 
 diff --git a/src/com/android/settings/applications/specialaccess/deviceadmin/DeviceAdminAdd.java b/src/com/android/settings/applications/specialaccess/deviceadmin/DeviceAdminAdd.java
-index 786efd1ef4..56ba17ccc6 100644
+index 786efd1ef4c..56ba17ccc62 100644
 --- a/src/com/android/settings/applications/specialaccess/deviceadmin/DeviceAdminAdd.java
 +++ b/src/com/android/settings/applications/specialaccess/deviceadmin/DeviceAdminAdd.java
 @@ -50,6 +50,8 @@ import android.text.method.ScrollingMovementMethod;

@@ -1,4 +1,4 @@
-From 8d3f3ffcf99af23dc05b4cfe16dd885c59c594dd Mon Sep 17 00:00:00 2001
+From e61dc6f282608c7aeba8aceecf4a063f2e2e188d Mon Sep 17 00:00:00 2001
 From: t <locc@google.com>
 Date: Thu, 2 Nov 2023 08:06:59 +0000
 Subject: [PATCH 2/2] Disable factory reset in DSU mode
@@ -15,7 +15,7 @@ Change-Id: I485eb6ac7beec0893d91ca5fe8ad88ecd96a5cbe
  2 files changed, 26 insertions(+)
 
 diff --git a/res/values/strings.xml b/res/values/strings.xml
-index 2180ea45f60..425b4a802ae 100644
+index f6e3b0f62df..8494149882b 100644
 --- a/res/values/strings.xml
 +++ b/res/values/strings.xml
 @@ -11417,6 +11417,16 @@

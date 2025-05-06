@@ -1,4 +1,4 @@
-From 047b799f45389fc1935bc532638639f7d281bc52 Mon Sep 17 00:00:00 2001
+From 56de95d1560f220920de8979fa945c903eee9ad6 Mon Sep 17 00:00:00 2001
 From: Adam Bookatz <bookatz@google.com>
 Date: Mon, 18 Nov 2024 15:53:41 -0800
 Subject: [PATCH 2/2] Don't let profiles open the UserSettings overflow [DO NOT

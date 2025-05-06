@@ -1,4 +1,4 @@
-From b29125728492e8dd77c0dc04a17736dedfe91c54 Mon Sep 17 00:00:00 2001
+From 58f1954d9c1bf8be893ed9471c850f6157bc7938 Mon Sep 17 00:00:00 2001
 From: Yanting Yang <yantingyang@google.com>
 Date: Wed, 4 Jan 2023 09:40:38 +0000
 Subject: [PATCH 2/2] Add DISALLOW_APPS_CONTROL check into uninstall app for
@@ -25,7 +25,7 @@ Merged-In: I5d3bbcbaac439c4f7a1e6a9ade7775ff4f2f2ec6
 diff --git a/src/com/android/settings/applications/appinfo/AppInfoDashboardFragment.java b/src/com/android/settings/applications/appinfo/AppInfoDashboardFragment.java
 old mode 100755
 new mode 100644
-index b757380c5d..bbbb7113d5
+index b757380c5dd..bbbb7113d50
 --- a/src/com/android/settings/applications/appinfo/AppInfoDashboardFragment.java
 +++ b/src/com/android/settings/applications/appinfo/AppInfoDashboardFragment.java
 @@ -355,7 +355,13 @@ public class AppInfoDashboardFragment extends DashboardFragment

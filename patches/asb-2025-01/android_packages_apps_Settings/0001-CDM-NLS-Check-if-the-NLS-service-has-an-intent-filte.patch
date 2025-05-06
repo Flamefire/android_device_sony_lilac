@@ -1,4 +1,4 @@
-From 85c5df3c00a0797c31c95a1241804549977d91de Mon Sep 17 00:00:00 2001
+From 42161038cbbdd330e1439d2fe1b55db47b8b7174 Mon Sep 17 00:00:00 2001
 From: Guojing Yuan <guojing@google.com>
 Date: Tue, 1 Oct 2024 21:59:31 +0000
 Subject: [PATCH 1/2] [CDM][NLS] Check if the NLS service has an intent-filter
@@ -15,7 +15,7 @@ Change-Id: Ib79c219cde8d73a218ceb7911f4552d43e384d8e
  1 file changed, 30 insertions(+), 20 deletions(-)
 
 diff --git a/src/com/android/settings/notification/NotificationAccessConfirmationActivity.java b/src/com/android/settings/notification/NotificationAccessConfirmationActivity.java
-index dfe6df2a5ca..b8ee4cdff49 100644
+index a6b565ae6ba..f01e23a5e8f 100644
 --- a/src/com/android/settings/notification/NotificationAccessConfirmationActivity.java
 +++ b/src/com/android/settings/notification/NotificationAccessConfirmationActivity.java
 @@ -29,12 +29,14 @@ import android.app.NotificationManager;
@@ -43,7 +43,7 @@ index dfe6df2a5ca..b8ee4cdff49 100644
  /** @hide */
  public class NotificationAccessConfirmationActivity extends Activity
          implements DialogInterface {
-@@ -90,6 +94,31 @@ public class NotificationAccessConfirmationActivity extends Activity
+@@ -92,6 +96,31 @@ public class NotificationAccessConfirmationActivity extends Activity
              return;
          }
  
@@ -75,7 +75,7 @@ index dfe6df2a5ca..b8ee4cdff49 100644
          AlertController.AlertParams p = new AlertController.AlertParams(this);
          p.mTitle = getString(
                  R.string.notification_listener_security_warning_title,
-@@ -124,19 +153,6 @@ public class NotificationAccessConfirmationActivity extends Activity
+@@ -126,19 +155,6 @@ public class NotificationAccessConfirmationActivity extends Activity
      }
  
      private void onAllow() {
@@ -95,7 +95,7 @@ index dfe6df2a5ca..b8ee4cdff49 100644
          mNm.setNotificationListenerAccessGranted(mComponentName, true);
  
          finish();
-@@ -147,12 +163,6 @@ public class NotificationAccessConfirmationActivity extends Activity
+@@ -149,12 +165,6 @@ public class NotificationAccessConfirmationActivity extends Activity
          return AlertActivity.dispatchPopulateAccessibilityEvent(this, event);
      }
  

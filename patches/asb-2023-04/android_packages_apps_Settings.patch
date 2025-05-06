@@ -1,9 +1,11 @@
 # PWD: packages/apps/Settings
 diff --git a/src/com/android/settings/SettingsPreferenceFragment.java b/src/com/android/settings/SettingsPreferenceFragment.java
-index 6b29b2e1e4..0c537534df 100644
+index 6b29b2e1e48..0c537534dff 100644
 --- a/src/com/android/settings/SettingsPreferenceFragment.java
 +++ b/src/com/android/settings/SettingsPreferenceFragment.java
-@@ -54,19 +54,21 @@ import com.android.settingslib.CustomDialogPreferenceCompat;
+@@ -52,23 +52,25 @@ import com.android.settings.widget.HighlightablePreferenceGroupAdapter;
+ import com.android.settings.widget.LoadingViewController;
+ import com.android.settingslib.CustomDialogPreferenceCompat;
  import com.android.settingslib.CustomEditTextPreferenceCompat;
  import com.android.settingslib.core.instrumentation.Instrumentable;
  import com.android.settingslib.widget.FooterPreferenceMixinCompat;
@@ -26,7 +28,11 @@ index 6b29b2e1e4..0c537534df 100644
  
      protected final FooterPreferenceMixinCompat mFooterPreferenceMixin =
              new FooterPreferenceMixinCompat(this, getSettingsLifecycle());
-@@ -126,10 +128,19 @@ public abstract class SettingsPreferenceFragment extends InstrumentedPreferenceF
+ 
+ 
+@@ -124,14 +126,23 @@ public abstract class SettingsPreferenceFragment extends InstrumentedPreferenceF
+     private boolean mAnimationAllowed;
+ 
      @VisibleForTesting
      public HighlightablePreferenceGroupAdapter mAdapter;
      @VisibleForTesting
@@ -46,7 +52,11 @@ index 6b29b2e1e4..0c537534df 100644
          super.onCreate(icicle);
          SearchMenuController.init(this /* host */);
          HelpMenuController.init(this /* host */);
-@@ -262,10 +273,20 @@ public abstract class SettingsPreferenceFragment extends InstrumentedPreferenceF
+ 
+         if (icicle != null) {
+@@ -260,14 +271,24 @@ public abstract class SettingsPreferenceFragment extends InstrumentedPreferenceF
+      * <p/>
+      * Only override this method if the initial expanded child must be determined at run time.
       */
      public int getInitialExpandedChildCount() {
          return 0;
@@ -67,11 +77,15 @@ index 6b29b2e1e4..0c537534df 100644
          updateEmptyView();
      }
  
+     public LayoutPreference getHeaderView() {
+         return mHeader;
 diff --git a/src/com/android/settings/accounts/AccountDashboardFragment.java b/src/com/android/settings/accounts/AccountDashboardFragment.java
-index 515008af59..627a3177d2 100644
+index 515008af596..627a3177d29 100644
 --- a/src/com/android/settings/accounts/AccountDashboardFragment.java
 +++ b/src/com/android/settings/accounts/AccountDashboardFragment.java
-@@ -65,10 +65,15 @@ public class AccountDashboardFragment extends DashboardFragment {
+@@ -63,14 +63,19 @@ public class AccountDashboardFragment extends DashboardFragment {
+ 
+     @Override
      protected List<AbstractPreferenceController> createPreferenceControllers(Context context) {
          final String[] authorities = getIntent().getStringArrayExtra(EXTRA_AUTHORITIES);
          return buildPreferenceControllers(context, this /* parent */, authorities);
@@ -87,13 +101,17 @@ index 515008af59..627a3177d2 100644
          final List<AbstractPreferenceController> controllers = new ArrayList<>();
  
          final AccountPreferenceController accountPrefController =
+                 new AccountPreferenceController(context, parent, authorities);
+         if (parent != null) {
 diff --git a/src/com/android/settings/applications/appinfo/AppInfoDashboardFragment.java b/src/com/android/settings/applications/appinfo/AppInfoDashboardFragment.java
 old mode 100755
 new mode 100644
-index 9917d352e8..bbbb7113d5
+index 9917d352e8d..bbbb7113d50
 --- a/src/com/android/settings/applications/appinfo/AppInfoDashboardFragment.java
 +++ b/src/com/android/settings/applications/appinfo/AppInfoDashboardFragment.java
-@@ -353,11 +353,17 @@ public class AppInfoDashboardFragment extends DashboardFragment
+@@ -351,15 +351,21 @@ public class AppInfoDashboardFragment extends DashboardFragment
+ 
+     @Override
      public void onPrepareOptionsMenu(Menu menu) {
          if (mFinishing) {
              return;
@@ -112,7 +130,11 @@ index 9917d352e8..bbbb7113d5
          final boolean uninstallUpdateDisabled = getContext().getResources().getBoolean(
                  R.bool.config_disable_uninstall_update);
          uninstallUpdatesItem.setVisible(mUserManager.isAdminUser()
-@@ -471,10 +477,15 @@ public class AppInfoDashboardFragment extends DashboardFragment
+                 && mUpdatedSysApp
+                 && !mAppsControlDisallowedBySystem
+@@ -469,14 +475,19 @@ public class AppInfoDashboardFragment extends DashboardFragment
+                 return false;
+             }
          }
  
          return true;
@@ -128,11 +150,15 @@ index 9917d352e8..bbbb7113d5
          // Create new intent to launch Uninstaller activity
          final Uri packageURI = Uri.parse("package:" + packageName);
          final Intent uninstallIntent = new Intent(Intent.ACTION_UNINSTALL_PACKAGE, packageURI);
+         uninstallIntent.putExtra(Intent.EXTRA_UNINSTALL_ALL_USERS, allUsers);
+         mMetricsFeatureProvider.action(
 diff --git a/src/com/android/settings/development/DevelopmentSettingsDashboardFragment.java b/src/com/android/settings/development/DevelopmentSettingsDashboardFragment.java
-index f18225e8fb..ca46b24a31 100644
+index f18225e8fb5..ca46b24a313 100644
 --- a/src/com/android/settings/development/DevelopmentSettingsDashboardFragment.java
 +++ b/src/com/android/settings/development/DevelopmentSettingsDashboardFragment.java
-@@ -179,10 +179,15 @@ public class DevelopmentSettingsDashboardFragment extends RestrictedDashboardFra
+@@ -177,14 +177,19 @@ public class DevelopmentSettingsDashboardFragment extends RestrictedDashboardFra
+         if (DevelopmentSettingsEnabler.isDevelopmentSettingsEnabled(getContext())) {
+             enableDeveloperOptions();
          } else {
              disableDeveloperOptions();
          }
@@ -148,11 +174,15 @@ index f18225e8fb..ca46b24a31 100644
              Bundle savedInstanceState) {
          registerReceivers();
  
+         final BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
+         if (adapter != null) {
 diff --git a/src/com/android/settings/nfc/SecureNfcEnabler.java b/src/com/android/settings/nfc/SecureNfcEnabler.java
-index f31a382a57..ad5c4ab7e8 100644
+index f31a382a571..ad5c4ab7e83 100644
 --- a/src/com/android/settings/nfc/SecureNfcEnabler.java
 +++ b/src/com/android/settings/nfc/SecureNfcEnabler.java
-@@ -59,11 +59,11 @@ public class SecureNfcEnabler extends BaseNfcEnabler {
+@@ -57,13 +57,13 @@ public class SecureNfcEnabler extends BaseNfcEnabler {
+             case NfcAdapter.STATE_TURNING_OFF:
+                 mPreference.setEnabled(false);
                  break;
          }
      }
@@ -166,10 +196,12 @@ index f31a382a57..ad5c4ab7e8 100644
      }
  }
 diff --git a/src/com/android/settings/nfc/SecureNfcPreferenceController.java b/src/com/android/settings/nfc/SecureNfcPreferenceController.java
-index 2ff685e5a0..ab87ddba34 100644
+index 2ff685e5a0b..ab87ddba34c 100644
 --- a/src/com/android/settings/nfc/SecureNfcPreferenceController.java
 +++ b/src/com/android/settings/nfc/SecureNfcPreferenceController.java
-@@ -102,11 +102,11 @@ public class SecureNfcPreferenceController extends TogglePreferenceController
+@@ -100,14 +100,14 @@ public class SecureNfcPreferenceController extends TogglePreferenceController
+     public void onPause() {
+         if (mSecureNfcEnabler != null) {
              mSecureNfcEnabler.pause();
          }
      }
@@ -182,11 +214,14 @@ index 2ff685e5a0..ab87ddba34 100644
          return true;
      }
  
+ }
 diff --git a/src/com/android/settings/system/ResetDashboardFragment.java b/src/com/android/settings/system/ResetDashboardFragment.java
-index 5243d6a393..aa06691d67 100644
+index 5243d6a393b..aa06691d67d 100644
 --- a/src/com/android/settings/system/ResetDashboardFragment.java
 +++ b/src/com/android/settings/system/ResetDashboardFragment.java
-@@ -56,10 +56,15 @@ public class ResetDashboardFragment extends DashboardFragment {
+@@ -54,14 +54,19 @@ public class ResetDashboardFragment extends DashboardFragment {
+     }
+ 
      @Override
      protected List<AbstractPreferenceController> createPreferenceControllers(Context context) {
          return buildPreferenceControllers(context, getSettingsLifecycle());
@@ -202,11 +237,15 @@ index 5243d6a393..aa06691d67 100644
          final List<AbstractPreferenceController> controllers = new ArrayList<>();
          controllers.add(new NetworkResetPreferenceController(context));
          controllers.add(new FactoryResetPreferenceController(context));
+         controllers.add(new ResetAppPrefPreferenceController(context, lifecycle));
+         return controllers;
 diff --git a/tests/robotests/src/com/android/settings/SettingsPreferenceFragmentTest.java b/tests/robotests/src/com/android/settings/SettingsPreferenceFragmentTest.java
-index cce01550a7..71c531a4c9 100644
+index cce01550a78..71c531a4c99 100644
 --- a/tests/robotests/src/com/android/settings/SettingsPreferenceFragmentTest.java
 +++ b/tests/robotests/src/com/android/settings/SettingsPreferenceFragmentTest.java
-@@ -21,15 +21,17 @@ import static com.google.common.truth.Truth.assertThat;
+@@ -19,30 +19,33 @@ package com.android.settings;
+ import static com.google.common.truth.Truth.assertThat;
+ 
  import static org.mockito.ArgumentMatchers.any;
  import static org.mockito.Mockito.doReturn;
  import static org.mockito.Mockito.mock;
@@ -224,7 +263,7 @@ index cce01550a7..71c531a4c9 100644
  import androidx.fragment.app.FragmentActivity;
  import androidx.preference.Preference;
  import androidx.preference.PreferenceCategory;
-@@ -37,10 +39,11 @@ import androidx.preference.PreferenceManager;
+ import androidx.preference.PreferenceManager;
  import androidx.preference.PreferenceScreen;
  
  import com.android.settings.testutils.FakeFeatureFactory;
@@ -236,7 +275,11 @@ index cce01550a7..71c531a4c9 100644
  import org.junit.runner.RunWith;
  import org.mockito.Mock;
  import org.mockito.MockitoAnnotations;
-@@ -59,25 +62,38 @@ public class SettingsPreferenceFragmentTest {
+ import org.robolectric.RobolectricTestRunner;
+ import org.robolectric.RuntimeEnvironment;
+@@ -57,29 +60,42 @@ public class SettingsPreferenceFragmentTest {
+     private FragmentActivity mActivity;
+     @Mock
      private View mListContainer;
      @Mock
      private PreferenceScreen mPreferenceScreen;
@@ -275,7 +318,11 @@ index cce01550a7..71c531a4c9 100644
      @Test
      public void removePreference_nested_shouldRemove() {
          final String key = "test_key";
-@@ -185,12 +201,70 @@ public class SettingsPreferenceFragmentTest {
+         final PreferenceScreen mScreen = spy(new PreferenceScreen(mContext, null));
+         when(mScreen.getPreferenceManager()).thenReturn(mock(PreferenceManager.class));
+@@ -183,15 +199,73 @@ public class SettingsPreferenceFragmentTest {
+ 
+         mFragment.checkAvailablePrefs(mPreferenceScreen);
  
          verify(mPreferenceScreen, never()).removePreference(workOnlyCategory);
          verify(workOnlyCategory).setVisible(false);
@@ -346,11 +393,14 @@ index cce01550a7..71c531a4c9 100644
              return 0;
          }
      }
+ }
 diff --git a/tests/robotests/src/com/android/settings/accounts/AccountDashboardFragmentTest.java b/tests/robotests/src/com/android/settings/accounts/AccountDashboardFragmentTest.java
-index 006087516c..b04d5c7637 100644
+index 006087516cf..b04d5c76375 100644
 --- a/tests/robotests/src/com/android/settings/accounts/AccountDashboardFragmentTest.java
 +++ b/tests/robotests/src/com/android/settings/accounts/AccountDashboardFragmentTest.java
-@@ -51,6 +51,11 @@ public class AccountDashboardFragmentTest {
+@@ -49,8 +49,13 @@ public class AccountDashboardFragmentTest {
+         final List<SearchIndexableResource> indexRes =
+                 AccountDashboardFragment.SEARCH_INDEX_DATA_PROVIDER
                          .getXmlResourcesToIndex(RuntimeEnvironment.application, true /* enabled */);
  
          assertThat(indexRes).isNotNull();
@@ -363,10 +413,12 @@ index 006087516c..b04d5c7637 100644
 +    }
  }
 diff --git a/tests/robotests/src/com/android/settings/applications/appinfo/AppInfoDashboardFragmentTest.java b/tests/robotests/src/com/android/settings/applications/appinfo/AppInfoDashboardFragmentTest.java
-index e46cd06afe..5292c60f86 100644
+index e46cd06afe6..5292c60f869 100644
 --- a/tests/robotests/src/com/android/settings/applications/appinfo/AppInfoDashboardFragmentTest.java
 +++ b/tests/robotests/src/com/android/settings/applications/appinfo/AppInfoDashboardFragmentTest.java
-@@ -382,10 +382,15 @@ public final class AppInfoDashboardFragmentTest {
+@@ -380,14 +380,19 @@ public final class AppInfoDashboardFragmentTest {
+                 .containsKey("test"))
+                 .isTrue();
          assertThat(intent.getValue().getBundleExtra(SettingsActivity.EXTRA_SHOW_FRAGMENT_ARGUMENTS)
                  .containsKey(ARG_PACKAGE_NAME))
                  .isTrue();
@@ -382,11 +434,15 @@ index e46cd06afe..5292c60f86 100644
  
          public static Set<String> sHiddenModules = new ArraySet<>();
  
+         @Resetter
+         public static void reset() {
 diff --git a/tests/robotests/src/com/android/settings/development/DevelopmentSettingsDashboardFragmentTest.java b/tests/robotests/src/com/android/settings/development/DevelopmentSettingsDashboardFragmentTest.java
-index 83a4880968..d460d13e9e 100644
+index 83a48809681..d460d13e9ea 100644
 --- a/tests/robotests/src/com/android/settings/development/DevelopmentSettingsDashboardFragmentTest.java
 +++ b/tests/robotests/src/com/android/settings/development/DevelopmentSettingsDashboardFragmentTest.java
-@@ -273,10 +273,15 @@ public class DevelopmentSettingsDashboardFragmentTest {
+@@ -271,14 +271,19 @@ public class DevelopmentSettingsDashboardFragmentTest {
+         doReturn(controller).when(mDashboard)
+                 .getDevelopmentOptionsController(LogPersistPreferenceController.class);
          mDashboard.onDisableLogPersistDialogRejected();
  
          verify(controller).onDisableLogPersistDialogRejected();
@@ -402,9 +458,11 @@ index 83a4880968..d460d13e9e 100644
  
          static boolean mShown;
  
+         public static void reset() {
+             mShown = false;
 diff --git a/tests/robotests/src/com/android/settings/system/ResetDashboardFragmentTest.java b/tests/robotests/src/com/android/settings/system/ResetDashboardFragmentTest.java
 new file mode 100644
-index 0000000000..c1d47887a7
+index 00000000000..c1d47887a70
 --- /dev/null
 +++ b/tests/robotests/src/com/android/settings/system/ResetDashboardFragmentTest.java
 @@ -0,0 +1,40 @@

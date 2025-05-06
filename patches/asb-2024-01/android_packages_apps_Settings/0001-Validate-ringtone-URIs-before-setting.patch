@@ -1,4 +1,4 @@
-From fc8465505f0b744b18a3079c0696098fe6c23f5a Mon Sep 17 00:00:00 2001
+From 846d4f80a85911011005a5808709ce64d1945bc3 Mon Sep 17 00:00:00 2001
 From: Valentin Iftime <valiiftime@google.com>
 Date: Tue, 3 Oct 2023 17:28:34 +0200
 Subject: [PATCH] Validate ringtone URIs before setting
@@ -19,7 +19,7 @@ Change-Id: Ib266b285a3a1c6c5265ae2321159e61e08e349f6
  4 files changed, 165 insertions(+), 15 deletions(-)
 
 diff --git a/src/com/android/settings/DefaultRingtonePreference.java b/src/com/android/settings/DefaultRingtonePreference.java
-index 9bf626c989..4c65488722 100644
+index 9bf626c9898..4c654887227 100644
 --- a/src/com/android/settings/DefaultRingtonePreference.java
 +++ b/src/com/android/settings/DefaultRingtonePreference.java
 @@ -51,16 +51,9 @@ public class DefaultRingtonePreference extends RingtonePreference {
@@ -42,7 +42,7 @@ index 9bf626c989..4c65488722 100644
          }
  
 diff --git a/src/com/android/settings/RingtonePreference.java b/src/com/android/settings/RingtonePreference.java
-index 8f9c618d5e..808420e755 100644
+index 8f9c618d5e8..808420e7557 100644
 --- a/src/com/android/settings/RingtonePreference.java
 +++ b/src/com/android/settings/RingtonePreference.java
 @@ -16,6 +16,8 @@
@@ -150,7 +150,7 @@ index 8f9c618d5e..808420e755 100644
 +
  }
 diff --git a/src/com/android/settings/notification/NotificationSoundPreference.java b/src/com/android/settings/notification/NotificationSoundPreference.java
-index 71684d5cf7..19c4bb8984 100644
+index 71684d5cf75..19c4bb8984d 100644
 --- a/src/com/android/settings/notification/NotificationSoundPreference.java
 +++ b/src/com/android/settings/notification/NotificationSoundPreference.java
 @@ -25,10 +25,13 @@ import android.net.Uri;
@@ -184,7 +184,7 @@ index 71684d5cf7..19c4bb8984 100644
  
          return true;
 diff --git a/tests/unit/src/com/android/settings/DefaultRingtonePreferenceTest.java b/tests/unit/src/com/android/settings/DefaultRingtonePreferenceTest.java
-index 7877684dce..360a8a555b 100644
+index 7877684dce6..360a8a555b4 100644
 --- a/tests/unit/src/com/android/settings/DefaultRingtonePreferenceTest.java
 +++ b/tests/unit/src/com/android/settings/DefaultRingtonePreferenceTest.java
 @@ -16,16 +16,19 @@

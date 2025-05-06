@@ -1,4 +1,4 @@
-From 99e4f13fcff7a6659d4575c904f3102aa7b4d9e3 Mon Sep 17 00:00:00 2001
+From a95cdb90b3e641c0f1deae0276e9c0293dd95f3c Mon Sep 17 00:00:00 2001
 From: Fan Wu <cechkahn@google.com>
 Date: Mon, 22 Jul 2024 16:12:46 +0800
 Subject: [PATCH 3/3] RESTRICT AUTOMERGE Checks cross user permission before

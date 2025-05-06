@@ -1,6 +1,6 @@
 # PWD: packages/apps/Settings
 diff --git a/res/values-af/strings.xml b/res/values-af/strings.xml
-index 4b5a26e7b4..579125667a 100644
+index 4b5a26e7b44..579125667ac 100644
 --- a/res/values-af/strings.xml
 +++ b/res/values-af/strings.xml
 @@ -2844,15 +2844,15 @@
@@ -21,7 +21,7 @@ index 4b5a26e7b4..579125667a 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"Jy is reeds aan \'n altyd-aan VPN gekoppel. As jy aan \'n ander een koppel, sal jou bestaande VPN vervang word en sal altyd-aan-modus afgeskakel word."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"Jy is reeds aan \'n VPN gekoppel. As jy aan \'n ander een koppel, sal jou bestaande VPN vervang word."</string>
 diff --git a/res/values-am/strings.xml b/res/values-am/strings.xml
-index 592dd27ca4..a5851166f6 100644
+index 592dd27ca48..a5851166f68 100644
 --- a/res/values-am/strings.xml
 +++ b/res/values-am/strings.xml
 @@ -2844,15 +2844,15 @@
@@ -42,7 +42,7 @@ index 592dd27ca4..a5851166f6 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"አስቀድመው ሁልጊዜ ከበራ VPN ጋር ተገናኝተዋል። ከተለየ ጋር ከተገናኙ ነባሩ የእርስዎ VPN  ይተካል፣ እና የሁልጊዜ-በርቷል ሁነታ ይጠፋል።"</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"አስቀድመው ከአንድ VPN ጋር ተገናኝተዋል። ከተለየ ጋር ከተገናኙ ነባሩ የእርስዎ VPN ይተካል።"</string>
 diff --git a/res/values-ar/strings.xml b/res/values-ar/strings.xml
-index fec53643bd..c738f103c9 100644
+index fec53643bd8..c738f103c96 100644
 --- a/res/values-ar/strings.xml
 +++ b/res/values-ar/strings.xml
 @@ -2992,15 +2992,15 @@
@@ -63,7 +63,7 @@ index fec53643bd..c738f103c9 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"‏أنت متصل حاليًا بشبكة افتراضية خاصة (VPN) مضبوطة على وضع التشغيل الدائم. وإذا اتصلت بشبكة افتراضية خاصة أخرى، فسيتم استبدال شبكتك الافتراضية الخاصة الحالية، كما سيتم إيقاف وضع التشغيل الدائم."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"‏أنت متصل حاليًا بشبكة افتراضية خاصة (VPN). وإذا اتصلت بشبكة افتراضية خاصة أخرى، فسيتم استبدال شبكتك الافتراضية الخاصة الحالية."</string>
 diff --git a/res/values-as/strings.xml b/res/values-as/strings.xml
-index 29e3c2835e..458c05c56e 100644
+index 29e3c2835ea..458c05c56ee 100644
 --- a/res/values-as/strings.xml
 +++ b/res/values-as/strings.xml
 @@ -2844,15 +2844,15 @@
@@ -84,7 +84,7 @@ index 29e3c2835e..458c05c56e 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"আপুনি ইতিমধ্যে এটা সদা-সক্ৰিয় ভিপিএনৰ সৈতে সংযোজিত হৈ আছে। আপুনি যদি অইন এটা ভিপিএনৰ সৈতে সংযোগ কৰে তেন্তে বৰ্তমানৰটো আঁতৰাই পেলোৱা হ\'ব আৰু সদা-সক্ৰিয় ম\'ডটো অক্ষম কৰা হ\'ব।"</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"আপুনি ইতিমধ্যে এটা ভিপিএনৰ সৈতে সংযোগ কৰিছে। যদি আপুনি অন্য এটালৈ সংযোগ কৰে তেন্তে আপোনাৰ বৰ্তমান ভিপিএন সলনি হ\'ব।"</string>
 diff --git a/res/values-az/strings.xml b/res/values-az/strings.xml
-index fb874c1bc3..fbb73a174a 100644
+index fb874c1bc33..fbb73a174ab 100644
 --- a/res/values-az/strings.xml
 +++ b/res/values-az/strings.xml
 @@ -2844,15 +2844,15 @@
@@ -105,7 +105,7 @@ index fb874c1bc3..fbb73a174a 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"Artıq hər zaman aktiv VPN\'ə qoşulmusunuz. Əgər başqa birinə qoşulsanız, mövcud VPN əvəz ediləcək və hər zaman aktiv rejimi deaktiv ediləcək."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"Artıq VPN\'ə qoşulmusunuz. Əgər başqa birinə qoşulsanız, mövcud VPN əvəz ediləcək."</string>
 diff --git a/res/values-b+sr+Latn/strings.xml b/res/values-b+sr+Latn/strings.xml
-index 0693b625af..a2351c604f 100644
+index 0693b625af7..a2351c604fb 100644
 --- a/res/values-b+sr+Latn/strings.xml
 +++ b/res/values-b+sr+Latn/strings.xml
 @@ -2881,15 +2881,15 @@
@@ -126,7 +126,7 @@ index 0693b625af..a2351c604f 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"Već ste povezani sa uvek uključenim VPN-om. Ako se povežete sa nekim drugim, postojeći VPN će biti zamenjen, a režim Uvek uključen će biti isključen."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"Već ste povezani sa VPN-om. Ako se povežete sa nekim drugim, postojeći VPN će biti zamenjen."</string>
 diff --git a/res/values-be/strings.xml b/res/values-be/strings.xml
-index c65cfe996e..30b4f0dc1c 100644
+index c65cfe996e1..30b4f0dc1cc 100644
 --- a/res/values-be/strings.xml
 +++ b/res/values-be/strings.xml
 @@ -2918,15 +2918,15 @@
@@ -147,7 +147,7 @@ index c65cfe996e..30b4f0dc1c 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"Вы ўжо падключаны да заўсёды ўключанай VPN. Калі вы падключыцеся да іншай, ваша існуючая VPN будзе заменена, а рэжым \"заўсёды ўключана\" будзе адключаны."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"Вы ўжо падключаны да VPN. Калі вы падключыцеся да іншай, ваша існуючая VPN будзе заменена."</string>
 diff --git a/res/values-bg/strings.xml b/res/values-bg/strings.xml
-index 0e01c761e5..ba1d9360eb 100644
+index 0e01c761e5d..ba1d9360eb8 100644
 --- a/res/values-bg/strings.xml
 +++ b/res/values-bg/strings.xml
 @@ -2844,15 +2844,15 @@
@@ -168,7 +168,7 @@ index 0e01c761e5..ba1d9360eb 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"Вече сте свързани с винаги включена виртуална частна мрежа (VPN). Ако установите връзка с друга VPN, съществуващата ще бъде заменена и режимът за винаги включена виртуална частна мрежа ще се деактивира."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"Вече сте свързани с виртуална частна мрежа (VPN). Ако установите връзка с друга VPN, съществуващата ще бъде заменена."</string>
 diff --git a/res/values-bn/strings.xml b/res/values-bn/strings.xml
-index 8e3925870b..7465cad219 100644
+index 8e3925870b6..7465cad219a 100644
 --- a/res/values-bn/strings.xml
 +++ b/res/values-bn/strings.xml
 @@ -2844,15 +2844,15 @@
@@ -189,7 +189,7 @@ index 8e3925870b..7465cad219 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"আপনি ইতিমধ্যেই একটি সর্বদা-চালু VPN এর সাথে কানেক্ট রয়েছেন৷ আপনি যদি অন্য আরেকটিতে কানেক্ট করেন তবে আপনার বিদ্যমান VPN প্রতিস্থাপন করা হবে এবং সর্বদা-চালু মোড বন্ধ হবে৷"</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"আপনি ইতিমধ্যেই একটি VPN এর সাথে কানেক্ট রয়েছেন৷ যদি আপনি অন্য আরেকটিতে কানেক্ট করে থাকেন তবে আপনার বিদ্যমান VPN প্রতিস্থাপন করা হবে৷"</string>
 diff --git a/res/values-bs/strings.xml b/res/values-bs/strings.xml
-index e0eb3bb1d1..0998d5cbac 100644
+index e0eb3bb1d1f..0998d5cbac3 100644
 --- a/res/values-bs/strings.xml
 +++ b/res/values-bs/strings.xml
 @@ -2881,15 +2881,15 @@
@@ -210,7 +210,7 @@ index e0eb3bb1d1..0998d5cbac 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"Već ste povezani na \"uvijek uključen\" VPN. Ako se povežete na drugu mrežu, vaša postojeća VPN će biti zamijenjena, a način rada \"uvijek uključeno\" će se isključiti."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"Već ste povezani na VPN. Ako se povežete na drugu, postojeći VPN će biti zamijenjen."</string>
 diff --git a/res/values-ca/strings.xml b/res/values-ca/strings.xml
-index a276b75467..edb9d53e01 100644
+index a276b75467d..edb9d53e016 100644
 --- a/res/values-ca/strings.xml
 +++ b/res/values-ca/strings.xml
 @@ -2844,15 +2844,15 @@
@@ -231,7 +231,7 @@ index a276b75467..edb9d53e01 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"Ja estàs connectat a una VPN que està sempre activa. Si et connectes a una altra, se substituirà la VPN existent i el mode sempre actiu es desactivarà."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"Ja t\'has connectat a una VPN. Si et connectes a una altra VPN, se substituirà l\'actual."</string>
 diff --git a/res/values-cs/strings.xml b/res/values-cs/strings.xml
-index 7a46f53c4b..1c808cc19e 100644
+index 7a46f53c4b9..1c808cc19e8 100644
 --- a/res/values-cs/strings.xml
 +++ b/res/values-cs/strings.xml
 @@ -2918,15 +2918,15 @@
@@ -252,7 +252,7 @@ index 7a46f53c4b..1c808cc19e 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"Již jste připojeni k trvalé síti VPN. Pokud se připojíte k jiné, stávající síť VPN bude nahrazena a trvalý režim vypnut."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"Již jste připojeni k síti VPN. Pokud se připojíte k jiné, stávající síť VPN bude nahrazena."</string>
 diff --git a/res/values-da/strings.xml b/res/values-da/strings.xml
-index 52d9416ae5..a6614fa459 100644
+index 52d9416ae51..a6614fa459e 100644
 --- a/res/values-da/strings.xml
 +++ b/res/values-da/strings.xml
 @@ -2844,15 +2844,15 @@
@@ -273,7 +273,7 @@ index 52d9416ae5..a6614fa459 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"Du har allerede forbindelse til et konstant VPN-netværk. Hvis du opretter forbindelse til et andet netværk, erstattes dit eksisterende VPN, og Altid aktiveret-tilstanden deaktiveres."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"Du har allerede forbindelse til et VPN-netværk. Hvis du opretter forbindelse til et andet, erstattes dit eksisterende VPN."</string>
 diff --git a/res/values-de/strings.xml b/res/values-de/strings.xml
-index e0b5bebaec..4fbc64b83e 100644
+index e0b5bebaecc..4fbc64b83e2 100644
 --- a/res/values-de/strings.xml
 +++ b/res/values-de/strings.xml
 @@ -2845,15 +2845,15 @@
@@ -294,7 +294,7 @@ index e0b5bebaec..4fbc64b83e 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"Du bist schon mit einem durchgehend aktiven VPN verbunden. Wenn du eine Verbindung mit einem anderen VPN herstellst, wird dein aktuelles ersetzt und der Modus \"Durchgehend aktives VPN\" wird deaktiviert."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"Du bist schon mit einem VPN verbunden. Wenn du eine Verbindung mit einem anderen VPN herstellst, wird dein aktuelles ersetzt."</string>
 diff --git a/res/values-el/strings.xml b/res/values-el/strings.xml
-index 6ce0b8c485..65c727d53c 100644
+index 6ce0b8c4859..65c727d53c5 100644
 --- a/res/values-el/strings.xml
 +++ b/res/values-el/strings.xml
 @@ -2844,15 +2844,15 @@
@@ -315,7 +315,7 @@ index 6ce0b8c485..65c727d53c 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"Είστε ήδη συνδεδεμένοι σε ένα μονίμως ενεργό VPN. Εάν συνδεθείτε σε κάποιο άλλο, το υπάρχον VPN θα αντικατασταθεί και η λειτουργία μόνιμης ενεργοποίησης θα απενεργοποιηθεί."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"Είστε ήδη συνδεδεμένοι σε κάποιο VPN. Εάν συνδεθείτε σε κάποιο άλλο, το υπάρχον VPN θα αντικατασταθεί."</string>
 diff --git a/res/values-en-rAU/strings.xml b/res/values-en-rAU/strings.xml
-index 8ebc0c989d..c1136d930b 100644
+index 8ebc0c989dd..c1136d930b1 100644
 --- a/res/values-en-rAU/strings.xml
 +++ b/res/values-en-rAU/strings.xml
 @@ -2844,15 +2844,15 @@
@@ -336,7 +336,7 @@ index 8ebc0c989d..c1136d930b 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"You\'re already connected to an always-on VPN. If you connect to a different one, your existing VPN will be replaced and always-on mode will turn off."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"You\'re already connected to a VPN. If you connect to a different one, your existing VPN will be replaced."</string>
 diff --git a/res/values-en-rCA/strings.xml b/res/values-en-rCA/strings.xml
-index f5aedb406e..3c196931d2 100644
+index f5aedb406ea..3c196931d2b 100644
 --- a/res/values-en-rCA/strings.xml
 +++ b/res/values-en-rCA/strings.xml
 @@ -2844,15 +2844,15 @@
@@ -357,7 +357,7 @@ index f5aedb406e..3c196931d2 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"You\'re already connected to an always-on VPN. If you connect to a different one, your existing VPN will be replaced and always-on mode will turn off."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"You\'re already connected to a VPN. If you connect to a different one, your existing VPN will be replaced."</string>
 diff --git a/res/values-en-rGB/strings.xml b/res/values-en-rGB/strings.xml
-index 8ebc0c989d..c1136d930b 100644
+index 8ebc0c989dd..c1136d930b1 100644
 --- a/res/values-en-rGB/strings.xml
 +++ b/res/values-en-rGB/strings.xml
 @@ -2844,15 +2844,15 @@
@@ -378,7 +378,7 @@ index 8ebc0c989d..c1136d930b 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"You\'re already connected to an always-on VPN. If you connect to a different one, your existing VPN will be replaced and always-on mode will turn off."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"You\'re already connected to a VPN. If you connect to a different one, your existing VPN will be replaced."</string>
 diff --git a/res/values-en-rIN/strings.xml b/res/values-en-rIN/strings.xml
-index 30e311a859..fc1785a09e 100644
+index 30e311a859e..fc1785a09e6 100644
 --- a/res/values-en-rIN/strings.xml
 +++ b/res/values-en-rIN/strings.xml
 @@ -2844,15 +2844,15 @@
@@ -399,7 +399,7 @@ index 30e311a859..fc1785a09e 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"You\'re already connected to an always-on VPN. If you connect to a different one, your existing VPN will be replaced and always-on mode will turn off."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"You\'re already connected to a VPN. If you connect to a different one, your existing VPN will be replaced."</string>
 diff --git a/res/values-en-rXC/strings.xml b/res/values-en-rXC/strings.xml
-index 863ea021cd..2cd3296588 100644
+index 863ea021cd2..2cd3296588a 100644
 --- a/res/values-en-rXC/strings.xml
 +++ b/res/values-en-rXC/strings.xml
 @@ -2844,15 +2844,15 @@
@@ -420,7 +420,7 @@ index 863ea021cd..2cd3296588 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"‎‏‎‎‎‎‎‏‎‏‏‏‎‎‎‎‎‎‏‎‎‏‎‎‎‏‎‏‏‏‏‏‎‏‏‏‎‏‏‏‎‏‎‏‎‎‏‏‎‏‏‏‏‎‏‎‎‏‏‎‎‎‎‏‎‏‏‎‏‎‏‎‎‏‏‏‎‏‏‎‎‏‎‎‏‎‎‏‏‎‏‎‎‏‎‎You\'re already connected to an always-on VPN. If you connect to a different one, your existing VPN will be replaced, and always-on mode will turn off.‎‏‎‎‏‎"</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"‎‏‎‎‎‎‎‏‎‏‏‏‎‎‎‎‎‎‏‎‎‏‎‎‎‏‎‏‏‏‏‎‎‏‏‏‏‎‎‏‎‏‏‏‏‏‎‏‏‏‎‎‏‏‏‏‏‎‏‎‏‏‏‏‎‏‏‎‏‎‎‏‎‏‎‏‎‏‏‏‏‏‏‎‎‏‏‎‏‏‎‏‎‎You\'re already connected to a VPN. If you connect to a different one, your existing VPN will be replaced.‎‏‎‎‏‎"</string>
 diff --git a/res/values-es-rUS/strings.xml b/res/values-es-rUS/strings.xml
-index e54a92c783..a9fa502daa 100644
+index e54a92c783b..a9fa502daad 100644
 --- a/res/values-es-rUS/strings.xml
 +++ b/res/values-es-rUS/strings.xml
 @@ -2844,15 +2844,15 @@
@@ -441,7 +441,7 @@ index e54a92c783..a9fa502daa 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"Ya estás conectado a una VPN siempre activa. Si te conectas a otra, se reemplazará la VPN actual y se desactivará el modo siempre activo."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"Ya estás conectado a una VPN. Si te conectas a otra, se reemplazará la VPN actual."</string>
 diff --git a/res/values-es/strings.xml b/res/values-es/strings.xml
-index 02d75882f6..dbbf7896be 100644
+index 02d75882f65..dbbf7896be6 100644
 --- a/res/values-es/strings.xml
 +++ b/res/values-es/strings.xml
 @@ -2844,17 +2844,17 @@
@@ -466,7 +466,7 @@ index 02d75882f6..dbbf7896be 100644
      <string name="vpn_turn_on" msgid="3568307071295211187">"Activar"</string>
      <string name="vpn_cant_connect_title" msgid="5670787575925519386">"No se puede conectar a <xliff:g id="VPN_NAME">%1$s</xliff:g>"</string>
 diff --git a/res/values-et/strings.xml b/res/values-et/strings.xml
-index 9ca32f1bfa..a2b8e88fa7 100644
+index 9ca32f1bfa4..a2b8e88fa79 100644
 --- a/res/values-et/strings.xml
 +++ b/res/values-et/strings.xml
 @@ -2844,15 +2844,15 @@
@@ -487,7 +487,7 @@ index 9ca32f1bfa..a2b8e88fa7 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"Teil juba on ühendus alati sisselülitatud VPN-iga. Kui jätkate mõne teisega, asendatakse teie olemasolev VPN ja alati sisselülitatud režiim lülitatakse välja."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"Teil juba on ühendus VPN-iga. Kui jätkate mõne teisega, asendatakse teie olemasolev VPN."</string>
 diff --git a/res/values-eu/strings.xml b/res/values-eu/strings.xml
-index a0734d9206..15e2eb57bd 100644
+index a0734d9206b..15e2eb57bd3 100644
 --- a/res/values-eu/strings.xml
 +++ b/res/values-eu/strings.xml
 @@ -2844,15 +2844,15 @@
@@ -508,7 +508,7 @@ index a0734d9206..15e2eb57bd 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"Beti aktibatuta dagoen VPN sare batera konektatuta zaude dagoeneko. Beste VPN batera konektatzen bazara, lehendik duzuna ordeztuko da eta desaktibatu egingo da beti aktibatuta edukitzeko modua."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"Bazaude VPN sare batera konektatuta. Beste batera konektatzen bazara, daukazuna ordeztuko da."</string>
 diff --git a/res/values-fa/strings.xml b/res/values-fa/strings.xml
-index 5fd5813b93..fca1792800 100644
+index 5fd5813b93a..fca17928007 100644
 --- a/res/values-fa/strings.xml
 +++ b/res/values-fa/strings.xml
 @@ -2844,15 +2844,15 @@
@@ -529,7 +529,7 @@ index 5fd5813b93..fca1792800 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"‏درحال‌حاضر به VPN همیشه روشنی وصل هستید. اگر به VPN دیگری متصل شوید، VPN فعلی‌تان جایگزین می‌شود و حالت همیشه روشن خاموش می‌شود."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"‏درحال حاضر به VPN وصل هستید. اگر به VPN دیگری متصل شوید، VPN فعلی‌تان جایگزین می‌شود."</string>
 diff --git a/res/values-fi/strings.xml b/res/values-fi/strings.xml
-index 453bf21ce4..bc1736fe15 100644
+index 453bf21ce47..bc1736fe153 100644
 --- a/res/values-fi/strings.xml
 +++ b/res/values-fi/strings.xml
 @@ -2844,15 +2844,15 @@
@@ -550,7 +550,7 @@ index 453bf21ce4..bc1736fe15 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"Olet jo yhteydessä aina käytössä olevaan VPN-verkkoon. Jos muodostat yhteyden uuteen VPN:ään, nykyinen verkkosi korvataan ja aina käytössä ‑tila poistetaan käytöstä."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"Olet jo yhteydessä VPN-verkkoon. Jos muodostat yhteyden uuteen VPN:ään, nykyinen verkkosi korvataan."</string>
 diff --git a/res/values-fr-rCA/strings.xml b/res/values-fr-rCA/strings.xml
-index 2eb74cf926..5fd574cc3d 100644
+index 2eb74cf926c..5fd574cc3d0 100644
 --- a/res/values-fr-rCA/strings.xml
 +++ b/res/values-fr-rCA/strings.xml
 @@ -2844,15 +2844,15 @@
@@ -571,7 +571,7 @@ index 2eb74cf926..5fd574cc3d 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"Vous êtes déjà connecté à un RPV permanent. Si vous vous connectez à un autre RPV, le RPV actuel sera remplacé et le mode permanent sera désactivé."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"Vous êtes déjà connecté à un RPV. Si vous vous connectez à un RPV différent, votre RPV actuel sera remplacé."</string>
 diff --git a/res/values-fr/strings.xml b/res/values-fr/strings.xml
-index fe92e77035..d58b81e95d 100644
+index fe92e77035a..d58b81e95df 100644
 --- a/res/values-fr/strings.xml
 +++ b/res/values-fr/strings.xml
 @@ -2844,15 +2844,15 @@
@@ -592,7 +592,7 @@ index fe92e77035..d58b81e95d 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"Vous êtes déjà connecté à un VPN permanent. Si vous vous connectez à un autre VPN, le VPN actuel sera remplacé et le mode permanent sera désactivé."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"Vous êtes déjà connecté à un VPN. Si vous vous connectez à un autre VPN, le VPN actuel sera remplacé."</string>
 diff --git a/res/values-gl/strings.xml b/res/values-gl/strings.xml
-index 662a6922bb..ec47f9186b 100644
+index 662a6922bb9..ec47f9186bf 100644
 --- a/res/values-gl/strings.xml
 +++ b/res/values-gl/strings.xml
 @@ -2844,15 +2844,15 @@
@@ -613,7 +613,7 @@ index 662a6922bb..ec47f9186b 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"Xa te conectaches a unha VPN sempre activa. Se te conectas a unha VPN distinta, substituirase a actual e desactivarase o modo de VPN sempre activa."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"Xa te conectaches a unha VPN. Se te conectas a unha distinta, substituirase a VPN actual."</string>
 diff --git a/res/values-gu/strings.xml b/res/values-gu/strings.xml
-index 299322392a..ec5884f2fa 100644
+index 299322392a3..ec5884f2fae 100644
 --- a/res/values-gu/strings.xml
 +++ b/res/values-gu/strings.xml
 @@ -2844,15 +2844,15 @@
@@ -634,7 +634,7 @@ index 299322392a..ec5884f2fa 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"તમે પહેલાંથી હંમેશાં-ચાલુ VPN થી કનેક્ટ થયેલ છો. જો તમે કોઈ બીજાથી કનેક્ટ કરો છો, તો તમારા અસ્તિત્વમાંના VPN ને બદલવામાં આવશે અને હંમેશાં-ચાલુ મોડ બંધ થઈ જશે."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"તમે પહેલાંથી VPN થી કનેક્ટ થયેલ છો. જો તમે કોઈ બીજાથી કનેક્ટ કરો છો, તો તમારા અસ્તિત્વમાંના VPN ને બદલવામાં આવશે."</string>
 diff --git a/res/values-hi/strings.xml b/res/values-hi/strings.xml
-index d0617150b7..04f08bf55c 100644
+index d0617150b70..04f08bf55c7 100644
 --- a/res/values-hi/strings.xml
 +++ b/res/values-hi/strings.xml
 @@ -2844,16 +2844,16 @@
@@ -657,7 +657,7 @@ index d0617150b7..04f08bf55c 100644
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"आप पहले से ही किसी VPN से कनेक्ट हैं. अगर आप किसी दूसरे से कनेक्ट करते हैं, तो आपका माैजूदा VPN बदल दिया जाएगा."</string>
      <string name="vpn_turn_on" msgid="3568307071295211187">"चालू करें"</string>
 diff --git a/res/values-hr/strings.xml b/res/values-hr/strings.xml
-index fb9c1f09e8..74bb5db2df 100644
+index fb9c1f09e8f..74bb5db2df8 100644
 --- a/res/values-hr/strings.xml
 +++ b/res/values-hr/strings.xml
 @@ -2881,15 +2881,15 @@
@@ -678,7 +678,7 @@ index fb9c1f09e8..74bb5db2df 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"Već ste povezani s uvijek uključenim VPN-om. Ako se povežete s nekim drugim VPN-om, on će zamijeniti dosadašnji, a način rada \"uvijek uključeno\" isključit će se."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"Već ste povezani s VPN-om. Ako se povežete s nekim drugi VPN-om, on će zamijeniti dosadašnji."</string>
 diff --git a/res/values-hu/strings.xml b/res/values-hu/strings.xml
-index ff703cf609..32e7fdad69 100644
+index ff703cf6090..32e7fdad691 100644
 --- a/res/values-hu/strings.xml
 +++ b/res/values-hu/strings.xml
 @@ -2844,15 +2844,15 @@
@@ -699,7 +699,7 @@ index ff703cf609..32e7fdad69 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"Már csatlakozik egy mindig bekapcsolt VPN-hez. Ha másik VPN-re csatlakozik, akkor a rendszer lecseréli a meglévőt, valamint kikapcsolja a mindig bekapcsolt módot."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"Már csatlakozik VPN-hez. Ha másikhoz csatlakozik, a meglévő VPN-t lecseréljük."</string>
 diff --git a/res/values-hy/strings.xml b/res/values-hy/strings.xml
-index e731b9480f..49b1807365 100644
+index e731b9480f5..49b18073658 100644
 --- a/res/values-hy/strings.xml
 +++ b/res/values-hy/strings.xml
 @@ -2844,15 +2844,15 @@
@@ -720,7 +720,7 @@ index e731b9480f..49b1807365 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"Դուք արդեն միացած եք «միշտ միացված» VPN ցանցին: Մեկ այլ VPN ցանցին միանալու դեպքում ընթացիկ VPN-ը կփոխարինվի նորով և «միշտ միացված» ռեժիմը կանջատվի:"</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"Դուք արդեն միացած եք VPN ցանցին: Մեկ այլ ցանցին միանալու դեպքում ընթացիկ VPN-ը կփոխարինվի նորով:"</string>
 diff --git a/res/values-in/strings.xml b/res/values-in/strings.xml
-index d2c21cd7c9..15b3d1b308 100644
+index d2c21cd7c9a..15b3d1b3080 100644
 --- a/res/values-in/strings.xml
 +++ b/res/values-in/strings.xml
 @@ -2844,15 +2844,15 @@
@@ -741,7 +741,7 @@ index d2c21cd7c9..15b3d1b308 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"Anda sudah terhubung ke VPN selalu aktif. Jika Anda terhubung ke VPN yang berbeda, VPN yang sudah ada akan digantikan, dan mode selalu aktif akan dinonaktifkan."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"Anda sudah terhubung ke VPN. Jika Anda terhubung ke VPN yang berbeda, VPN yang sudah ada akan digantikan."</string>
 diff --git a/res/values-is/strings.xml b/res/values-is/strings.xml
-index 3d9a0e8c29..ce546c518d 100644
+index 3d9a0e8c29a..ce546c518d2 100644
 --- a/res/values-is/strings.xml
 +++ b/res/values-is/strings.xml
 @@ -2844,15 +2844,15 @@
@@ -762,7 +762,7 @@ index 3d9a0e8c29..ce546c518d 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"Þú ert þegar með tengingu við VPN sem alltaf er kveikt á. Ef þú tengist við annað net verður fyrirliggjandi VPN skipt út og slökkt verður á stillingunni „Alltaf kveikt“."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"Þú ert nú þegar með VPN tengt. Ef þú tengist öðru neti kemur það í stað fyrirliggjandi VPN."</string>
 diff --git a/res/values-it/strings.xml b/res/values-it/strings.xml
-index 5f3fc03050..b95c77e751 100644
+index 5f3fc03050e..b95c77e7513 100644
 --- a/res/values-it/strings.xml
 +++ b/res/values-it/strings.xml
 @@ -2844,15 +2844,15 @@
@@ -783,7 +783,7 @@ index 5f3fc03050..b95c77e751 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"Sei già collegato a una rete VPN sempre attiva. Se ti connetti a un\'altra rete, la rete VPN attuale verrà sostituita e la modalità sempre attiva verrà disattivata."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"Sei già collegato a una rete VPN. Se ti connetti a un\'altra rete, la VPN attuale verrà sostituita."</string>
 diff --git a/res/values-iw/strings.xml b/res/values-iw/strings.xml
-index 273dfe64d0..05d5db92df 100644
+index 273dfe64d02..05d5db92df7 100644
 --- a/res/values-iw/strings.xml
 +++ b/res/values-iw/strings.xml
 @@ -2917,17 +2917,17 @@
@@ -808,7 +808,7 @@ index 273dfe64d0..05d5db92df 100644
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"‏אתה כבר מחובר לרשת VPN. אם תתחבר לרשת VPN שונה, הרשת הקיימת תוחלף."</string>
      <string name="vpn_turn_on" msgid="3568307071295211187">"הפעלה"</string>
 diff --git a/res/values-ja/strings.xml b/res/values-ja/strings.xml
-index f953d4f89e..f538342edc 100644
+index f953d4f89e3..f538342edc3 100644
 --- a/res/values-ja/strings.xml
 +++ b/res/values-ja/strings.xml
 @@ -2844,15 +2844,15 @@
@@ -829,7 +829,7 @@ index f953d4f89e..f538342edc 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"すでに常時接続 VPN に接続しています。別の VPN に接続する場合は、既存の VPN が置き換えられ、常時接続モードは無効になります。"</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"すでに VPN に接続しています。別の VPN に接続する場合は、既存の VPN が置き換えられます。"</string>
 diff --git a/res/values-ka/strings.xml b/res/values-ka/strings.xml
-index 8628e7492a..537e39358e 100644
+index 8628e7492a1..537e39358e9 100644
 --- a/res/values-ka/strings.xml
 +++ b/res/values-ka/strings.xml
 @@ -2844,15 +2844,15 @@
@@ -850,7 +850,7 @@ index 8628e7492a..537e39358e 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"თქვენ უკვე დაკავშირებული ხართ ყოველთვის ჩართულ VPN-თან. ახალ VPN-თან დაკავშირების შემთხვევაში, არსებული ჩანაცვლდება, ხოლო ყოველთვის ჩართული რეჟიმი გამოირთვება."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"თქვენ უკვე დაკავშირებული ხართ VPN-თან. ახალ VPN-თან დაკავშირების შემთხვევაში, არსებული ჩანაცვლდება."</string>
 diff --git a/res/values-kk/strings.xml b/res/values-kk/strings.xml
-index 99a6f481e2..e6c089179b 100644
+index 99a6f481e28..e6c089179b3 100644
 --- a/res/values-kk/strings.xml
 +++ b/res/values-kk/strings.xml
 @@ -2844,15 +2844,15 @@
@@ -871,7 +871,7 @@ index 99a6f481e2..e6c089179b 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"Сіз әрқашан қосулы VPN желісіне қосылдыңыз. Егер басқа желіге қосылсаңыз, қолданыстағы VPN желісі алмастырылады және әрқашан қосулы режим өшіріледі."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"Сіз VPN желісіне қосылдыңыз. Егер басқа желіге қосылсаңыз, қолданыстағы VPN желісі алмастырылады."</string>
 diff --git a/res/values-km/strings.xml b/res/values-km/strings.xml
-index 16e3219d1f..340ca7ac5f 100644
+index 16e3219d1f9..340ca7ac5f6 100644
 --- a/res/values-km/strings.xml
 +++ b/res/values-km/strings.xml
 @@ -2844,15 +2844,15 @@
@@ -892,7 +892,7 @@ index 16e3219d1f..340ca7ac5f 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"អ្នកបានភ្ជាប់ទៅ VPN ដែលបើកជានិច្ចរួចហើយ។ ប្រសិនបើអ្នកភ្ជាប់ទៅ VPN មួយផ្សេងទៀត នោះ VPN ដែលមានស្រាប់របស់អ្នកនឹងត្រូវបានជំនួស ហើយមុខងារបើកជានិច្ចនឹងបិទ។"</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"អ្នកបានភ្ជាប់ទៅ VPN រួចហើយ។ ប្រសិនបើអ្នកភ្ជាប់ទៅ VPN មួយផ្សេងទៀត នោះ VPN ដែលមានស្រាប់របស់អ្នកនឹងត្រូវបានជំនួស។"</string>
 diff --git a/res/values-kn/strings.xml b/res/values-kn/strings.xml
-index dc05b17376..101a33baeb 100644
+index dc05b17376b..101a33baeb8 100644
 --- a/res/values-kn/strings.xml
 +++ b/res/values-kn/strings.xml
 @@ -2844,15 +2844,15 @@
@@ -913,7 +913,7 @@ index dc05b17376..101a33baeb 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"ಯಾವಾಗಲೂ ಆನ್ ಆಗಿರುವ VPN ಗೆ ನೀವು ಈಗಾಗಲೇ ಸಂಪರ್ಕಗೊಂಡಿರುವಿರಿ. ನೀವು ಬೇರೊಂದಕ್ಕೆ ಸಂಪರ್ಕಗೊಂಡಲ್ಲಿ, ನಿಮ್ಮ ಅಸ್ತಿತ್ವದಲ್ಲಿರುವ VPN ಅನ್ನು ಸ್ಥಾನಾಂತರಿಸಲಾಗುವುದು ಮತ್ತು ಯಾವಾಗಲೂ ಆನ್ ಮೋಡ್‌ನಲ್ಲಿರುವುದನ್ನು ಆಫ್ ಮಾಡಲಾಗುತ್ತದೆ."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"ನೀವು ಈಗಾಗಲೇ VPN ಗೆ ಸಂಪರ್ಕ ಹೊಂದಿರುವಿರಿ. ಒಂದು ವೇಳೆ ನೀವು ಬೇರೊಂದಕ್ಕೆ ಸಂಪರ್ಕಗೊಂಡಲ್ಲಿ, ನಿಮ್ಮ ಅಸ್ತಿತ್ವದಲ್ಲಿರುವ VPN ಅನ್ನು ಸ್ಥಾನಾಂತರಿಸಲಾಗುವುದು."</string>
 diff --git a/res/values-ko/strings.xml b/res/values-ko/strings.xml
-index f970fba05a..d54b394dc3 100644
+index f970fba05a2..d54b394dc37 100644
 --- a/res/values-ko/strings.xml
 +++ b/res/values-ko/strings.xml
 @@ -2844,15 +2844,15 @@
@@ -934,7 +934,7 @@ index f970fba05a..d54b394dc3 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"이미 연결 유지 VPN에 연결되어 있습니다. 다른 VPN에 연결하면 기존 VPN은 교체되며 연결 유지 모드가 사용 중지됩니다."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"이미 VPN에 연결되어 있습니다. 다른 VPN에 연결하면 기존 VPN은 교체됩니다."</string>
 diff --git a/res/values-ky/strings.xml b/res/values-ky/strings.xml
-index a093c850c0..4b1b9e061e 100644
+index a093c850c0e..4b1b9e061e2 100644
 --- a/res/values-ky/strings.xml
 +++ b/res/values-ky/strings.xml
 @@ -2844,15 +2844,15 @@
@@ -955,7 +955,7 @@ index a093c850c0..4b1b9e061e 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"Туруктуу VPN тармагына туташып турасыз. Эгер башкасына туташсаңыз, учурдагы туруктуу туташуу режими өчүп калат."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"VPN кызматы туташылган. Эгер башкасына туташсаңыз, учурдагы VPN өчүрүлөт."</string>
 diff --git a/res/values-lo/strings.xml b/res/values-lo/strings.xml
-index 30f30a9723..16b7e0b4a5 100644
+index 30f30a9723e..16b7e0b4a56 100644
 --- a/res/values-lo/strings.xml
 +++ b/res/values-lo/strings.xml
 @@ -2844,15 +2844,15 @@
@@ -976,7 +976,7 @@ index 30f30a9723..16b7e0b4a5 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"You\'re already connected to an always-on VPN. If you connect to a different one, your existing VPN will be replaced, and always-on mode will turn off."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"ທ່ານເຊື່ອມຕໍ່ຫາ VPN ຢູ່ກ່ອນແລ້ວ. ຫາກທ່ານເຊື່ອມຕໍ່ຫາອັນອື່ນອີກ, VPN ທີ່ມີຢູ່ແລ້ວຂອງທ່ານຈະຖືກແທນທີ່."</string>
 diff --git a/res/values-lt/strings.xml b/res/values-lt/strings.xml
-index 7b268c00de..1a1e77d897 100644
+index 7b268c00dec..1a1e77d897e 100644
 --- a/res/values-lt/strings.xml
 +++ b/res/values-lt/strings.xml
 @@ -2918,15 +2918,15 @@
@@ -997,7 +997,7 @@ index 7b268c00de..1a1e77d897 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"Jau esate prisijungę prie visada įjungto VPN. Jei prisijungsite prie kito VPN, esamas VPN bus pakeistas ir visada įjungto VPN režimas bus išjungtas."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"Jau esate prisijungę prie VPN. Jei prisijungsite prie kito VPN, esamas VPN bus pakeistas."</string>
 diff --git a/res/values-lv/strings.xml b/res/values-lv/strings.xml
-index a430a45b17..ea44da0627 100644
+index a430a45b17e..ea44da0627c 100644
 --- a/res/values-lv/strings.xml
 +++ b/res/values-lv/strings.xml
 @@ -2881,15 +2881,15 @@
@@ -1018,7 +1018,7 @@ index a430a45b17..ea44da0627 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"Jūs jau esat izveidojis savienojumu ar vienmēr ieslēgtu VPN. Ja izveidosiet savienojumu ar citu VPN, esošais VPN tiks aizstāts un režīms “vienmēr ieslēgts” tiks izslēgts."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"Jau ir izveidots savienojums ar VPN. Izveidojot savienojumu ar citu VPN, esošais tiks aizstāts."</string>
 diff --git a/res/values-mk/strings.xml b/res/values-mk/strings.xml
-index a379267171..7875da2457 100644
+index a379267171b..7875da24579 100644
 --- a/res/values-mk/strings.xml
 +++ b/res/values-mk/strings.xml
 @@ -2844,15 +2844,15 @@
@@ -1039,7 +1039,7 @@ index a379267171..7875da2457 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"Веќе сте поврзани на „секогаш вклучена“ VPN. Ако се поврзете на друга мрежа, вашата постојна VPN ќе се замени и режимот „секогаш вклучена“ ќе се исклучи."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"Веќе сте поврзани на VPN. Ако се поврзете на друга мрежа, вашата постојна VPN ќе се замени."</string>
 diff --git a/res/values-ml/strings.xml b/res/values-ml/strings.xml
-index 0741939f74..491befa629 100644
+index 0741939f74e..491befa629f 100644
 --- a/res/values-ml/strings.xml
 +++ b/res/values-ml/strings.xml
 @@ -2844,15 +2844,15 @@
@@ -1060,7 +1060,7 @@ index 0741939f74..491befa629 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"ഇതിനകം തന്നെ നിങ്ങളൊരു \'എല്ലായ്പ്പോഴും ഓൺ\' VPN-ലേക്ക് കണക്റ്റുചെയ്തിട്ടുണ്ട്. നിങ്ങൾ വേറൊരു VPN-ലേക്ക് കണക്റ്റുചെയ്യുന്ന പക്ഷം, നിലവിലുള്ളതിന് പകരം പുതിയത് ഉപയോഗിക്കും, \'എല്ലായ്പ്പോഴും ഓൺ\' മോഡ് ഓഫാവുകയും ചെയ്യും."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"ഇതിനകം തന്നെ നിങ്ങൾ ഒരു VPN-ലേക്ക് കണക്റ്റുചെയ്തിട്ടുണ്ട്. നിങ്ങൾ വേറൊരു VPN-ലേക്ക് കണക്റ്റുചെയ്യുന്ന പക്ഷം, നിലവിലുള്ളതിന് പകരം പുതിയത് ഉപയോഗിക്കും."</string>
 diff --git a/res/values-mn/strings.xml b/res/values-mn/strings.xml
-index c5af3fabbb..dedccd22e3 100644
+index c5af3fabbbf..dedccd22e39 100644
 --- a/res/values-mn/strings.xml
 +++ b/res/values-mn/strings.xml
 @@ -2844,16 +2844,16 @@
@@ -1083,7 +1083,7 @@ index c5af3fabbb..dedccd22e3 100644
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"Та аль хэдийн VPN-д холбогдсон байна. Хэрэв та өөр холболтод холбогдвол одоогийн ашиглаж байгаа VPN-г солих болно."</string>
      <string name="vpn_turn_on" msgid="3568307071295211187">"Асаах"</string>
 diff --git a/res/values-mr/strings.xml b/res/values-mr/strings.xml
-index db14d4b5ad..5db3d9a795 100644
+index db14d4b5ad2..5db3d9a7950 100644
 --- a/res/values-mr/strings.xml
 +++ b/res/values-mr/strings.xml
 @@ -2845,15 +2845,15 @@
@@ -1104,7 +1104,7 @@ index db14d4b5ad..5db3d9a795 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"तुम्ही आधीपासून नेहमी-चालू VPN शी कनेक्ट केले आहे. तुम्ही एका भिन्न VPN शी कनेक्ट केल्यास, तुमचे विद्यमान VPN पुनर्स्थित केले जाईल आणि नेहमी-चालू मोड बंद होईल."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"तुम्ही आधीपासून एका VPN शी कनेक्ट केले आहे. तुम्ही भिन्न VPN शी कनेक्ट केल्यास, तुमचे विद्यमान VPN बदलले जाईल."</string>
 diff --git a/res/values-ms/strings.xml b/res/values-ms/strings.xml
-index bc21575833..648f09b110 100644
+index bc21575833f..648f09b1105 100644
 --- a/res/values-ms/strings.xml
 +++ b/res/values-ms/strings.xml
 @@ -2844,15 +2844,15 @@
@@ -1125,7 +1125,7 @@ index bc21575833..648f09b110 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"Anda sudah disambungkan ke VPN sentiasa hidup. Jika anda menyambung ke VPN yang lain, VPN anda yang sedia ada akan digantikan dan mod sentiasa hidup akan dimatikan."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"Anda sudah disambungkan ke VPN. Jika anda menyambung ke VPN yang lain, VPN anda yang sedia ada akan digantikan."</string>
 diff --git a/res/values-my/strings.xml b/res/values-my/strings.xml
-index 086961ae66..5a1b48ca49 100644
+index 086961ae669..5a1b48ca490 100644
 --- a/res/values-my/strings.xml
 +++ b/res/values-my/strings.xml
 @@ -2844,15 +2844,15 @@
@@ -1146,7 +1146,7 @@ index 086961ae66..5a1b48ca49 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"သင်သည် အမြဲတမ်းဖွင့်ထားရသော VPN နှင့် ချိတ်ဆက်ပြီးသားဖြစ်သည်။ အခြားတစ်ခုနှင့် ချိတ်ဆက်လိုက်လျှင် လက်ရှိ VPN ကို အစားထိုးသွားမည်ဖြစ်၍ အမြဲဖွင့်ထားရသော မုဒ်သည် ပိတ်သွားပါမည်။"</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"VPN သို့ ချိတ်ဆက်ပြီးသား ဖြစ်ပါသည်။ အခြားတစ်ခုသို့ ချိတ်ဆက်လျှင် လက်ရှိ VPN ကိုအစားထိုးသွားပါမည်။"</string>
 diff --git a/res/values-nb/strings.xml b/res/values-nb/strings.xml
-index 63ccdab2e0..b6f7dce4ab 100644
+index 63ccdab2e0f..b6f7dce4abe 100644
 --- a/res/values-nb/strings.xml
 +++ b/res/values-nb/strings.xml
 @@ -2844,15 +2844,15 @@
@@ -1167,7 +1167,7 @@ index 63ccdab2e0..b6f7dce4ab 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"Du er allerede koblet til et alltid på-VPN. Hvis du kobler til et annet, blir det eksisterende VPN-et byttet ut, og alltid på-modus blir slått av."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"Du er allerede koblet til et VPN. Hvis du kobler til et nytt VPN, erstattes tilkoblingen til det nåværende VPN-et."</string>
 diff --git a/res/values-ne/strings.xml b/res/values-ne/strings.xml
-index 258a4e297f..af7103dbf3 100644
+index 258a4e297f0..af7103dbf3f 100644
 --- a/res/values-ne/strings.xml
 +++ b/res/values-ne/strings.xml
 @@ -2844,15 +2844,15 @@
@@ -1188,7 +1188,7 @@ index 258a4e297f..af7103dbf3 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"तपाईँले पहिले नै एउटा सधैं-सक्रिय VPN मा जडान गर्नुभएको छ। तपाईंले अर्को कुनै VPN मा ज‍डान गर्नुभयो भने तपाईंको विद्यमान VPN लाई प्रतिस्थापन गरिनेछ र सधैं-सक्रिय मोड निष्क्रिय हुने छ।"</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"तपाईँले पहिले नै एउटा VPN मा जडान गर्नुभएको छ। तपाईँले कुनै नयाँ VPN मा ज‍डान गर्नुभयो भने तपाईँको विद्यमान VPN लाई प्रतिस्थापन गरिनेछ।"</string>
 diff --git a/res/values-nl/strings.xml b/res/values-nl/strings.xml
-index bb95a1c94a..b98e18dda9 100644
+index bb95a1c94a3..b98e18dda97 100644
 --- a/res/values-nl/strings.xml
 +++ b/res/values-nl/strings.xml
 @@ -2844,15 +2844,15 @@
@@ -1209,7 +1209,7 @@ index bb95a1c94a..b98e18dda9 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"Je hebt al verbinding met een Always-on VPN. Als je verbinding maakt met een ander VPN, wordt je bestaande VPN vervangen en wordt de Always-on-modus uitgeschakeld."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"Je hebt al verbinding met een VPN. Als je verbinding met een ander VPN maakt, wordt je bestaande VPN vervangen."</string>
 diff --git a/res/values-or/strings.xml b/res/values-or/strings.xml
-index 2660400d9e..8ead9e4d01 100644
+index 2660400d9ed..8ead9e4d018 100644
 --- a/res/values-or/strings.xml
 +++ b/res/values-or/strings.xml
 @@ -2844,15 +2844,15 @@
@@ -1230,7 +1230,7 @@ index 2660400d9e..8ead9e4d01 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"ଆପଣ ପୂର୍ବରୁ ଏକ ସର୍ବଦା-ଚାଲୁ VPN ସହିତ ସଂଯୁକ୍ତ ଅଟନ୍ତି। ଯଦି ଆପଣ ଅନ୍ୟ କୌଣସି VPN ସହିତ ସଂଯୁକ୍ତ କରନ୍ତି, ଆପଣଙ୍କ ବର୍ତ୍ତମାନ VPN ଅପସାରିତ ହେବ ଏବଂ ସର୍ବଦା-ଚାଲୁ ମୋଡ୍ ବନ୍ଦ ହୋଇଯିବ।"</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"ଆପଣ ପୂର୍ବରୁ ଏକ VPN ସହ ସଂଯୁକ୍ତ ଅଛନ୍ତି। ଯଦି ଆପଣ ଅନ୍ୟ କାହା ସହିତ ସଂଯୁକ୍ତ ହୁଅନ୍ତି, ତେବେ ଆପଣଙ୍କ ବିଦ୍ୟମାନ VPN ପ୍ରତିବଦଳ ହେବ।"</string>
 diff --git a/res/values-pa/strings.xml b/res/values-pa/strings.xml
-index 9523fc8e82..4dac0c8eb1 100644
+index 9523fc8e822..4dac0c8eb1f 100644
 --- a/res/values-pa/strings.xml
 +++ b/res/values-pa/strings.xml
 @@ -2844,16 +2844,16 @@
@@ -1253,7 +1253,7 @@ index 9523fc8e82..4dac0c8eb1 100644
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"ਤੁਸੀਂ ਪਹਿਲਾਂ ਤੋਂ ਹੀ ਕਿਸੇ VPN ਨਾਲ ਕਨੈਕਟ ਹੋ। ਜੇਕਰ ਤੁਸੀਂ ਕਿਸੇ ਹੋਰ ਨਾਲ ਕਨੈਕਟ ਹੁੰਦੇ ਹੋ, ਤਾਂ ਤੁਹਾਡੇ ਵਰਤਮਾਨ VPN ਨੂੰ ਤਬਦੀਲ ਕਰ ਦਿੱਤਾ ਜਾਵੇਗਾ।"</string>
      <string name="vpn_turn_on" msgid="3568307071295211187">"ਚਾਲੂ ਕਰੋ"</string>
 diff --git a/res/values-pl/strings.xml b/res/values-pl/strings.xml
-index 2f3b3111d4..64509c3224 100644
+index 2f3b3111d49..64509c3224c 100644
 --- a/res/values-pl/strings.xml
 +++ b/res/values-pl/strings.xml
 @@ -2918,15 +2918,15 @@
@@ -1274,7 +1274,7 @@ index 2f3b3111d4..64509c3224 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"Masz już połączenie ze stałą siecią VPN. Jeśli połączysz się z inną, obecna zostanie zastąpiona, a tryb stały zostanie wyłączony."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"Masz już połączenie z siecią VPN. Jeśli połączysz się z inną, obecna zostanie zastąpiona."</string>
 diff --git a/res/values-pt-rBR/strings.xml b/res/values-pt-rBR/strings.xml
-index 54f2fbdc75..4929813f59 100644
+index 54f2fbdc75b..4929813f59e 100644
 --- a/res/values-pt-rBR/strings.xml
 +++ b/res/values-pt-rBR/strings.xml
 @@ -2844,15 +2844,15 @@
@@ -1295,7 +1295,7 @@ index 54f2fbdc75..4929813f59 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"Você já está conectado a uma VPN sempre ativa. Caso se conecte a uma diferente, a VPN já existente será substituída, e o modo sempre ativo será desativado."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"Você já está conectado a uma VPN. Caso se conecte a uma diferente, a VPN já existente será substituída."</string>
 diff --git a/res/values-pt-rPT/strings.xml b/res/values-pt-rPT/strings.xml
-index 4d8fbb2649..3ac7d1a3b4 100644
+index 4d8fbb26496..3ac7d1a3b40 100644
 --- a/res/values-pt-rPT/strings.xml
 +++ b/res/values-pt-rPT/strings.xml
 @@ -2844,15 +2844,15 @@
@@ -1316,7 +1316,7 @@ index 4d8fbb2649..3ac7d1a3b4 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"Já está ligado a uma VPN sempre ativa. Se ligar a outra, a VPN existente será substituída e o modo sempre ativo será desativado."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"Já está ligado a uma VPN. Se ligar a outra, a VPN existente será substituída."</string>
 diff --git a/res/values-pt/strings.xml b/res/values-pt/strings.xml
-index 54f2fbdc75..4929813f59 100644
+index 54f2fbdc75b..4929813f59e 100644
 --- a/res/values-pt/strings.xml
 +++ b/res/values-pt/strings.xml
 @@ -2844,15 +2844,15 @@
@@ -1337,7 +1337,7 @@ index 54f2fbdc75..4929813f59 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"Você já está conectado a uma VPN sempre ativa. Caso se conecte a uma diferente, a VPN já existente será substituída, e o modo sempre ativo será desativado."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"Você já está conectado a uma VPN. Caso se conecte a uma diferente, a VPN já existente será substituída."</string>
 diff --git a/res/values-ro/strings.xml b/res/values-ro/strings.xml
-index 5d29fb99d6..4e6760f1a6 100644
+index 5d29fb99d6d..4e6760f1a65 100644
 --- a/res/values-ro/strings.xml
 +++ b/res/values-ro/strings.xml
 @@ -2881,15 +2881,15 @@
@@ -1358,7 +1358,7 @@ index 5d29fb99d6..4e6760f1a6 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"V-ați conectat deja la o rețea VPN activată permanent. Dacă vă conectați la altă rețea, rețeaua VPN existentă va fi înlocuită și modul activat permanent va fi dezactivat."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"V-ați conectat deja la o rețea VPN. Dacă vă conectați la altă rețea, rețeaua VPN existentă va fi înlocuită."</string>
 diff --git a/res/values-ru/strings.xml b/res/values-ru/strings.xml
-index 5f2bbdadec..d4d38b3a04 100644
+index 5f2bbdadec7..d4d38b3a04d 100644
 --- a/res/values-ru/strings.xml
 +++ b/res/values-ru/strings.xml
 @@ -2918,15 +2918,15 @@
@@ -1379,7 +1379,7 @@ index 5f2bbdadec..d4d38b3a04 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"Вы уже подключены к постоянной VPN-сети. Если выбрать другую сеть, режим постоянного подключения будет сброшен."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"Вы уже подключены. Если вы подключитесь к другой VPN-сети, то замените текущую."</string>
 diff --git a/res/values-si/strings.xml b/res/values-si/strings.xml
-index 84eb74c21f..080891875d 100644
+index 84eb74c21f6..080891875da 100644
 --- a/res/values-si/strings.xml
 +++ b/res/values-si/strings.xml
 @@ -2844,15 +2844,15 @@
@@ -1400,7 +1400,7 @@ index 84eb74c21f..080891875d 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"ඔබට දැනටමත් සැම විට ක්‍රියාත්මක VPN එකකට සම්බන්ධය. ඔබ වෙනත් එකකට සම්බන්ධ වුවහොත්, ඔබේ පවතින VPN ප්‍රතිස්ථාපනය වනු ඇති අතර, සැම විට ක්‍රියාත්මක ප්‍රකාරය ක්‍රියාවිරහිත වනු ඇත."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"ඔබට දැනටමත් VPN එකකට සම්බන්ධය. ඔබ වෙනත් එකකට සබැඳුණහොත්, ඔබේ පවතින VPN ප්‍රතිස්ථාපනය වනු ඇත."</string>
 diff --git a/res/values-sk/strings.xml b/res/values-sk/strings.xml
-index bf1bce0292..7bc15a95fb 100644
+index bf1bce02925..7bc15a95fb5 100644
 --- a/res/values-sk/strings.xml
 +++ b/res/values-sk/strings.xml
 @@ -2918,15 +2918,15 @@
@@ -1421,7 +1421,7 @@ index bf1bce0292..7bc15a95fb 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"K sieti VPN, ktorá je vždy zapnutá, ste sa už pripojili. Ak sa pripojíte k inej sieti, vaša súčasná sieť VPN bude nahradená a vypne sa režim vždy zapnutej siete."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"K sieti VPN ste sa už pripojili. Ak sa pripojíte k inej sieti, vaša súčasná sieť VPN bude nahradená."</string>
 diff --git a/res/values-sl/strings.xml b/res/values-sl/strings.xml
-index 90459d9682..6e96754a32 100644
+index 90459d96824..6e96754a32e 100644
 --- a/res/values-sl/strings.xml
 +++ b/res/values-sl/strings.xml
 @@ -2918,15 +2918,15 @@
@@ -1442,7 +1442,7 @@ index 90459d9682..6e96754a32 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"S stalno vklopljenim omrežjem VPN ste že povezani. Če se povežete z drugim, bo obstoječe omrežje VPN zamenjano in stalno vklopljeni način se bo izklopil."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"Z omrežjem VPN ste že povezani. Če se povežete z drugim, bo obstoječe omrežje VPN zamenjano."</string>
 diff --git a/res/values-sq/strings.xml b/res/values-sq/strings.xml
-index 6ac7a9989c..c0da91fec2 100644
+index 6ac7a9989c2..c0da91fec28 100644
 --- a/res/values-sq/strings.xml
 +++ b/res/values-sq/strings.xml
 @@ -2844,15 +2844,15 @@
@@ -1463,7 +1463,7 @@ index 6ac7a9989c..c0da91fec2 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"Je tashmë i lidhur me një rrjet VPN gjithmonë aktiv. Nëse je lidhur me një tjetër, rrjeti yt ekzistues VPN do të zëvendësohet dhe modaliteti gjithmonë aktiv do të çaktivizohet."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"Je tashmë i lidhur me një rrjet VPN. Nëse je lidhur me një tjetër, rrjeti yt ekzistues VPN do të zëvendësohet."</string>
 diff --git a/res/values-sr/strings.xml b/res/values-sr/strings.xml
-index 0bf4de633c..88c21cc703 100644
+index 0bf4de633cb..88c21cc7039 100644
 --- a/res/values-sr/strings.xml
 +++ b/res/values-sr/strings.xml
 @@ -2881,15 +2881,15 @@
@@ -1484,7 +1484,7 @@ index 0bf4de633c..88c21cc703 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"Већ сте повезани са увек укљученим VPN-ом. Ако се повежете са неким другим, постојећи VPN ће бити замењен, а режим Увек укључен ће бити искључен."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"Већ сте повезани са VPN-ом. Ако се повежете са неким другим, постојећи VPN ће бити замењен."</string>
 diff --git a/res/values-sv/strings.xml b/res/values-sv/strings.xml
-index 1bf227c63c..d3724488f2 100644
+index 1bf227c63cf..d3724488f22 100644
 --- a/res/values-sv/strings.xml
 +++ b/res/values-sv/strings.xml
 @@ -2844,15 +2844,15 @@
@@ -1505,7 +1505,7 @@ index 1bf227c63c..d3724488f2 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"Du är redan ansluten till ett Always-on VPN. Om du ansluter till ett annat ersätts ditt befintliga VPN, och Always-on-läge inaktiveras."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"Du är redan ansluten till ett VPN. Om du ansluter till ett annat ersätts ditt befintliga VPN."</string>
 diff --git a/res/values-sw/strings.xml b/res/values-sw/strings.xml
-index 4876b513e0..22ec957b3c 100644
+index 4876b513e08..22ec957b3c5 100644
 --- a/res/values-sw/strings.xml
 +++ b/res/values-sw/strings.xml
 @@ -2844,15 +2844,15 @@
@@ -1526,7 +1526,7 @@ index 4876b513e0..22ec957b3c 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"Tayari umeunganisha kwenye VPN ambayo imewashwa kila mara. Ikiwa utaunganisha kwenye programu tofauti, programu hiyo itaondoa VPN iliyopo na kuzima hali ya imewashwa kila mara."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"Tayari umeunganisha kwenye VPN. Ikiwa utaunganisha kwenye programu tofauti, programu hiyo itaondoa VPN iliyopo."</string>
 diff --git a/res/values-ta/strings.xml b/res/values-ta/strings.xml
-index 8438d8131d..3791d4130f 100644
+index 8438d8131d4..3791d4130f8 100644
 --- a/res/values-ta/strings.xml
 +++ b/res/values-ta/strings.xml
 @@ -2844,15 +2844,15 @@
@@ -1547,7 +1547,7 @@ index 8438d8131d..3791d4130f 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"எப்போதும் இயங்கும் VPN உடன் ஏற்கனவே இணைத்துள்ளீர்கள். வேறொன்றுடன் இணைத்தால், அது தற்போதுள்ள VPNக்குப் பதிலாக மாற்றியமைக்கப்படும், மேலும் எப்போதும் இயங்கும் பயன்முறை முடக்கப்படும்."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"ஏற்கனவே ஒரு VPN உடன் இணைத்துள்ளீர்கள். வேறொன்றுடன் இணைத்தால், அது தற்போதுள்ள VPNக்குப் பதிலாக மாற்றியமைக்கப்படும்."</string>
 diff --git a/res/values-te/strings.xml b/res/values-te/strings.xml
-index a3e54662b2..198d3ee464 100644
+index a3e54662b26..198d3ee4649 100644
 --- a/res/values-te/strings.xml
 +++ b/res/values-te/strings.xml
 @@ -2844,15 +2844,15 @@
@@ -1568,7 +1568,7 @@ index a3e54662b2..198d3ee464 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"మీరు ఇప్పటికే ఎల్లప్పుడూ ఆన్‌లో ఉండే VPNకి కనెక్ట్ అయ్యారు. మీరు వేరొక దానికి కనెక్ట్ చేస్తే, ఇప్పటికే ఉన్న మీ VPN భర్తీ చేయబడుతుంది మరియు ఎల్లప్పుడూ ఆన్‌లో ఉంచే మోడ్ ఆఫ్ చేయబడుతుంది."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"మీరు ఇప్పటికే VPNకి కనెక్ట్ అయ్యారు. మీరు వేరొక దానికి కనెక్ట్ చేస్తే, మీ ప్రస్తుత VPN భర్తీ చేయబడుతుంది."</string>
 diff --git a/res/values-th/strings.xml b/res/values-th/strings.xml
-index a3ea84372f..15b096a6a4 100644
+index a3ea84372f5..15b096a6a4e 100644
 --- a/res/values-th/strings.xml
 +++ b/res/values-th/strings.xml
 @@ -2844,15 +2844,15 @@
@@ -1589,7 +1589,7 @@ index a3ea84372f..15b096a6a4 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"คุณเชื่อมต่ออยู่กับ VPN แบบเปิดตลอดเวลาแล้ว หากเชื่อมต่อรายการอื่น ระบบจะแทนที่ VPN ที่มีอยู่และปิดโหมดเปิดตลอดเวลา"</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"คุณเชื่อมต่ออยู่กับ VPN แล้ว หากเชื่อมต่อรายการอื่น ระบบจะแทนที่ VPN ที่มีอยู่"</string>
 diff --git a/res/values-tl/strings.xml b/res/values-tl/strings.xml
-index f405a94496..b1d0de6d7d 100644
+index f405a94496c..b1d0de6d7d7 100644
 --- a/res/values-tl/strings.xml
 +++ b/res/values-tl/strings.xml
 @@ -2844,15 +2844,15 @@
@@ -1610,7 +1610,7 @@ index f405a94496..b1d0de6d7d 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"Nakakonekta ka na sa isang VPN na palaging naka-on. Kung kokonekta ka sa iba, papalitan ang dati mo nang VPN at io-off ang palaging naka-on na mode."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"Nakakonekta ka na sa isang VPN. Kung kokonekta ka sa iba, papalitan ang dati mo nang VPN."</string>
 diff --git a/res/values-tr/strings.xml b/res/values-tr/strings.xml
-index 5da530a0a9..843c5de2f1 100644
+index 5da530a0a9d..843c5de2f15 100644
 --- a/res/values-tr/strings.xml
 +++ b/res/values-tr/strings.xml
 @@ -2844,15 +2844,15 @@
@@ -1631,7 +1631,7 @@ index 5da530a0a9..843c5de2f1 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"Her zaman açık moddaki VPN\'ye zaten bağlısınız. Farklı bir VPN\'ye bağlanırsanız mevcut VPN\'niz değişir ve her zaman açık modu kapanır."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"Bir VPN\'ye zaten bağlısınız. Farklı bir VPN\'ye bağlanırsanız mevcut VPN\'niz değiştirilecek."</string>
 diff --git a/res/values-uk/strings.xml b/res/values-uk/strings.xml
-index dedac46511..7f3c1f3580 100644
+index dedac46511e..7f3c1f35806 100644
 --- a/res/values-uk/strings.xml
 +++ b/res/values-uk/strings.xml
 @@ -2918,15 +2918,15 @@
@@ -1652,7 +1652,7 @@ index dedac46511..7f3c1f3580 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"Пристрій уже під’єднано до постійної мережі VPN. Якщо під’єднати його до іншої мережі, наявну мережу VPN буде замінено, а режим постійної мережі VPN буде вимкнено."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"Пристрій уже під’єднано до мережі VPN. Якщо під’єднати його до іншої мережі, наявну мережу VPN буде замінено."</string>
 diff --git a/res/values-ur/strings.xml b/res/values-ur/strings.xml
-index 0d2a474381..aeefec22f5 100644
+index 0d2a4743811..aeefec22f5c 100644
 --- a/res/values-ur/strings.xml
 +++ b/res/values-ur/strings.xml
 @@ -2844,15 +2844,15 @@
@@ -1673,7 +1673,7 @@ index 0d2a474381..aeefec22f5 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"‏آپ پہلے سے ایک ہمیشہ آن VPN سے منسلک ہیں۔ اگر آپ کسی مختلف سے منسلک ہوتے ہیں تو آپ کا موجودہ VPN بدل دیا جائے گا اور ہمیشہ آن موڈ آف ہو جائے گا۔"</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"‏آپ پہلے سے VPN سے منسلک ہیں۔ اگر آپ کسی مختلف سے منسلک ہوتے ہیں تو آپ کا موجودہ VPN بدل دیا جائے گا۔"</string>
 diff --git a/res/values-uz/strings.xml b/res/values-uz/strings.xml
-index db3adfe2b8..01b553ec89 100644
+index db3adfe2b84..01b553ec892 100644
 --- a/res/values-uz/strings.xml
 +++ b/res/values-uz/strings.xml
 @@ -2854,15 +2854,15 @@
@@ -1694,7 +1694,7 @@ index db3adfe2b8..01b553ec89 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"Doimiy VPN tarmog‘iga allaqachon ulangansiz. Agar boshqasiga ulansangiz, mavjud VPN tarmog‘i almashtiriladi va doimiy rejim o‘chirib qo‘yiladi."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"Allaqachon VPN tarmog‘iga ulangan. Yangisiga ulansangiz, mavjud tarmoq almashtiriladi."</string>
 diff --git a/res/values-vi/strings.xml b/res/values-vi/strings.xml
-index b2948c9833..ccd6c4a55e 100644
+index b2948c9833a..ccd6c4a55ee 100644
 --- a/res/values-vi/strings.xml
 +++ b/res/values-vi/strings.xml
 @@ -2844,15 +2844,15 @@
@@ -1715,7 +1715,7 @@ index b2948c9833..ccd6c4a55e 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"Bạn đã kết nối với một VPN luôn bật. Nếu bạn kết nối với một VPN khác, VPN hiện có của bạn sẽ bị thay thế và chế độ luôn bật sẽ tắt."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"Bạn đã kết nối với một VPN. Nếu bạn kết nối với một VPN khác, VPN hiện có của bạn sẽ bị thay thế."</string>
 diff --git a/res/values-zh-rCN/strings.xml b/res/values-zh-rCN/strings.xml
-index 18b56078e0..be0f83491d 100644
+index 18b56078e03..be0f83491d3 100644
 --- a/res/values-zh-rCN/strings.xml
 +++ b/res/values-zh-rCN/strings.xml
 @@ -2844,15 +2844,15 @@
@@ -1736,7 +1736,7 @@ index 18b56078e0..be0f83491d 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"您已连接到某个始终开启的 VPN。如果您要连接到其他 VPN，则系统将替换现有 VPN，并关闭始终开启模式。"</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"您已连接到 VPN。如果您要连接到其他 VPN，则系统将替换现有 VPN。"</string>
 diff --git a/res/values-zh-rHK/strings.xml b/res/values-zh-rHK/strings.xml
-index cc64e5cb38..c4816d8d78 100644
+index cc64e5cb384..c4816d8d78f 100644
 --- a/res/values-zh-rHK/strings.xml
 +++ b/res/values-zh-rHK/strings.xml
 @@ -2845,15 +2845,15 @@
@@ -1757,7 +1757,7 @@ index cc64e5cb38..c4816d8d78 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"您已連線至保持開啟的 VPN。如果您連線至另一個 VPN，目前的 VPN 將會被取代，而保持開啟模式亦將會關閉。"</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"您已連線至 VPN。如果您連線至另一個 VPN，目前的 VPN 將會被取代。"</string>
 diff --git a/res/values-zh-rTW/strings.xml b/res/values-zh-rTW/strings.xml
-index e8b3cd54a9..afce39db08 100644
+index e8b3cd54a95..afce39db08f 100644
 --- a/res/values-zh-rTW/strings.xml
 +++ b/res/values-zh-rTW/strings.xml
 @@ -2844,15 +2844,15 @@
@@ -1778,7 +1778,7 @@ index e8b3cd54a9..afce39db08 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"你已連線至特定的永久連線 VPN。連線至其他 VPN 將會取代現有的 VPN，並關閉永久連線模式。"</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"你已連線至特定 VPN。連線至其他 VPN 將會取代現有的 VPN。"</string>
 diff --git a/res/values-zu/strings.xml b/res/values-zu/strings.xml
-index a8de0116fa..775d795abb 100644
+index a8de0116fa5..775d795abbd 100644
 --- a/res/values-zu/strings.xml
 +++ b/res/values-zu/strings.xml
 @@ -2845,15 +2845,15 @@
@@ -1799,7 +1799,7 @@ index a8de0116fa..775d795abb 100644
      <string name="vpn_replace_always_on_vpn_disable_message" msgid="4299175336198481106">"Usuvele uxhumeke ku-VPN ehlala ivuliwe. Uma uxhumeka kwehlukile, i-VPN yakho ekhona izoshintshaniswa, futhi imodi yokuhlala ivuliwe izovalwa."</string>
      <string name="vpn_replace_vpn_message" msgid="1094297700371463386">"Usuvele uxhumekile ku-VPN. Uma uxhua kwehlukile, i-VPN izoshintshaniswa."</string>
 diff --git a/res/values/strings.xml b/res/values/strings.xml
-index 2180ea45f6..f6e3b0f62d 100644
+index 2180ea45f60..f6e3b0f62df 100644
 --- a/res/values/strings.xml
 +++ b/res/values/strings.xml
 @@ -6609,15 +6609,15 @@
@@ -1820,7 +1820,7 @@ index 2180ea45f6..f6e3b0f62d 100644
      <string name="vpn_set_vpn_title">Set always-on VPN?</string>
      <!-- Dialog message body to explain that always-on VPN will disable network traffic while the VPN is connecting. -->
 diff --git a/res/values/styles.xml b/res/values/styles.xml
-index d3d3199f62..ec66bc8d1b 100644
+index d3d3199f62b..ec66bc8d1b8 100644
 --- a/res/values/styles.xml
 +++ b/res/values/styles.xml
 @@ -193,14 +193,24 @@
@@ -1849,7 +1849,7 @@ index d3d3199f62..ec66bc8d1b 100644
      </style>
  
 diff --git a/res/xml/vpn_app_management.xml b/res/xml/vpn_app_management.xml
-index bcaa6b0a62..adc441d846 100644
+index bcaa6b0a62f..adc441d8468 100644
 --- a/res/xml/vpn_app_management.xml
 +++ b/res/xml/vpn_app_management.xml
 @@ -11,39 +11,51 @@
@@ -1906,7 +1906,7 @@ index bcaa6b0a62..adc441d846 100644
                  settings:useAdminDisabledSummary="true" />
  </PreferenceScreen>
 diff --git a/src/com/android/settings/SettingsPreferenceFragment.java b/src/com/android/settings/SettingsPreferenceFragment.java
-index 6b29b2e1e4..0c537534df 100644
+index 6b29b2e1e48..0c537534dff 100644
 --- a/src/com/android/settings/SettingsPreferenceFragment.java
 +++ b/src/com/android/settings/SettingsPreferenceFragment.java
 @@ -52,23 +52,25 @@ import com.android.settings.widget.HighlightablePreferenceGroupAdapter;
@@ -1986,7 +1986,7 @@ index 6b29b2e1e4..0c537534df 100644
      public LayoutPreference getHeaderView() {
          return mHeader;
 diff --git a/src/com/android/settings/accounts/AccountDashboardFragment.java b/src/com/android/settings/accounts/AccountDashboardFragment.java
-index 515008af59..627a3177d2 100644
+index 515008af596..627a3177d29 100644
 --- a/src/com/android/settings/accounts/AccountDashboardFragment.java
 +++ b/src/com/android/settings/accounts/AccountDashboardFragment.java
 @@ -63,14 +63,19 @@ public class AccountDashboardFragment extends DashboardFragment {
@@ -2010,7 +2010,7 @@ index 515008af59..627a3177d2 100644
                  new AccountPreferenceController(context, parent, authorities);
          if (parent != null) {
 diff --git a/src/com/android/settings/accounts/AddAccountSettings.java b/src/com/android/settings/accounts/AddAccountSettings.java
-index cca15c96d3..2e23e93124 100644
+index cca15c96d3c..2e23e931241 100644
 --- a/src/com/android/settings/accounts/AddAccountSettings.java
 +++ b/src/com/android/settings/accounts/AddAccountSettings.java
 @@ -98,15 +98,16 @@ public class AddAccountSettings extends Activity {
@@ -2034,7 +2034,7 @@ index cca15c96d3..2e23e93124 100644
 diff --git a/src/com/android/settings/applications/appinfo/AppInfoDashboardFragment.java b/src/com/android/settings/applications/appinfo/AppInfoDashboardFragment.java
 old mode 100755
 new mode 100644
-index 9917d352e8..bbbb7113d5
+index 9917d352e8d..bbbb7113d50
 --- a/src/com/android/settings/applications/appinfo/AppInfoDashboardFragment.java
 +++ b/src/com/android/settings/applications/appinfo/AppInfoDashboardFragment.java
 @@ -351,15 +351,21 @@ public class AppInfoDashboardFragment extends DashboardFragment
@@ -2081,7 +2081,7 @@ index 9917d352e8..bbbb7113d5
          uninstallIntent.putExtra(Intent.EXTRA_UNINSTALL_ALL_USERS, allUsers);
          mMetricsFeatureProvider.action(
 diff --git a/src/com/android/settings/applications/specialaccess/deviceadmin/DeviceAdminAdd.java b/src/com/android/settings/applications/specialaccess/deviceadmin/DeviceAdminAdd.java
-index 786efd1ef4..56ba17ccc6 100644
+index 786efd1ef4c..56ba17ccc62 100644
 --- a/src/com/android/settings/applications/specialaccess/deviceadmin/DeviceAdminAdd.java
 +++ b/src/com/android/settings/applications/specialaccess/deviceadmin/DeviceAdminAdd.java
 @@ -46,14 +46,16 @@ import android.os.UserHandle;
@@ -2326,7 +2326,7 @@ index 786efd1ef4..56ba17ccc6 100644
      private void showPolicyTransparencyDialogIfRequired() {
          if (isManagedProfile(mDeviceAdmin)
 diff --git a/src/com/android/settings/development/DevelopmentSettingsDashboardFragment.java b/src/com/android/settings/development/DevelopmentSettingsDashboardFragment.java
-index f18225e8fb..ca46b24a31 100644
+index f18225e8fb5..ca46b24a313 100644
 --- a/src/com/android/settings/development/DevelopmentSettingsDashboardFragment.java
 +++ b/src/com/android/settings/development/DevelopmentSettingsDashboardFragment.java
 @@ -177,14 +177,19 @@ public class DevelopmentSettingsDashboardFragment extends RestrictedDashboardFra
@@ -2350,7 +2350,7 @@ index f18225e8fb..ca46b24a31 100644
          final BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
          if (adapter != null) {
 diff --git a/src/com/android/settings/network/ApnEditor.java b/src/com/android/settings/network/ApnEditor.java
-index 92e689ddd1..cb1c5cce24 100644
+index 92e689ddd16..cb1c5cce242 100644
 --- a/src/com/android/settings/network/ApnEditor.java
 +++ b/src/com/android/settings/network/ApnEditor.java
 @@ -23,14 +23,15 @@ import android.app.settings.SettingsEnums;
@@ -2422,7 +2422,7 @@ index 92e689ddd1..cb1c5cce24 100644
              dialog.show(editor.getFragmentManager(), "error");
          }
 diff --git a/src/com/android/settings/nfc/SecureNfcEnabler.java b/src/com/android/settings/nfc/SecureNfcEnabler.java
-index f31a382a57..ad5c4ab7e8 100644
+index f31a382a571..ad5c4ab7e83 100644
 --- a/src/com/android/settings/nfc/SecureNfcEnabler.java
 +++ b/src/com/android/settings/nfc/SecureNfcEnabler.java
 @@ -57,13 +57,13 @@ public class SecureNfcEnabler extends BaseNfcEnabler {
@@ -2441,7 +2441,7 @@ index f31a382a57..ad5c4ab7e8 100644
      }
  }
 diff --git a/src/com/android/settings/nfc/SecureNfcPreferenceController.java b/src/com/android/settings/nfc/SecureNfcPreferenceController.java
-index 2ff685e5a0..ab87ddba34 100644
+index 2ff685e5a0b..ab87ddba34c 100644
 --- a/src/com/android/settings/nfc/SecureNfcPreferenceController.java
 +++ b/src/com/android/settings/nfc/SecureNfcPreferenceController.java
 @@ -100,14 +100,14 @@ public class SecureNfcPreferenceController extends TogglePreferenceController
@@ -2461,7 +2461,7 @@ index 2ff685e5a0..ab87ddba34 100644
  
  }
 diff --git a/src/com/android/settings/notification/NotificationAccessConfirmationActivity.java b/src/com/android/settings/notification/NotificationAccessConfirmationActivity.java
-index dfe6df2a5c..a6b565ae6b 100644
+index dfe6df2a5ca..a6b565ae6ba 100644
 --- a/src/com/android/settings/notification/NotificationAccessConfirmationActivity.java
 +++ b/src/com/android/settings/notification/NotificationAccessConfirmationActivity.java
 @@ -63,15 +63,17 @@ public class NotificationAccessConfirmationActivity extends Activity
@@ -2484,7 +2484,7 @@ index dfe6df2a5c..a6b565ae6b 100644
              ApplicationInfo applicationInfo = getPackageManager().getApplicationInfo(
                      mComponentName.getPackageName(), 0);
 diff --git a/src/com/android/settings/system/ResetDashboardFragment.java b/src/com/android/settings/system/ResetDashboardFragment.java
-index 5243d6a393..aa06691d67 100644
+index 5243d6a393b..aa06691d67d 100644
 --- a/src/com/android/settings/system/ResetDashboardFragment.java
 +++ b/src/com/android/settings/system/ResetDashboardFragment.java
 @@ -54,14 +54,19 @@ public class ResetDashboardFragment extends DashboardFragment {
@@ -2508,7 +2508,7 @@ index 5243d6a393..aa06691d67 100644
          controllers.add(new ResetAppPrefPreferenceController(context, lifecycle));
          return controllers;
 diff --git a/src/com/android/settings/vpn2/AppManagementFragment.java b/src/com/android/settings/vpn2/AppManagementFragment.java
-index 5f4644614c..805ffb2854 100644
+index 5f4644614c7..805ffb2854a 100644
 --- a/src/com/android/settings/vpn2/AppManagementFragment.java
 +++ b/src/com/android/settings/vpn2/AppManagementFragment.java
 @@ -31,19 +31,21 @@ import android.net.IConnectivityManager;
@@ -2629,7 +2629,7 @@ index 5f4644614c..805ffb2854 100644
      @Override
      public boolean onPreferenceClick(Preference preference) {
 diff --git a/tests/robotests/src/com/android/settings/SettingsPreferenceFragmentTest.java b/tests/robotests/src/com/android/settings/SettingsPreferenceFragmentTest.java
-index cce01550a7..71c531a4c9 100644
+index cce01550a78..71c531a4c99 100644
 --- a/tests/robotests/src/com/android/settings/SettingsPreferenceFragmentTest.java
 +++ b/tests/robotests/src/com/android/settings/SettingsPreferenceFragmentTest.java
 @@ -19,30 +19,33 @@ package com.android.settings;
@@ -2784,7 +2784,7 @@ index cce01550a7..71c531a4c9 100644
      }
  }
 diff --git a/tests/robotests/src/com/android/settings/accounts/AccountDashboardFragmentTest.java b/tests/robotests/src/com/android/settings/accounts/AccountDashboardFragmentTest.java
-index 006087516c..b04d5c7637 100644
+index 006087516cf..b04d5c76375 100644
 --- a/tests/robotests/src/com/android/settings/accounts/AccountDashboardFragmentTest.java
 +++ b/tests/robotests/src/com/android/settings/accounts/AccountDashboardFragmentTest.java
 @@ -49,8 +49,13 @@ public class AccountDashboardFragmentTest {
@@ -2802,7 +2802,7 @@ index 006087516c..b04d5c7637 100644
 +    }
  }
 diff --git a/tests/robotests/src/com/android/settings/applications/appinfo/AppInfoDashboardFragmentTest.java b/tests/robotests/src/com/android/settings/applications/appinfo/AppInfoDashboardFragmentTest.java
-index e46cd06afe..5292c60f86 100644
+index e46cd06afe6..5292c60f869 100644
 --- a/tests/robotests/src/com/android/settings/applications/appinfo/AppInfoDashboardFragmentTest.java
 +++ b/tests/robotests/src/com/android/settings/applications/appinfo/AppInfoDashboardFragmentTest.java
 @@ -380,14 +380,19 @@ public final class AppInfoDashboardFragmentTest {
@@ -2826,7 +2826,7 @@ index e46cd06afe..5292c60f86 100644
          @Resetter
          public static void reset() {
 diff --git a/tests/robotests/src/com/android/settings/development/DevelopmentSettingsDashboardFragmentTest.java b/tests/robotests/src/com/android/settings/development/DevelopmentSettingsDashboardFragmentTest.java
-index 83a4880968..d460d13e9e 100644
+index 83a48809681..d460d13e9ea 100644
 --- a/tests/robotests/src/com/android/settings/development/DevelopmentSettingsDashboardFragmentTest.java
 +++ b/tests/robotests/src/com/android/settings/development/DevelopmentSettingsDashboardFragmentTest.java
 @@ -271,14 +271,19 @@ public class DevelopmentSettingsDashboardFragmentTest {
@@ -2850,7 +2850,7 @@ index 83a4880968..d460d13e9e 100644
          public static void reset() {
              mShown = false;
 diff --git a/tests/robotests/src/com/android/settings/network/ApnEditorTest.java b/tests/robotests/src/com/android/settings/network/ApnEditorTest.java
-index dc14418b59..6a67eaf358 100644
+index dc14418b596..6a67eaf3587 100644
 --- a/tests/robotests/src/com/android/settings/network/ApnEditorTest.java
 +++ b/tests/robotests/src/com/android/settings/network/ApnEditorTest.java
 @@ -29,14 +29,15 @@ import static org.mockito.Mockito.when;
@@ -2945,7 +2945,7 @@ index dc14418b59..6a67eaf358 100644
          verify(mApnEditorUT).finish();
 diff --git a/tests/robotests/src/com/android/settings/system/ResetDashboardFragmentTest.java b/tests/robotests/src/com/android/settings/system/ResetDashboardFragmentTest.java
 new file mode 100644
-index 0000000000..c1d47887a7
+index 00000000000..c1d47887a70
 --- /dev/null
 +++ b/tests/robotests/src/com/android/settings/system/ResetDashboardFragmentTest.java
 @@ -0,0 +1,40 @@

@@ -1,4 +1,4 @@
-From fc0209db7214dc5679057bdd99c847ecd406412f Mon Sep 17 00:00:00 2001
+From f7604967a01376dd8ee2aa44021409d50710e644 Mon Sep 17 00:00:00 2001
 From: Weng Su <wengsu@google.com>
 Date: Fri, 7 Jul 2023 19:52:04 +0800
 Subject: [PATCH] [RESTRICT AUTOMERGE] Restrict ApnEditor settings
@@ -19,7 +19,7 @@ Change-Id: Iecdbbff7e21dfb11e3ba385858747a220cfd3e04
  2 files changed, 53 insertions(+)
 
 diff --git a/src/com/android/settings/network/ApnEditor.java b/src/com/android/settings/network/ApnEditor.java
-index 92e689ddd1..cb1c5cce24 100644
+index 92e689ddd16..cb1c5cce242 100644
 --- a/src/com/android/settings/network/ApnEditor.java
 +++ b/src/com/android/settings/network/ApnEditor.java
 @@ -27,6 +27,7 @@ import android.database.Cursor;
@@ -67,7 +67,7 @@ index 92e689ddd1..cb1c5cce24 100644
  
          public static void showError(ApnEditor editor) {
 diff --git a/tests/robotests/src/com/android/settings/network/ApnEditorTest.java b/tests/robotests/src/com/android/settings/network/ApnEditorTest.java
-index dc14418b59..6a67eaf358 100644
+index dc14418b596..6a67eaf3587 100644
 --- a/tests/robotests/src/com/android/settings/network/ApnEditorTest.java
 +++ b/tests/robotests/src/com/android/settings/network/ApnEditorTest.java
 @@ -33,6 +33,7 @@ import android.content.Context;

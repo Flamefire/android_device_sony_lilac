@@ -1,4 +1,4 @@
-From bbbbed4bba740389ebbccfa3a900f5aa3861d392 Mon Sep 17 00:00:00 2001
+From 51f32a6f7fb206f2272e4492a17b19090f826beb Mon Sep 17 00:00:00 2001
 From: =?UTF-8?q?Mat=C3=ADas=20Hern=C3=A1ndez?= <matiashe@google.com>
 Date: Thu, 15 Jun 2023 18:37:52 +0200
 Subject: [PATCH 1/2] Settings: don't try to allow NLSes with too-long
@@ -19,7 +19,7 @@ Change-Id: Ifc048311746c027e3683cdcf65f1079d04cf7c56
  1 file changed, 3 insertions(+), 1 deletion(-)
 
 diff --git a/src/com/android/settings/notification/NotificationAccessConfirmationActivity.java b/src/com/android/settings/notification/NotificationAccessConfirmationActivity.java
-index dfe6df2a5c..a6b565ae6b 100644
+index dfe6df2a5ca..a6b565ae6ba 100644
 --- a/src/com/android/settings/notification/NotificationAccessConfirmationActivity.java
 +++ b/src/com/android/settings/notification/NotificationAccessConfirmationActivity.java
 @@ -67,7 +67,9 @@ public class NotificationAccessConfirmationActivity extends Activity
