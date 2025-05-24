@@ -1,0 +1,140 @@
+# PWD: packages/modules/Wifi
+diff --git a/service/java/com/android/server/wifi/WifiConfigurationUtil.java b/service/java/com/android/server/wifi/WifiConfigurationUtil.java
+index 379661ad0..7a3319fc8 100644
+--- a/service/java/com/android/server/wifi/WifiConfigurationUtil.java
++++ b/service/java/com/android/server/wifi/WifiConfigurationUtil.java
+@@ -25,14 +25,15 @@ import static android.net.wifi.hotspot2.PasspointConfiguration.MAX_NUMBER_OF_OI;
+ import static android.net.wifi.hotspot2.PasspointConfiguration.MAX_OI_VALUE;
+ 
+ import static com.android.server.wifi.util.NativeUtil.addEnclosingQuotes;
+ 
+ import android.annotation.SuppressLint;
+ import android.net.IpConfiguration;
+ import android.net.MacAddress;
++import android.net.ProxyInfo;
+ import android.net.StaticIpConfiguration;
+ import android.net.wifi.SecurityParams;
+ import android.net.wifi.WifiConfiguration;
+ import android.net.wifi.WifiEnterpriseConfig;
+ import android.net.wifi.WifiInfo;
+ import android.net.wifi.WifiManager;
+ import android.net.wifi.WifiNetworkSpecifier;
+@@ -79,14 +80,15 @@ public class WifiConfigurationUtil {
+     private static final int PSK_ASCII_MIN_LEN = 8 + ENCLOSING_QUOTES_LEN;
+     private static final int SAE_ASCII_MIN_LEN = 1 + ENCLOSING_QUOTES_LEN;
+     private static final int PSK_SAE_ASCII_MAX_LEN = 63 + ENCLOSING_QUOTES_LEN;
+     private static final int PSK_SAE_HEX_LEN = 64;
+     private static final int WEP104_KEY_BYTES_LEN = 13;
+     private static final int WEP40_KEY_BYTES_LEN = 5;
+     private static final int MAX_STRING_LENGTH = 512;
++    private static final int MAX_ENTRY_SIZE = 100;
+ 
+     @VisibleForTesting
+     public static final String PASSWORD_MASK = "*";
+     private static final String MATCH_EMPTY_SSID_PATTERN_PATH = "";
+     private static final Pair<MacAddress, MacAddress> MATCH_NONE_BSSID_PATTERN =
+             new Pair<>(MacAddress.BROADCAST_ADDRESS, MacAddress.BROADCAST_ADDRESS);
+     private static final Pair<MacAddress, MacAddress> MATCH_ALL_BSSID_PATTERN =
+@@ -650,14 +652,50 @@ public class WifiConfigurationUtil {
+                 Log.e(TAG, "validateIpConfiguration failed: null StaticIpConfiguration");
+                 return false;
+             }
+             if (staticIpConfig.getIpAddress() == null) {
+                 Log.e(TAG, "validateIpConfiguration failed: null static ip Address");
+                 return false;
+             }
++            if (staticIpConfig.getDnsServers() != null
++                    && staticIpConfig.getDnsServers().size() > MAX_ENTRY_SIZE) {
++                Log.e(TAG, "validateIpConfiguration failed: too many DNS server");
++                return false;
++            }
++            if (staticIpConfig.getDomains() != null
++                    && staticIpConfig.getDomains().length() > MAX_STRING_LENGTH) {
++                Log.e(TAG, "validateIpConfiguration failed: domain name too long");
++                return false;
++            }
++        }
++        ProxyInfo proxyInfo = ipConfig.getHttpProxy();
++        if (proxyInfo != null) {
++            if (!proxyInfo.isValid()) {
++                Log.e(TAG, "validateIpConfiguration failed: invalid proxy info");
++                return false;
++            }
++            if (proxyInfo.getHost() != null
++                    && proxyInfo.getHost().length() > MAX_STRING_LENGTH) {
++                Log.e(TAG, "validateIpConfiguration failed: host name too long");
++                return false;
++            }
++            if (proxyInfo.getExclusionList() != null) {
++                if (proxyInfo.getExclusionList().length > MAX_ENTRY_SIZE) {
++                    Log.e(TAG, "validateIpConfiguration failed: too many entry in exclusion list");
++                    return false;
++                }
++                int sum = 0;
++                for (String s : proxyInfo.getExclusionList()) {
++                    sum += s.length();
++                    if (sum > MAX_STRING_LENGTH) {
++                        Log.e(TAG, "validateIpConfiguration failed: exclusion list size too large");
++                        return false;
++                    }
++                }
++            }
+         }
+         return true;
+     }
+ 
+     /**
+      * Enums to specify if the provided config is being validated for add or update.
+      */
+diff --git a/service/tests/wifitests/src/com/android/server/wifi/WifiConfigurationUtilTest.java b/service/tests/wifitests/src/com/android/server/wifi/WifiConfigurationUtilTest.java
+index 01934d92e..08da0b62b 100644
+--- a/service/tests/wifitests/src/com/android/server/wifi/WifiConfigurationUtilTest.java
++++ b/service/tests/wifitests/src/com/android/server/wifi/WifiConfigurationUtilTest.java
+@@ -27,14 +27,15 @@ import static com.android.server.wifi.WifiConfigurationUtil.convertWifiInfoSecur
+ import static org.junit.Assert.assertEquals;
+ import static org.junit.Assert.assertFalse;
+ import static org.junit.Assert.assertTrue;
+ 
+ import android.content.pm.UserInfo;
+ import android.net.IpConfiguration;
+ import android.net.MacAddress;
++import android.net.ProxyInfo;
+ import android.net.wifi.ScanResult;
+ import android.net.wifi.SecurityParams;
+ import android.net.wifi.WifiConfiguration;
+ import android.net.wifi.WifiEnterpriseConfig;
+ import android.net.wifi.WifiInfo;
+ import android.net.wifi.WifiManager;
+ import android.net.wifi.WifiNetworkSpecifier;
+@@ -1463,8 +1464,31 @@ public class WifiConfigurationUtilTest extends WifiBaseTest {
+         WifiConfiguration pskConfig = WifiConfigurationTestUtil.createPskNetwork();
+         String generatedString513 = Strings.repeat("a", 513);
+         pskConfig.getNetworkSelectionStatus().setConnectChoice(generatedString513);
+ 
+         assertFalse(WifiConfigurationUtil.validate(pskConfig,
+                 WifiConfigurationUtil.VALIDATE_FOR_ADD));
+     }
++
++    @Test
++    public void testInvalidStaticIpConfig() {
++        WifiConfiguration pskConfig = WifiConfigurationTestUtil.createPskNetwork();
++        IpConfiguration ipConfig =
++                WifiConfigurationTestUtil.createStaticIpConfigurationWithPacProxy();
++        ipConfig.getStaticIpConfiguration().domains = "a".repeat(513);
++        pskConfig.setIpConfiguration(ipConfig);
++        assertFalse(WifiConfigurationUtil.validate(pskConfig, SUPPORTED_FEATURES_ALL,
++                WifiConfigurationUtil.VALIDATE_FOR_ADD));
++    }
++    @Test
++    public void testInvalidProxyInfo() {
++        WifiConfiguration pskConfig = WifiConfigurationTestUtil.createPskNetwork();
++        IpConfiguration ipConfig =
++                WifiConfigurationTestUtil.createStaticIpConfigurationWithStaticProxy();
++        ProxyInfo proxyInfo = ProxyInfo.buildDirectProxy(ipConfig.getHttpProxy().getHost(),
++                ipConfig.getHttpProxy().getPort(), List.of("a".repeat(513)));
++        ipConfig.setHttpProxy(proxyInfo);
++        pskConfig.setIpConfiguration(ipConfig);
++        assertFalse(WifiConfigurationUtil.validate(pskConfig, SUPPORTED_FEATURES_ALL,
++                WifiConfigurationUtil.VALIDATE_FOR_ADD));
++    }
+ }

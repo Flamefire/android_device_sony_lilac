@@ -1,0 +1,32 @@
+From 33531b20af5e8c315bb97fc9a7961447c4155399 Mon Sep 17 00:00:00 2001
+From: Andrea Ambu <andreaambu@google.com>
+Date: Thu, 8 Dec 2022 17:22:37 +0000
+Subject: [PATCH 07/10] speech: No BIND_ALLOW_BACKGROUND_ACTIVITY_STARTS
+
+Bug: 232799171
+Test: cts
+(cherry picked from https://googleplex-android-review.googlesource.com/q/commit:433ba102f30f0ab07e8ac0ff721ce97610eff030)
+(cherry picked from https://googleplex-android-review.googlesource.com/q/commit:02ce77179cdc824208deb78c79202cbee6d98a36)
+Merged-In: I72114a936682d735bbe4f79e2c43bba2cdade97e
+Change-Id: I72114a936682d735bbe4f79e2c43bba2cdade97e
+---
+ .../android/server/speech/RemoteSpeechRecognitionService.java  | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/services/core/java/com/android/server/speech/RemoteSpeechRecognitionService.java b/services/core/java/com/android/server/speech/RemoteSpeechRecognitionService.java
+index 068626588745f..0590ed18139a6 100644
+--- a/services/core/java/com/android/server/speech/RemoteSpeechRecognitionService.java
++++ b/services/core/java/com/android/server/speech/RemoteSpeechRecognitionService.java
+@@ -68,8 +68,7 @@ final class RemoteSpeechRecognitionService extends ServiceConnector.Impl<IRecogn
+                 new Intent(RecognitionService.SERVICE_INTERFACE).setComponent(serviceName),
+                 Context.BIND_AUTO_CREATE
+                         | Context.BIND_FOREGROUND_SERVICE
+-                        | Context.BIND_INCLUDE_CAPABILITIES
+-                        | Context.BIND_ALLOW_BACKGROUND_ACTIVITY_STARTS,
++                        | Context.BIND_INCLUDE_CAPABILITIES,
+                 userId,
+                 IRecognitionService.Stub::asInterface);
+ 
+-- 
+2.40.1
+

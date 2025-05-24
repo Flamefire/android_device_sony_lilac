@@ -1,0 +1,2952 @@
+# PWD: frameworks/base
+diff --git a/core/java/android/appwidget/AppWidgetHostView.java b/core/java/android/appwidget/AppWidgetHostView.java
+index b0ffd76903775..956d40a3c3d22 100644
+--- a/core/java/android/appwidget/AppWidgetHostView.java
++++ b/core/java/android/appwidget/AppWidgetHostView.java
+@@ -16,15 +16,14 @@
+ 
+ package android.appwidget;
+ 
+ import android.annotation.NonNull;
+ import android.annotation.Nullable;
+ import android.app.Activity;
+ import android.app.ActivityOptions;
+-import android.app.LoadedApk;
+ import android.compat.annotation.UnsupportedAppUsage;
+ import android.content.ComponentName;
+ import android.content.Context;
+ import android.content.ContextWrapper;
+ import android.content.Intent;
+ import android.content.pm.ApplicationInfo;
+ import android.content.pm.LauncherActivityInfo;
+@@ -723,17 +722,14 @@ public class AppWidgetHostView extends FrameLayout {
+     /**
+      * Build a {@link Context} cloned into another package name, usually for the
+      * purposes of reading remote resources.
+      * @hide
+      */
+     protected Context getRemoteContextEnsuringCorrectCachedApkPath() {
+         try {
+-            ApplicationInfo expectedAppInfo = mInfo.providerInfo.applicationInfo;
+-            LoadedApk.checkAndUpdateApkPaths(expectedAppInfo);
+-            // Return if cloned successfully, otherwise default
+             Context newContext = mContext.createApplicationContext(
+                     mInfo.providerInfo.applicationInfo,
+                     Context.CONTEXT_RESTRICTED);
+             if (mColorResources != null) {
+                 mColorResources.apply(newContext);
+             }
+             return newContext;
+diff --git a/core/java/android/hardware/biometrics/BiometricPrompt.java b/core/java/android/hardware/biometrics/BiometricPrompt.java
+index 520234bcf0506..a3fe48a31de69 100644
+--- a/core/java/android/hardware/biometrics/BiometricPrompt.java
++++ b/core/java/android/hardware/biometrics/BiometricPrompt.java
+@@ -428,14 +428,28 @@ public class BiometricPrompt implements BiometricAuthenticator, BiometricConstan
+          */
+         @NonNull
+         public Builder setIsForLegacyFingerprintManager(int sensorId) {
+             mPromptInfo.setIsForLegacyFingerprintManager(sensorId);
+             return this;
+         }
+ 
++        /**
++         * Set the class name of ConfirmDeviceCredentialActivity.
++         *
++         * @return This builder.
++         * @hide
++         */
++        @NonNull
++        @RequiresPermission(anyOf = {TEST_BIOMETRIC, USE_BIOMETRIC_INTERNAL})
++        public Builder setClassNameIfItIsConfirmDeviceCredentialActivity() {
++            mPromptInfo.setClassNameIfItIsConfirmDeviceCredentialActivity(
++                    mContext.getClass().getName());
++            return this;
++        }
++
+         /**
+          * Creates a {@link BiometricPrompt}.
+          *
+          * @return An instance of {@link BiometricPrompt}.
+          *
+          * @throws IllegalArgumentException If any required fields are unset, or if given any
+          * invalid combination of field values.
+diff --git a/core/java/android/hardware/biometrics/PromptInfo.java b/core/java/android/hardware/biometrics/PromptInfo.java
+index 2742f0effde6d..601ba38a7bb76 100644
+--- a/core/java/android/hardware/biometrics/PromptInfo.java
++++ b/core/java/android/hardware/biometrics/PromptInfo.java
+@@ -43,14 +43,15 @@ public class PromptInfo implements Parcelable {
+     private @BiometricManager.Authenticators.Types int mAuthenticators;
+     private boolean mDisallowBiometricsIfPolicyExists;
+     private boolean mReceiveSystemEvents;
+     @NonNull private List<Integer> mAllowedSensorIds = new ArrayList<>();
+     private boolean mAllowBackgroundAuthentication;
+     private boolean mIgnoreEnrollmentState;
+     private boolean mIsForLegacyFingerprintManager = false;
++    private String mClassNameIfItIsConfirmDeviceCredentialActivity = null;
+ 
+     public PromptInfo() {
+ 
+     }
+ 
+     PromptInfo(Parcel in) {
+         mTitle = in.readCharSequence();
+@@ -66,14 +67,15 @@ public class PromptInfo implements Parcelable {
+         mAuthenticators = in.readInt();
+         mDisallowBiometricsIfPolicyExists = in.readBoolean();
+         mReceiveSystemEvents = in.readBoolean();
+         mAllowedSensorIds = in.readArrayList(Integer.class.getClassLoader());
+         mAllowBackgroundAuthentication = in.readBoolean();
+         mIgnoreEnrollmentState = in.readBoolean();
+         mIsForLegacyFingerprintManager = in.readBoolean();
++        mClassNameIfItIsConfirmDeviceCredentialActivity = in.readString();
+     }
+ 
+     public static final Creator<PromptInfo> CREATOR = new Creator<PromptInfo>() {
+         @Override
+         public PromptInfo createFromParcel(Parcel in) {
+             return new PromptInfo(in);
+         }
+@@ -104,25 +106,28 @@ public class PromptInfo implements Parcelable {
+         dest.writeInt(mAuthenticators);
+         dest.writeBoolean(mDisallowBiometricsIfPolicyExists);
+         dest.writeBoolean(mReceiveSystemEvents);
+         dest.writeList(mAllowedSensorIds);
+         dest.writeBoolean(mAllowBackgroundAuthentication);
+         dest.writeBoolean(mIgnoreEnrollmentState);
+         dest.writeBoolean(mIsForLegacyFingerprintManager);
++        dest.writeString(mClassNameIfItIsConfirmDeviceCredentialActivity);
+     }
+ 
+     public boolean containsTestConfigurations() {
+         if (mIsForLegacyFingerprintManager
+                 && mAllowedSensorIds.size() == 1
+                 && !mAllowBackgroundAuthentication) {
+             return false;
+         } else if (!mAllowedSensorIds.isEmpty()) {
+             return true;
+         } else if (mAllowBackgroundAuthentication) {
+             return true;
++        } else if (mClassNameIfItIsConfirmDeviceCredentialActivity != null) {
++            return true;
+         }
+         return false;
+     }
+ 
+     public boolean containsPrivateApiConfigurations() {
+         if (mDisallowBiometricsIfPolicyExists) {
+             return true;
+@@ -209,14 +214,21 @@ public class PromptInfo implements Parcelable {
+ 
+     public void setIsForLegacyFingerprintManager(int sensorId) {
+         mIsForLegacyFingerprintManager = true;
+         mAllowedSensorIds.clear();
+         mAllowedSensorIds.add(sensorId);
+     }
+ 
++    /**
++     * Set the class name of ConfirmDeviceCredentialActivity.
++     */
++    void setClassNameIfItIsConfirmDeviceCredentialActivity(String className) {
++        mClassNameIfItIsConfirmDeviceCredentialActivity = className;
++    }
++
+     // Getters
+ 
+     public CharSequence getTitle() {
+         return mTitle;
+     }
+ 
+     public boolean isUseDefaultTitle() {
+@@ -286,8 +298,16 @@ public class PromptInfo implements Parcelable {
+     public boolean isIgnoreEnrollmentState() {
+         return mIgnoreEnrollmentState;
+     }
+ 
+     public boolean isForLegacyFingerprintManager() {
+         return mIsForLegacyFingerprintManager;
+     }
++
++    /**
++     * Get the class name of ConfirmDeviceCredentialActivity. Returns null if the direct caller is
++     * not ConfirmDeviceCredentialActivity.
++     */
++    public String getClassNameIfItIsConfirmDeviceCredentialActivity() {
++        return mClassNameIfItIsConfirmDeviceCredentialActivity;
++    }
+ }
+diff --git a/core/java/android/widget/RemoteViews.java b/core/java/android/widget/RemoteViews.java
+index af38f16f72563..77d61e645205d 100644
+--- a/core/java/android/widget/RemoteViews.java
++++ b/core/java/android/widget/RemoteViews.java
+@@ -30,15 +30,14 @@ import android.annotation.Px;
+ import android.annotation.StringRes;
+ import android.annotation.StyleRes;
+ import android.annotation.SuppressLint;
+ import android.app.Activity;
+ import android.app.ActivityOptions;
+ import android.app.ActivityThread;
+ import android.app.Application;
+-import android.app.LoadedApk;
+ import android.app.PendingIntent;
+ import android.app.RemoteInput;
+ import android.appwidget.AppWidgetHostView;
+ import android.compat.annotation.UnsupportedAppUsage;
+ import android.content.Context;
+ import android.content.ContextWrapper;
+ import android.content.Intent;
+@@ -6003,17 +6002,26 @@ public class RemoteViews implements Parcelable, Filter {
+     private Context getContextForResourcesEnsuringCorrectCachedApkPaths(Context context) {
+         if (mApplication != null) {
+             if (context.getUserId() == UserHandle.getUserId(mApplication.uid)
+                     && context.getPackageName().equals(mApplication.packageName)) {
+                 return context;
+             }
+             try {
+-                LoadedApk.checkAndUpdateApkPaths(mApplication);
+-                return context.createApplicationContext(mApplication,
++                // Use PackageManager as the source of truth for application information, rather
++                // than the parceled ApplicationInfo provided by the app.
++                ApplicationInfo sanitizedApplication =
++                        context.getPackageManager().getApplicationInfoAsUser(
++                                mApplication.packageName, 0,
++                                UserHandle.getUserId(mApplication.uid));
++                Context applicationContext = context.createApplicationContext(
++                        sanitizedApplication,
+                         Context.CONTEXT_RESTRICTED);
++                // Get the correct apk paths while maintaining the current context's configuration.
++                return applicationContext.createConfigurationContext(
++                        context.getResources().getConfiguration());
+             } catch (NameNotFoundException e) {
+                 Log.e(LOG_TAG, "Package name " + mApplication.packageName + " not found");
+             }
+         }
+ 
+         return context;
+     }
+diff --git a/core/java/com/android/internal/app/ChooserActivity.java b/core/java/com/android/internal/app/ChooserActivity.java
+index c741029143eca..8f7bc594a0602 100644
+--- a/core/java/com/android/internal/app/ChooserActivity.java
++++ b/core/java/com/android/internal/app/ChooserActivity.java
+@@ -12,29 +12,32 @@
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  */
+ 
+ package com.android.internal.app;
+ 
++import static android.content.ContentProvider.getUriWithoutUserId;
+ import static android.content.ContentProvider.getUserIdFromUri;
+ 
+ import static java.lang.annotation.RetentionPolicy.SOURCE;
+ 
+ import android.animation.Animator;
+ import android.animation.AnimatorListenerAdapter;
+ import android.animation.AnimatorSet;
+ import android.animation.ObjectAnimator;
+ import android.animation.ValueAnimator;
+ import android.annotation.IntDef;
+ import android.annotation.NonNull;
+ import android.annotation.Nullable;
+ import android.app.Activity;
+ import android.app.ActivityManager;
++import android.app.IUriGrantsManager;
+ import android.app.SharedElementCallback;
++import android.app.UriGrantsManager;
+ import android.app.prediction.AppPredictionContext;
+ import android.app.prediction.AppPredictionManager;
+ import android.app.prediction.AppPredictor;
+ import android.app.prediction.AppTarget;
+ import android.app.prediction.AppTargetEvent;
+ import android.app.prediction.AppTargetId;
+ import android.compat.annotation.UnsupportedAppUsage;
+@@ -63,14 +66,15 @@ import android.database.DataSetObserver;
+ import android.graphics.Bitmap;
+ import android.graphics.Canvas;
+ import android.graphics.Color;
+ import android.graphics.Paint;
+ import android.graphics.Path;
+ import android.graphics.drawable.AnimatedVectorDrawable;
+ import android.graphics.drawable.Drawable;
++import android.graphics.drawable.Icon;
+ import android.metrics.LogMaker;
+ import android.net.Uri;
+ import android.os.AsyncTask;
+ import android.os.Bundle;
+ import android.os.Environment;
+ import android.os.Handler;
+ import android.os.IBinder;
+@@ -741,15 +745,19 @@ public class ChooserActivity extends ResolverActivity implements
+             ChooserTarget[] targets = new ChooserTarget[count];
+             for (int i = 0; i < count; i++) {
+                 if (!(pa[i] instanceof ChooserTarget)) {
+                     Log.w(TAG, "Chooser target #" + i + " not a ChooserTarget: " + pa[i]);
+                     targets = null;
+                     break;
+                 }
+-                targets[i] = (ChooserTarget) pa[i];
++                ChooserTarget chooserTarget = (ChooserTarget) pa[i];
++                if (!hasValidIcon(chooserTarget)) {
++                    chooserTarget = removeIcon(chooserTarget);
++                }
++                targets[i] = chooserTarget;
+             }
+             mCallerChooserTargets = targets;
+         }
+ 
+         mMaxTargetsPerRow = getResources().getInteger(R.integer.config_chooser_max_targets_per_row);
+         mShouldDisplayLandscape =
+                 shouldDisplayLandscape(getResources().getConfiguration().orientation);
+@@ -4271,8 +4279,47 @@ public class ChooserActivity extends ResolverActivity implements
+         }
+     }
+ 
+     @Override
+     protected void maybeLogProfileChange() {
+         getChooserActivityLogger().logShareheetProfileChanged();
+     }
++
++    private boolean hasValidIcon(ChooserTarget target) {
++        Icon icon = target.getIcon();
++        if (icon == null) {
++            return true;
++        }
++        if (icon.getType() == Icon.TYPE_URI || icon.getType() == Icon.TYPE_URI_ADAPTIVE_BITMAP) {
++            Uri uri = icon.getUri();
++            try {
++                getUriGrantsManager().checkGrantUriPermission_ignoreNonSystem(
++                        getLaunchedFromUid(),
++                        getPackageName(),
++                        getUriWithoutUserId(uri),
++                        Intent.FLAG_GRANT_READ_URI_PERMISSION,
++                        getUserIdFromUri(uri)
++                );
++            } catch (SecurityException | RemoteException e) {
++                Log.e(TAG, "Failed to get URI permission for: " + uri, e);
++                return false;
++            }
++        }
++        return true;
++    }
++
++    private IUriGrantsManager getUriGrantsManager() {
++        return UriGrantsManager.getService();
++    }
++
++    private static ChooserTarget removeIcon(ChooserTarget target) {
++        if (target == null) {
++            return null;
++        }
++        return new ChooserTarget(
++                target.getTitle(),
++                null,
++                target.getScore(),
++                target.getComponentName(),
++                target.getIntentExtras());
++    }
+ }
+diff --git a/core/java/com/android/internal/app/IntentForwarderActivity.java b/core/java/com/android/internal/app/IntentForwarderActivity.java
+index 0f37dc5949f94..fcda6c4fde27c 100644
+--- a/core/java/com/android/internal/app/IntentForwarderActivity.java
++++ b/core/java/com/android/internal/app/IntentForwarderActivity.java
+@@ -303,32 +303,43 @@ public class IntentForwarderActivity extends Activity  {
+     static Intent canForward(Intent incomingIntent, int sourceUserId, int targetUserId,
+             IPackageManager packageManager, ContentResolver contentResolver)  {
+         Intent forwardIntent = new Intent(incomingIntent);
+         forwardIntent.addFlags(
+                 Intent.FLAG_ACTIVITY_FORWARD_RESULT | Intent.FLAG_ACTIVITY_PREVIOUS_IS_TOP);
+         sanitizeIntent(forwardIntent);
+ 
+-        Intent intentToCheck = forwardIntent;
+-        if (Intent.ACTION_CHOOSER.equals(forwardIntent.getAction())) {
++        if (!canForwardInner(forwardIntent, sourceUserId, targetUserId, packageManager,
++                contentResolver)) {
+             return null;
+         }
+         if (forwardIntent.getSelector() != null) {
+-            intentToCheck = forwardIntent.getSelector();
++            sanitizeIntent(forwardIntent.getSelector());
++            if (!canForwardInner(forwardIntent.getSelector(), sourceUserId, targetUserId,
++                    packageManager, contentResolver)) {
++                return null;
++            }
++        }
++        return forwardIntent;
++    }
++
++    private static boolean canForwardInner(Intent intent, int sourceUserId, int targetUserId,
++            IPackageManager packageManager, ContentResolver contentResolver) {
++        if (Intent.ACTION_CHOOSER.equals(intent.getAction())) {
++            return false;
+         }
+-        String resolvedType = intentToCheck.resolveTypeIfNeeded(contentResolver);
+-        sanitizeIntent(intentToCheck);
++        String resolvedType = intent.resolveTypeIfNeeded(contentResolver);
+         try {
+             if (packageManager.canForwardTo(
+-                    intentToCheck, resolvedType, sourceUserId, targetUserId)) {
+-                return forwardIntent;
++                    intent, resolvedType, sourceUserId, targetUserId)) {
++                return true;
+             }
+         } catch (RemoteException e) {
+             Slog.e(TAG, "PackageManagerService is dead?");
+         }
+-        return null;
++        return false;
+     }
+ 
+     /**
+      * Returns the userId of the managed profile for this device or UserHandle.USER_NULL if there is
+      * no managed profile.
+      *
+      * TODO: Remove the assumption that there is only one managed profile
+diff --git a/core/res/res/values/config.xml b/core/res/res/values/config.xml
+index a7d55479d2c33..7e82ac244a99e 100644
+--- a/core/res/res/values/config.xml
++++ b/core/res/res/values/config.xml
+@@ -5313,8 +5313,12 @@
+     <!-- List of system components which are allowed to receive ServiceState entries in an
+          un-sanitized form, even if the location toggle is off. This is intended ONLY for system
+          components, such as the telephony stack, which require access to the full ServiceState for
+          tasks such as network registration. -->
+     <string-array name="config_serviceStateLocationAllowedPackages">
+         <item>"com.android.phone"</item>
+     </string-array>
++
++    <!-- List of protected packages that require biometric authentication for modification
++         (Disable, force-stop or uninstalling updates). -->
++    <string-array name="config_biometric_protected_package_names" translatable="false" />
+ </resources>
+diff --git a/core/res/res/values/symbols.xml b/core/res/res/values/symbols.xml
+index 06715613e90ca..f1396435d64b1 100644
+--- a/core/res/res/values/symbols.xml
++++ b/core/res/res/values/symbols.xml
+@@ -4491,8 +4491,11 @@
+   <java-symbol type="array" name="config_roundedCornerRadiusAdjustmentArray" />
+   <java-symbol type="array" name="config_roundedCornerTopRadiusAdjustmentArray" />
+   <java-symbol type="array" name="config_roundedCornerBottomRadiusAdjustmentArray" />
+   <java-symbol type="bool" name="config_secondaryBuiltInDisplayIsRound" />
+   <java-symbol type="array" name="config_builtInDisplayIsRoundArray" />
+   <java-symbol type="array" name="config_serviceStateLocationAllowedPackages" />
+   <java-symbol type="dimen" name="status_bar_height_default" />
++
++  <!-- List of protected packages that require biometric authentication for modification -->
++  <java-symbol type="array" name="config_biometric_protected_package_names" />
+ </resources>
+diff --git a/media/java/android/media/session/MediaSession.java b/media/java/android/media/session/MediaSession.java
+index a14999df666c0..7c1b26d904e4f 100644
+--- a/media/java/android/media/session/MediaSession.java
++++ b/media/java/android/media/session/MediaSession.java
+@@ -266,33 +266,38 @@ public final class MediaSession {
+             mBinder.setLaunchPendingIntent(pi);
+         } catch (RemoteException e) {
+             Log.wtf(TAG, "Failure in setLaunchPendingIntent.", e);
+         }
+     }
+ 
+     /**
+-     * Set a pending intent for your media button receiver to allow restarting
+-     * playback after the session has been stopped. If your app is started in
+-     * this way an {@link Intent#ACTION_MEDIA_BUTTON} intent will be sent via
+-     * the pending intent.
+-     * <p>
+-     * The pending intent is recommended to be explicit to follow the security recommendation of
+-     * {@link PendingIntent#getActivity}.
++     * Set a pending intent for your media button receiver to allow restarting playback after the
++     * session has been stopped.
++     *
++     * <p>If your app is started in this way an {@link Intent#ACTION_MEDIA_BUTTON} intent will be
++     * sent via the pending intent.
++     *
++     * <p>The provided {@link PendingIntent} must not target an activity. Passing an activity
++     * pending intent will cause the call to be ignored. Refer to this <a
++     * href="https://developer.android.com/guide/components/activities/background-starts">guide</a>
++     * for more information.
++     *
++     * <p>The pending intent is recommended to be explicit to follow the security recommendation of
++     * {@link PendingIntent#getService}.
+      *
+      * @param mbr The {@link PendingIntent} to send the media button event to.
+      * @see PendingIntent#getActivity
+-     *
+      * @deprecated Use {@link #setMediaButtonBroadcastReceiver(ComponentName)} instead.
+      */
+     @Deprecated
+     public void setMediaButtonReceiver(@Nullable PendingIntent mbr) {
+         try {
+             mBinder.setMediaButtonReceiver(mbr);
+         } catch (RemoteException e) {
+-            Log.wtf(TAG, "Failure in setMediaButtonReceiver.", e);
++            e.rethrowFromSystemServer();
+         }
+     }
+ 
+     /**
+      * Set the component name of the manifest-declared {@link android.content.BroadcastReceiver}
+      * class that should receive media buttons. This allows restarting playback after the session
+      * has been stopped. If your app is started in this way an {@link Intent#ACTION_MEDIA_BUTTON}
+diff --git a/packages/PackageInstaller/src/com/android/packageinstaller/InstallStart.java b/packages/PackageInstaller/src/com/android/packageinstaller/InstallStart.java
+index af05078b4f3ad..6196dfaefc30a 100644
+--- a/packages/PackageInstaller/src/com/android/packageinstaller/InstallStart.java
++++ b/packages/PackageInstaller/src/com/android/packageinstaller/InstallStart.java
+@@ -23,14 +23,15 @@ import android.annotation.Nullable;
+ import android.app.Activity;
+ import android.app.ActivityManager;
+ import android.content.ContentResolver;
+ import android.content.Intent;
+ import android.content.pm.ApplicationInfo;
+ import android.content.pm.PackageInfo;
+ import android.content.pm.PackageInstaller;
++import android.content.pm.PackageInstaller.SessionInfo;
+ import android.content.pm.PackageManager;
+ import android.content.pm.ProviderInfo;
+ import android.net.Uri;
+ import android.os.Build;
+ import android.os.Bundle;
+ import android.os.RemoteException;
+ import android.os.UserManager;
+@@ -52,31 +53,32 @@ public class InstallStart extends Activity {
+ 
+     @Override
+     protected void onCreate(@Nullable Bundle savedInstanceState) {
+         super.onCreate(savedInstanceState);
+         mPackageManager = getPackageManager();
+         mUserManager = getSystemService(UserManager.class);
+         Intent intent = getIntent();
+-        String callingPackage = getCallingPackage();
++        String callingPackage = getLaunchedFromPackage();
+         String callingAttributionTag = null;
+ 
+         final boolean isSessionInstall =
+                 PackageInstaller.ACTION_CONFIRM_INSTALL.equals(intent.getAction());
+ 
+         // If the activity was started via a PackageInstaller session, we retrieve the calling
+         // package from that session
+         final int sessionId = (isSessionInstall
+-                ? intent.getIntExtra(PackageInstaller.EXTRA_SESSION_ID, -1)
+-                : -1);
+-        if (callingPackage == null && sessionId != -1) {
+-            PackageInstaller packageInstaller = getPackageManager().getPackageInstaller();
++                ? intent.getIntExtra(PackageInstaller.EXTRA_SESSION_ID, SessionInfo.INVALID_ID)
++                : SessionInfo.INVALID_ID);
++        if (sessionId != SessionInfo.INVALID_ID) {
++            PackageInstaller packageInstaller = mPackageManager.getPackageInstaller();
+             PackageInstaller.SessionInfo sessionInfo = packageInstaller.getSessionInfo(sessionId);
+-            callingPackage = (sessionInfo != null) ? sessionInfo.getInstallerPackageName() : null;
+-            callingAttributionTag =
+-                    (sessionInfo != null) ? sessionInfo.getInstallerAttributionTag() : null;
++            if (sessionInfo != null) {
++                callingPackage = sessionInfo.getInstallerPackageName();
++                callingAttributionTag = sessionInfo.getInstallerAttributionTag();
++            }
+         }
+ 
+         final ApplicationInfo sourceInfo = getSourceInfo(callingPackage);
+         final int originatingUid = getOriginatingUid(sourceInfo);
+         boolean isTrustedSource = false;
+         if (sourceInfo != null
+                 && (sourceInfo.privateFlags & ApplicationInfo.PRIVATE_FLAG_PRIVILEGED) != 0) {
+@@ -169,15 +171,15 @@ public class InstallStart extends Activity {
+ 
+     /**
+      * @return the ApplicationInfo for the installation source (the calling package), if available
+      */
+     private ApplicationInfo getSourceInfo(@Nullable String callingPackage) {
+         if (callingPackage != null) {
+             try {
+-                return getPackageManager().getApplicationInfo(callingPackage, 0);
++                return mPackageManager.getApplicationInfo(callingPackage, 0);
+             } catch (PackageManager.NameNotFoundException ex) {
+                 // ignore
+             }
+         }
+         return null;
+     }
+ 
+@@ -216,15 +218,15 @@ public class InstallStart extends Activity {
+             return uidFromIntent;
+         }
+         // We don't trust uid from the intent. Use the calling uid instead.
+         return callingUid;
+     }
+ 
+     private boolean isSystemDownloadsProvider(int uid) {
+-        final ProviderInfo downloadProviderPackage = getPackageManager().resolveContentProvider(
++        final ProviderInfo downloadProviderPackage = mPackageManager.resolveContentProvider(
+                 DOWNLOADS_AUTHORITY, 0);
+         if (downloadProviderPackage == null) {
+             // There seems to be no currently enabled downloads provider on the system.
+             return false;
+         }
+         final ApplicationInfo appInfo = downloadProviderPackage.applicationInfo;
+         return (appInfo.isSystemApp() && uid == appInfo.uid);
+diff --git a/packages/SystemUI/src/com/android/systemui/biometrics/AuthContainerView.java b/packages/SystemUI/src/com/android/systemui/biometrics/AuthContainerView.java
+index fb5a948c6716a..33f41cb705f2a 100644
+--- a/packages/SystemUI/src/com/android/systemui/biometrics/AuthContainerView.java
++++ b/packages/SystemUI/src/com/android/systemui/biometrics/AuthContainerView.java
+@@ -684,14 +684,19 @@ public class AuthContainerView extends LinearLayout
+     }
+ 
+     @Override
+     public String getOpPackageName() {
+         return mConfig.mOpPackageName;
+     }
+ 
++    @Override
++    public String getClassNameIfItIsConfirmDeviceCredentialActivity() {
++        return  mConfig.mPromptInfo.getClassNameIfItIsConfirmDeviceCredentialActivity();
++    }
++
+     @Override
+     public void animateToCredentialUI() {
+         mBiometricView.startTransitionToCredentialUI();
+     }
+ 
+     @VisibleForTesting
+     void animateAway(int reason) {
+diff --git a/packages/SystemUI/src/com/android/systemui/biometrics/AuthController.java b/packages/SystemUI/src/com/android/systemui/biometrics/AuthController.java
+index 7ab214e94230d..b910977702f29 100644
+--- a/packages/SystemUI/src/com/android/systemui/biometrics/AuthController.java
++++ b/packages/SystemUI/src/com/android/systemui/biometrics/AuthController.java
+@@ -21,14 +21,15 @@ import static android.hardware.biometrics.BiometricAuthenticator.TYPE_FINGERPRIN
+ 
+ import android.annotation.NonNull;
+ import android.annotation.Nullable;
+ import android.app.ActivityManager;
+ import android.app.ActivityTaskManager;
+ import android.app.TaskStackListener;
+ import android.content.BroadcastReceiver;
++import android.content.ComponentName;
+ import android.content.Context;
+ import android.content.Intent;
+ import android.content.IntentFilter;
+ import android.content.res.Configuration;
+ import android.content.res.Resources;
+ import android.graphics.PointF;
+ import android.hardware.SensorPrivacyManager;
+@@ -181,41 +182,73 @@ public class AuthController extends SystemUI implements CommandQueue.Callbacks,
+         }
+     };
+ 
+     private void cancelIfOwnerIsNotInForeground() {
+         mExecution.assertIsMainThread();
+         if (mCurrentDialog != null) {
+             try {
+-                final String clientPackage = mCurrentDialog.getOpPackageName();
+-                Log.w(TAG, "Task stack changed, current client: " + clientPackage);
+-                final List<ActivityManager.RunningTaskInfo> runningTasks =
+-                        mActivityTaskManager.getTasks(1);
+-                if (!runningTasks.isEmpty()) {
+-                    final String topPackage = runningTasks.get(0).topActivity.getPackageName();
+-                    if (!topPackage.contentEquals(clientPackage)
+-                            && !Utils.isSystem(mContext, clientPackage)) {
+-                        Log.e(TAG, "Evicting client due to: " + topPackage);
+-                        mCurrentDialog.dismissWithoutCallback(true /* animate */);
+-                        mCurrentDialog = null;
+-                        mOrientationListener.disable();
+-
+-                        if (mReceiver != null) {
+-                            mReceiver.onDialogDismissed(
+-                                    BiometricPrompt.DISMISSED_REASON_USER_CANCEL,
+-                                    null /* credentialAttestation */);
+-                            mReceiver = null;
+-                        }
++                if (isOwnerInBackground()) {
++                    Log.w(TAG, "Evicting client due to top activity is not : "
++                            + mCurrentDialog.getOpPackageName());
++                    mCurrentDialog.dismissWithoutCallback(true /* animate */);
++                    mCurrentDialog = null;
++                    mOrientationListener.disable();
++
++                    if (mReceiver != null) {
++                        mReceiver.onDialogDismissed(
++                                BiometricPrompt.DISMISSED_REASON_USER_CANCEL,
++                                null /* credentialAttestation */);
++                        mReceiver = null;
+                     }
+                 }
+             } catch (RemoteException e) {
+                 Log.e(TAG, "Remote exception", e);
+             }
+         }
+     }
+ 
++    private boolean isOwnerInBackground() {
++        if (mCurrentDialog != null) {
++            final String clientPackage = mCurrentDialog.getOpPackageName();
++
++            final List<ActivityManager.RunningTaskInfo> runningTasks =
++                    mActivityTaskManager.getTasks(1);
++            if (runningTasks == null || runningTasks.isEmpty()) {
++                Log.w(TAG, "No running tasks reported");
++                return false;
++            }
++
++            final boolean isSystemApp = Utils.isSystem(mContext, clientPackage);
++
++            final ComponentName topActivity = runningTasks.get(0).topActivity;
++            final String topPackage =  topActivity.getPackageName();
++            final boolean topPackageEqualsToClient =
++                    topPackage == null
++                            || topActivity.getPackageName().contentEquals(clientPackage);
++
++            // b/339532378: If it's ConfirmDeviceCredentialActivity, we need to check further on
++            // class name.
++            final String clientClassNameForCDCA =
++                    mCurrentDialog.getClassNameIfItIsConfirmDeviceCredentialActivity();
++            final boolean isClientCDCA = clientClassNameForCDCA != null;
++            final String topClassName = topActivity.getClassName();
++            final boolean isCDCAWithWrongTopClass =
++                    isClientCDCA
++                            && !(topClassName == null
++                                    || topClassName.contentEquals(clientClassNameForCDCA));
++
++            final boolean isInBackground =
++                    !(isSystemApp || topPackageEqualsToClient) || isCDCAWithWrongTopClass;
++
++            Log.w(TAG, "isInBackground " + isInBackground);
++            return isInBackground;
++        }
++        return false;
++    }
++
+     private void handleAllAuthenticatorsRegistered(
+             List<FingerprintSensorPropertiesInternal> sensors) {
+         mExecution.assertIsMainThread();
+         if (DEBUG) {
+             Log.d(TAG, "handleAllAuthenticatorsRegistered | sensors: " + Arrays.toString(
+                     sensors.toArray()));
+         }
+diff --git a/packages/SystemUI/src/com/android/systemui/biometrics/AuthDialog.java b/packages/SystemUI/src/com/android/systemui/biometrics/AuthDialog.java
+index fa5213e940817..dd4eb99cc2c76 100644
+--- a/packages/SystemUI/src/com/android/systemui/biometrics/AuthDialog.java
++++ b/packages/SystemUI/src/com/android/systemui/biometrics/AuthDialog.java
+@@ -143,14 +143,20 @@ public interface AuthDialog {
+     void onSaveState(@NonNull Bundle outState);
+ 
+     /**
+      * Get the client's package name
+      */
+     String getOpPackageName();
+ 
++    /**
++     * Get the class name of ConfirmDeviceCredentialActivity. Returns null if the direct caller is
++     * not ConfirmDeviceCredentialActivity.
++     */
++    String getClassNameIfItIsConfirmDeviceCredentialActivity();
++
+     /**
+      * Animate to credential UI. Typically called after biometric is locked out.
+      */
+     void animateToCredentialUI();
+ 
+     /**
+      * @return true if device credential is allowed.
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/StatusBarIconView.java b/packages/SystemUI/src/com/android/systemui/statusbar/StatusBarIconView.java
+index 5302188ccb31f..ac8f582dd8071 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/StatusBarIconView.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/StatusBarIconView.java
+@@ -584,25 +584,15 @@ public class StatusBarIconView extends AnimatedImageView implements StatusIconDi
+                     Notification.EXTRA_BUILDER_APPLICATION_INFO);
+             if (appInfo instanceof ApplicationInfo) {
+                 appName = String.valueOf(((ApplicationInfo) appInfo).loadLabel(
+                         c.getPackageManager()));
+             }
+         }
+ 
+-        CharSequence title = n.extras.getCharSequence(Notification.EXTRA_TITLE);
+-        CharSequence text = n.extras.getCharSequence(Notification.EXTRA_TEXT);
+-        CharSequence ticker = n.tickerText;
+-
+-        // Some apps just put the app name into the title
+-        CharSequence titleOrText = TextUtils.equals(title, appName) ? text : title;
+-
+-        CharSequence desc = !TextUtils.isEmpty(titleOrText) ? titleOrText
+-                : !TextUtils.isEmpty(ticker) ? ticker : "";
+-
+-        return c.getString(R.string.accessibility_desc_notification_icon, appName, desc);
++        return c.getString(R.string.accessibility_desc_notification_icon, appName, "");
+     }
+ 
+     /**
+      * Set the color that is used to draw decoration like the overflow dot. This will not be applied
+      * to the drawable.
+      */
+     public void setDecorColor(int iconTint) {
+diff --git a/services/core/java/com/android/server/am/ActivityManagerService.java b/services/core/java/com/android/server/am/ActivityManagerService.java
+index 9a9c05060a4c2..e8d9678e6bfec 100644
+--- a/services/core/java/com/android/server/am/ActivityManagerService.java
++++ b/services/core/java/com/android/server/am/ActivityManagerService.java
+@@ -12479,17 +12479,16 @@ public class ActivityManagerService extends IActivityManager.Stub
+                 callerApp = getRecordForAppLOSP(caller);
+                 if (callerApp == null) {
+                     throw new SecurityException(
+                             "Unable to find app for caller " + caller
+                             + " (pid=" + Binder.getCallingPid()
+                             + ") when registering receiver " + receiver);
+                 }
+-                if (callerApp.info.uid != SYSTEM_UID
+-                        && !callerApp.getPkgList().containsKey(callerPackage)
+-                        && !"android".equals(callerPackage)) {
++                if (!UserHandle.isCore(callerApp.info.uid)
++                        && !callerApp.getPkgList().containsKey(callerPackage)) {
+                     throw new SecurityException("Given caller package " + callerPackage
+                             + " is not running in process " + callerApp);
+                 }
+                 callingUid = callerApp.info.uid;
+                 callingPid = callerApp.getPid();
+             } else {
+                 callerPackage = null;
+diff --git a/services/core/java/com/android/server/am/PendingIntentRecord.java b/services/core/java/com/android/server/am/PendingIntentRecord.java
+index 7e8dcd8db7b15..446b67b09bf4a 100644
+--- a/services/core/java/com/android/server/am/PendingIntentRecord.java
++++ b/services/core/java/com/android/server/am/PendingIntentRecord.java
+@@ -13,14 +13,16 @@
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  */
+ 
+ package com.android.server.am;
+ 
+ import static android.app.ActivityManager.START_SUCCESS;
++import static android.os.PowerWhitelistManager.TEMPORARY_ALLOWLIST_TYPE_FOREGROUND_SERVICE_ALLOWED;
++import static android.os.PowerWhitelistManager.TEMPORARY_ALLOWLIST_TYPE_FOREGROUND_SERVICE_NOT_ALLOWED;
+ 
+ import static com.android.server.am.ActivityManagerDebugConfig.TAG_AM;
+ import static com.android.server.am.ActivityManagerDebugConfig.TAG_WITH_CLASS_NAME;
+ 
+ import android.annotation.Nullable;
+ import android.app.ActivityManager;
+ import android.app.ActivityOptions;
+@@ -39,14 +41,15 @@ import android.os.RemoteException;
+ import android.os.TransactionTooLargeException;
+ import android.os.UserHandle;
+ import android.util.ArrayMap;
+ import android.util.ArraySet;
+ import android.util.Slog;
+ import android.util.TimeUtils;
+ 
++import com.android.internal.annotations.VisibleForTesting;
+ import com.android.internal.os.IResultReceiver;
+ import com.android.internal.util.function.pooled.PooledLambda;
+ import com.android.server.wm.SafeActivityOptions;
+ 
+ import java.io.PrintWriter;
+ import java.lang.ref.WeakReference;
+ import java.util.Objects;
+@@ -251,14 +254,18 @@ public final class PendingIntentRecord extends IIntentSender.Stub {
+             if (mAllowlistDuration.size() <= 0) {
+                 mAllowlistDuration = null;
+             }
+         }
+         this.stringName = null;
+     }
+ 
++    @VisibleForTesting TempAllowListDuration getAllowlistDurationLocked(IBinder allowlistToken) {
++        return mAllowlistDuration.get(allowlistToken);
++    }
++
+     void setAllowBgActivityStarts(IBinder token, int flags) {
+         if (token == null) return;
+         if ((flags & FLAG_ACTIVITY_SENDER) != 0) {
+             mAllowBgActivityStartsForActivitySender.add(token);
+         }
+         if ((flags & FLAG_BROADCAST_SENDER) != 0) {
+             mAllowBgActivityStartsForBroadcastSender.add(token);
+@@ -269,14 +276,21 @@ public final class PendingIntentRecord extends IIntentSender.Stub {
+     }
+ 
+     void clearAllowBgActivityStarts(IBinder token) {
+         if (token == null) return;
+         mAllowBgActivityStartsForActivitySender.remove(token);
+         mAllowBgActivityStartsForBroadcastSender.remove(token);
+         mAllowBgActivityStartsForServiceSender.remove(token);
++        if (mAllowlistDuration != null) {
++            TempAllowListDuration duration = mAllowlistDuration.get(token);
++            if (duration != null
++                    && duration.type == TEMPORARY_ALLOWLIST_TYPE_FOREGROUND_SERVICE_ALLOWED) {
++                duration.type = TEMPORARY_ALLOWLIST_TYPE_FOREGROUND_SERVICE_NOT_ALLOWED;
++            }
++        }
+     }
+ 
+     public void registerCancelListenerLocked(IResultReceiver receiver) {
+         if (mCancelCallbacks == null) {
+             mCancelCallbacks = new RemoteCallbackList<>();
+         }
+         mCancelCallbacks.register(receiver);
+@@ -538,14 +552,19 @@ public final class PendingIntentRecord extends IIntentSender.Stub {
+         } finally {
+             Binder.restoreCallingIdentity(origId);
+         }
+ 
+         return res;
+     }
+ 
++    @VisibleForTesting boolean getBackgroundStartPrivilegesForActivitySender(
++            IBinder allowlistToken) {
++        return mAllowBgActivityStartsForActivitySender.contains(allowlistToken);
++    }
++
+     @Override
+     protected void finalize() throws Throwable {
+         try {
+             if (!canceled) {
+                 controller.mH.sendMessage(PooledLambda.obtainMessage(
+                         PendingIntentRecord::completeFinalize, this));
+             }
+diff --git a/services/core/java/com/android/server/appop/AppOpsService.java b/services/core/java/com/android/server/appop/AppOpsService.java
+index cb7b15e171333..90c828c6c90b5 100644
+--- a/services/core/java/com/android/server/appop/AppOpsService.java
++++ b/services/core/java/com/android/server/appop/AppOpsService.java
+@@ -222,14 +222,20 @@ public class AppOpsService extends IAppOpsService.Stub {
+     private final ArraySet<NoteOpTrace> mNoteOpCallerStacktraces = new ArraySet<>();
+ 
+     private static final int NO_VERSION = -1;
+     /** Increment by one every time and add the corresponding upgrade logic in
+      *  {@link #upgradeLocked(int)} below. The first version was 1 */
+     private static final int CURRENT_VERSION = 1;
+ 
++    /**
++     * The upper limit of total number of attributed op entries that can be returned in a binder
++     * transaction to avoid TransactionTooLargeException
++     */
++    private static final int NUM_ATTRIBUTED_OP_ENTRY_THRESHOLD = 2000;
++
+     // Write at most every 30 minutes.
+     static final long WRITE_DELAY = DEBUG ? 1000 : 30*60*1000;
+ 
+     // Constant meaning that any UID should be matched when dispatching callbacks
+     private static final int UID_ANY = -2;
+ 
+     // Map from process states to the uid states we track.
+@@ -690,15 +696,15 @@ public class AppOpsService extends IAppOpsService.Stub {
+ 
+         Ops(String _packageName, UidState _uidState) {
+             packageName = _packageName;
+             uidState = _uidState;
+         }
+     }
+ 
+-    /** Returned from {@link #verifyAndGetBypass(int, String, String, String, boolean)}. */
++    /** Returned from {@link #verifyAndGetBypass(int, String, String, int, String, boolean)}. */
+     private static final class PackageVerificationResult {
+ 
+         final RestrictionBypass bypass;
+         final boolean isAttributionTagValid;
+ 
+         PackageVerificationResult(RestrictionBypass bypass, boolean isAttributionTagValid) {
+             this.bypass = bypass;
+@@ -2177,31 +2183,50 @@ public class AppOpsService extends IAppOpsService.Stub {
+ 
+         mHistoricalRegistry.shutdown();
+     }
+ 
+     private ArrayList<AppOpsManager.OpEntry> collectOps(Ops pkgOps, int[] ops) {
+         ArrayList<AppOpsManager.OpEntry> resOps = null;
+         final long elapsedNow = SystemClock.elapsedRealtime();
++
++        int totalAttributedOpEntryCount = 0;
++
+         if (ops == null) {
+             resOps = new ArrayList<>();
+             for (int j=0; j<pkgOps.size(); j++) {
+                 Op curOp = pkgOps.valueAt(j);
+-                resOps.add(getOpEntryForResult(curOp, elapsedNow));
++                if (totalAttributedOpEntryCount > NUM_ATTRIBUTED_OP_ENTRY_THRESHOLD) {
++                    break;
++                }
++                OpEntry opEntry = getOpEntryForResult(curOp, elapsedNow);
++                resOps.add(opEntry);
++                totalAttributedOpEntryCount += opEntry.getAttributedOpEntries().size();
+             }
+         } else {
+             for (int j=0; j<ops.length; j++) {
+                 Op curOp = pkgOps.get(ops[j]);
+                 if (curOp != null) {
+                     if (resOps == null) {
+                         resOps = new ArrayList<>();
+                     }
+-                    resOps.add(getOpEntryForResult(curOp, elapsedNow));
++                    if (totalAttributedOpEntryCount > NUM_ATTRIBUTED_OP_ENTRY_THRESHOLD) {
++                        break;
++                    }
++                    OpEntry opEntry = getOpEntryForResult(curOp, elapsedNow);
++                    resOps.add(opEntry);
++                    totalAttributedOpEntryCount += opEntry.getAttributedOpEntries().size();
+                 }
+             }
+         }
++
++        if (totalAttributedOpEntryCount > NUM_ATTRIBUTED_OP_ENTRY_THRESHOLD) {
++            Slog.w(TAG, "The number of attributed op entries has exceeded the threshold. This "
++                    + "could be due to DoS attack from malicious apps. The result is throttled.");
++        }
++
+         return resOps;
+     }
+ 
+     @Nullable
+     private ArrayList<AppOpsManager.OpEntry> collectUidOps(@NonNull UidState uidState,
+             @Nullable int[] ops) {
+         if (uidState.opModes == null) {
+@@ -3304,23 +3329,31 @@ public class AppOpsService extends IAppOpsService.Stub {
+     }
+ 
+     @Override
+     public int checkPackage(int uid, String packageName) {
+         Objects.requireNonNull(packageName);
+         try {
+             verifyAndGetBypass(uid, packageName, null);
+-            if (filterAppAccessUnlocked(packageName)) {
+-                return AppOpsManager.MODE_ERRORED;
++            // When the caller is the system, it's possible that the packageName is the special
++            // one (e.g., "root") which isn't actually existed.
++            if (resolveNonAppUid(packageName) == uid
++                    || (isPackageExisted(packageName) && !filterAppAccessUnlocked(packageName))) {
++                return AppOpsManager.MODE_ALLOWED;
+             }
+-            return AppOpsManager.MODE_ALLOWED;
++            return AppOpsManager.MODE_ERRORED;
+         } catch (SecurityException ignored) {
+             return AppOpsManager.MODE_ERRORED;
+         }
+     }
+ 
++    private boolean isPackageExisted(String packageName) {
++        return LocalServices.getService(PackageManagerInternal.class)
++                .getPackageSetting(packageName) != null;
++    }
++
+     /**
+      * This method will check with PackageManager to determine if the package provided should
+      * be visible to the {@link Binder#getCallingUid()}.
+      *
+      * NOTE: This must not be called while synchronized on {@code this} to avoid dead locks
+      */
+     private boolean filterAppAccessUnlocked(String packageName) {
+@@ -3422,15 +3455,15 @@ public class AppOpsService extends IAppOpsService.Stub {
+     private SyncNotedAppOp noteOperationUnchecked(int code, int uid, @NonNull String packageName,
+             @Nullable String attributionTag, int proxyUid, String proxyPackageName,
+             @Nullable String proxyAttributionTag, @OpFlags int flags,
+             boolean shouldCollectAsyncNotedOp, @Nullable String message,
+             boolean shouldCollectMessage) {
+         PackageVerificationResult pvr;
+         try {
+-            pvr = verifyAndGetBypass(uid, packageName, attributionTag, proxyPackageName);
++            pvr = verifyAndGetBypass(uid, packageName, attributionTag, proxyUid, proxyPackageName);
+             boolean wasNull = attributionTag == null;
+             if (!pvr.isAttributionTagValid) {
+                 attributionTag = null;
+             }
+         } catch (SecurityException e) {
+             Slog.e(TAG, "noteOperation", e);
+             return new SyncNotedAppOp(AppOpsManager.MODE_ERRORED, code, attributionTag,
+@@ -3941,15 +3974,15 @@ public class AppOpsService extends IAppOpsService.Stub {
+             @NonNull String packageName, @Nullable String attributionTag, int proxyUid,
+             String proxyPackageName, @Nullable String proxyAttributionTag, @OpFlags int flags,
+             boolean startIfModeDefault, boolean shouldCollectAsyncNotedOp, @Nullable String message,
+             boolean shouldCollectMessage, @AttributionFlags int attributionFlags,
+             int attributionChainId, boolean dryRun) {
+         PackageVerificationResult pvr;
+         try {
+-            pvr = verifyAndGetBypass(uid, packageName, attributionTag, proxyPackageName);
++            pvr = verifyAndGetBypass(uid, packageName, attributionTag, proxyUid, proxyPackageName);
+             if (!pvr.isAttributionTagValid) {
+                 attributionTag = null;
+             }
+         } catch (SecurityException e) {
+             Slog.e(TAG, "startOperation", e);
+             return new SyncNotedAppOp(AppOpsManager.MODE_ERRORED, code, attributionTag,
+                     packageName);
+@@ -4372,15 +4405,19 @@ public class AppOpsService extends IAppOpsService.Stub {
+                     packageName + " not found from " + Binder.getCallingUid());
+         }
+     }
+ 
+     private boolean isCallerAndAttributionTrusted(@NonNull AttributionSource attributionSource) {
+         if (attributionSource.getUid() != Binder.getCallingUid()
+                 && attributionSource.isTrusted(mContext)) {
+-            return true;
++            // if there is a next attribution source, it must be trusted, as well.
++            if (attributionSource.getNext() == null
++                    || attributionSource.getNext().isTrusted(mContext)) {
++                return true;
++            }
+         }
+         return mContext.checkPermission(android.Manifest.permission.UPDATE_APP_OPS_STATS,
+                 Binder.getCallingPid(), Binder.getCallingUid(), null)
+                 == PackageManager.PERMISSION_GRANTED;
+     }
+ 
+     private @Nullable UidState getUidStateLocked(int uid, boolean edit) {
+@@ -4510,36 +4547,48 @@ public class AppOpsService extends IAppOpsService.Stub {
+         return new RestrictionBypass(pkg.getUid() == Process.SYSTEM_UID, pkg.isPrivileged(),
+                 mContext.checkPermission(android.Manifest.permission
+                         .EXEMPT_FROM_AUDIO_RECORD_RESTRICTIONS, -1, pkg.getUid())
+                 == PackageManager.PERMISSION_GRANTED);
+     }
+ 
+     /**
+-     * @see #verifyAndGetBypass(int, String, String, String)
++     * @see #verifyAndGetBypass(int, String, String, int, String, boolean)
+      */
+     private @NonNull PackageVerificationResult verifyAndGetBypass(int uid, String packageName,
+             @Nullable String attributionTag) {
+-        return verifyAndGetBypass(uid, packageName, attributionTag, null);
++        return verifyAndGetBypass(uid, packageName, attributionTag, Process.INVALID_UID, null);
++    }
++
++    /**
++     * @see #verifyAndGetBypass(int, String, String, int, String, boolean)
++     */
++    private @NonNull PackageVerificationResult verifyAndGetBypass(int uid, String packageName,
++            @Nullable String attributionTag, int proxyUid, @Nullable String proxyPackageName) {
++        return verifyAndGetBypass(uid, packageName, attributionTag, proxyUid, proxyPackageName,
++                false);
+     }
+ 
+     /**
+      * Verify that package belongs to uid and return the {@link RestrictionBypass bypass
+      * description} for the package, along with a boolean indicating whether the attribution tag is
+      * valid.
+      *
+      * @param uid The uid the package belongs to
+      * @param packageName The package the might belong to the uid
+      * @param attributionTag attribution tag or {@code null} if no need to verify
+-     * @param proxyPackageName The proxy package, from which the attribution tag is to be pulled
++     * @param proxyUid The proxy uid, from which the attribution tag is to be pulled
++     * @param proxyPackageName The proxy package, from which the attribution tag may be pulled
++     * @param suppressErrorLogs Whether to print to logcat about nonmatching parameters
+      *
+      * @return PackageVerificationResult containing {@link RestrictionBypass} and whether the
+      *         attribution tag is valid
+      */
+     private @NonNull PackageVerificationResult verifyAndGetBypass(int uid, String packageName,
+-            @Nullable String attributionTag, @Nullable String proxyPackageName) {
++            @Nullable String attributionTag, int proxyUid, @Nullable String proxyPackageName,
++            boolean suppressErrorLogs) {
+         if (uid == Process.ROOT_UID) {
+             // For backwards compatibility, don't check package name for root UID.
+             return new PackageVerificationResult(null,
+                     /* isAttributionTagValid */ true);
+         }
+ 
+         // Do not check if uid/packageName/attributionTag is already known.
+@@ -4554,37 +4603,55 @@ public class AppOpsService extends IAppOpsService.Stub {
+                             ops.validAttributionTags.contains(attributionTag));
+                 }
+             }
+         }
+ 
+         int callingUid = Binder.getCallingUid();
+ 
+-        // Allow any attribution tag for resolvable uids
+-        int pkgUid;
++        // Allow any attribution tag for resolvable, non-app uids
++        int nonAppUid;
+         if (Objects.equals(packageName, "com.android.shell")) {
+             // Special case for the shell which is a package but should be able
+             // to bypass app attribution tag restrictions.
+-            pkgUid = Process.SHELL_UID;
++            nonAppUid = Process.SHELL_UID;
+         } else {
+-            pkgUid = resolveUid(packageName);
+-        }
+-        if (pkgUid != Process.INVALID_UID) {
+-            if (pkgUid != UserHandle.getAppId(uid)) {
+-                String otherUidMessage = DEBUG ? " but it is really " + pkgUid : " but it is not";
+-                throw new SecurityException("Specified package " + packageName + " under uid "
+-                        +  UserHandle.getAppId(uid) + otherUidMessage);
++            nonAppUid = resolveNonAppUid(packageName);
++        }
++        if (nonAppUid != Process.INVALID_UID) {
++            if (nonAppUid != UserHandle.getAppId(uid)) {
++                if (!suppressErrorLogs) {
++                    Slog.e(TAG, "Bad call made by uid " + callingUid + ". "
++                                + "Package \"" + packageName + "\" does not belong to uid " + uid
++                                + ".");
++                }
++                String otherUidMessage =
++                            DEBUG ? " but it is really " + nonAppUid : " but it is not";
++                throw new SecurityException("Specified package \"" + packageName
++                            + "\" under uid " +  UserHandle.getAppId(uid) + otherUidMessage);
++            }
++            // We only allow bypassing the attribution tag verification if the proxy is a
++            // system app (or is null), in order to prevent abusive apps clogging the appops
++            // system with unlimited attribution tags via proxy calls.
++            boolean proxyIsSystemAppOrNull = true;
++            if (proxyPackageName != null) {
++                int proxyAppId = UserHandle.getAppId(proxyUid);
++                if (proxyAppId >= Process.FIRST_APPLICATION_UID) {
++                    proxyIsSystemAppOrNull =
++                            mPackageManagerInternal.isSystemPackage(proxyPackageName);
++                }
+             }
+             return new PackageVerificationResult(RestrictionBypass.UNRESTRICTED,
+-                    /* isAttributionTagValid */ true);
++                    /* isAttributionTagValid */ proxyIsSystemAppOrNull);
+         }
+ 
+         int userId = UserHandle.getUserId(uid);
+         RestrictionBypass bypass = null;
+         boolean isAttributionTagValid = false;
+ 
++        int pkgUid = nonAppUid;
+         final long ident = Binder.clearCallingIdentity();
+         try {
+             PackageManagerInternal pmInt = LocalServices.getService(PackageManagerInternal.class);
+             AndroidPackage pkg = pmInt.getPackage(packageName);
+             if (pkg != null) {
+                 isAttributionTagValid = isAttributionInPackage(pkg, attributionTag);
+                 pkgUid = UserHandle.getUid(userId, UserHandle.getAppId(pkg.getUid()));
+@@ -4621,16 +4688,18 @@ public class AppOpsService extends IAppOpsService.Stub {
+                 }
+             }
+         } finally {
+             Binder.restoreCallingIdentity(ident);
+         }
+ 
+         if (pkgUid != uid) {
++            Slog.e(TAG, "Bad call made by uid " + callingUid + ". "
++                    + "Package \"" + packageName + "\" does not belong to uid " + uid + ".");
+             String otherUidMessage = DEBUG ? " but it is really " + pkgUid : " but it is not";
+-            throw new SecurityException("Specified package " + packageName + " under uid " + uid
++            throw new SecurityException("Specified package \"" + packageName + "\" under uid " + uid
+                     + otherUidMessage);
+         }
+ 
+         return new PackageVerificationResult(bypass, isAttributionTagValid);
+     }
+ 
+     private boolean isAttributionInPackage(@Nullable AndroidPackage pkg,
+@@ -5441,15 +5510,15 @@ public class AppOpsService extends IAppOpsService.Stub {
+                     } catch (NumberFormatException e) {
+                     }
+                 }
+             }
+             if (nonpackageUid != -1) {
+                 packageName = null;
+             } else {
+-                packageUid = resolveUid(packageName);
++                packageUid = resolveNonAppUid(packageName);
+                 if (packageUid < 0) {
+                     packageUid = AppGlobals.getPackageManager().getPackageUid(packageName,
+                             PackageManager.MATCH_UNINSTALLED_PACKAGES, userId);
+                 }
+                 if (packageUid < 0) {
+                     err.println("Error: No UID for " + packageName + " in user " + userId);
+                     return -1;
+@@ -6613,15 +6682,21 @@ public class AppOpsService extends IAppOpsService.Stub {
+             }
+             int numAttrTags = op.mAttributions.size();
+             for (int attrNum = 0; attrNum < numAttrTags; attrNum++) {
+                 AttributedOp attrOp = op.mAttributions.valueAt(attrNum);
+                 if (restricted && attrOp.isRunning()) {
+                     attrOp.pause();
+                 } else if (attrOp.isPaused()) {
+-                    attrOp.resume();
++                    RestrictionBypass bypass = verifyAndGetBypass(uid, ops.packageName, attrOp.tag)
++                            .bypass;
++                    if (!isOpRestrictedLocked(uid, code, ops.packageName, attrOp.tag,
++                            bypass, false)) {
++                        // Only resume if there are no other restrictions remaining on this op
++                        attrOp.resume();
++                    }
+                 }
+             }
+         }
+     }
+ 
+     private void notifyWatchersOfChange(int code, int uid) {
+         final ArraySet<ModeCallback> clonedCallbacks;
+@@ -7057,15 +7132,15 @@ public class AppOpsService extends IAppOpsService.Stub {
+     private void checkSystemUid(String function) {
+         int uid = Binder.getCallingUid();
+         if (uid != Process.SYSTEM_UID) {
+             throw new SecurityException(function + " must by called by the system");
+         }
+     }
+ 
+-    private static int resolveUid(String packageName)  {
++    private static int resolveNonAppUid(String packageName)  {
+         if (packageName == null) {
+             return -1;
+         }
+         switch (packageName) {
+             case "root":
+                 return Process.ROOT_UID;
+             case "shell":
+diff --git a/services/core/java/com/android/server/media/MediaSessionRecord.java b/services/core/java/com/android/server/media/MediaSessionRecord.java
+index a0679d7457a0b..b732206eab1fa 100644
+--- a/services/core/java/com/android/server/media/MediaSessionRecord.java
++++ b/services/core/java/com/android/server/media/MediaSessionRecord.java
+@@ -969,14 +969,22 @@ public class MediaSessionRecord implements IBinder.DeathRecipient, MediaSessionR
+         public void setMediaButtonReceiver(PendingIntent pi) throws RemoteException {
+             final long token = Binder.clearCallingIdentity();
+             try {
+                 if ((mPolicies & MediaSessionPolicyProvider.SESSION_POLICY_IGNORE_BUTTON_RECEIVER)
+                         != 0) {
+                     return;
+                 }
++
++                if (pi != null && pi.isActivity()) {
++                    Log.w(
++                            TAG,
++                            "Ignoring invalid media button receiver targeting an activity: " + pi);
++                    return;
++                }
++
+                 mMediaButtonReceiverHolder =
+                         MediaButtonReceiverHolder.create(mUserId, pi, mPackageName);
+                 mService.onMediaButtonReceiverChanged(MediaSessionRecord.this);
+             } finally {
+                 Binder.restoreCallingIdentity(token);
+             }
+         }
+diff --git a/services/core/java/com/android/server/notification/NotificationManagerService.java b/services/core/java/com/android/server/notification/NotificationManagerService.java
+index c2906ba4f3d9d..5e1b1e6cf1087 100755
+--- a/services/core/java/com/android/server/notification/NotificationManagerService.java
++++ b/services/core/java/com/android/server/notification/NotificationManagerService.java
+@@ -2236,14 +2236,15 @@ public class NotificationManagerService extends SystemService {
+         });
+         mPreferencesHelper = new PreferencesHelper(getContext(),
+                 mPackageManagerClient,
+                 mRankingHandler,
+                 mZenModeHelper,
+                 new NotificationChannelLoggerImpl(),
+                 mAppOps,
++                mUgmInternal,
+                 new SysUiStatsEvent.BuilderFactory());
+         mRankingHelper = new RankingHelper(getContext(),
+                 mRankingHandler,
+                 mPreferencesHelper,
+                 mZenModeHelper,
+                 mUsageStats,
+                 extractorNames);
+@@ -5559,21 +5560,15 @@ public class NotificationManagerService extends SystemService {
+                 @NonNull NotificationChannel updateChannel,
+                 @Nullable NotificationChannel originalChannel) {
+             // Check that the NLS has the required permissions to access the channel
+             final Uri soundUri = updateChannel.getSound();
+             final Uri originalSoundUri =
+                     (originalChannel != null) ? originalChannel.getSound() : null;
+             if (soundUri != null && !Objects.equals(originalSoundUri, soundUri)) {
+-                Binder.withCleanCallingIdentity(() -> {
+-                    mUgmInternal.checkGrantUriPermission(sourceUid, null,
+-                            ContentProvider.getUriWithoutUserId(soundUri),
+-                            Intent.FLAG_GRANT_READ_URI_PERMISSION,
+-                            ContentProvider.getUserIdFromUri(soundUri,
+-                            UserHandle.getUserId(sourceUid)));
+-                });
++                PermissionHelper.grantUriPermission(mUgmInternal, soundUri, sourceUid);
+             }
+         }
+ 
+         private int getUidForPackageAndUser(String pkg, UserHandle user) throws RemoteException {
+             int uid = INVALID_UID;
+             final long identity = Binder.clearCallingIdentity();
+             try {
+diff --git a/services/core/java/com/android/server/notification/NotificationRecord.java b/services/core/java/com/android/server/notification/NotificationRecord.java
+index 5cb8b5f9cef15..f1051a18a0fad 100644
+--- a/services/core/java/com/android/server/notification/NotificationRecord.java
++++ b/services/core/java/com/android/server/notification/NotificationRecord.java
+@@ -1317,63 +1317,64 @@ public final class NotificationRecord {
+     /**
+      * Collect all {@link Uri} that should have permission granted to whoever
+      * will be rendering it.
+      */
+     protected void calculateGrantableUris() {
+         final Notification notification = getNotification();
+         notification.visitUris((uri) -> {
+-            visitGrantableUri(uri, false);
++            visitGrantableUri(uri, false, false);
+         });
+ 
+         if (notification.getChannelId() != null) {
+             NotificationChannel channel = getChannel();
+             if (channel != null) {
+                 visitGrantableUri(channel.getSound(), (channel.getUserLockedFields()
+-                        & NotificationChannel.USER_LOCKED_SOUND) != 0);
++                        & NotificationChannel.USER_LOCKED_SOUND) != 0, true);
+             }
+         }
+     }
+ 
+     /**
+      * Note the presence of a {@link Uri} that should have permission granted to
+      * whoever will be rendering it.
+      * <p>
+      * If the enqueuing app has the ability to grant access, it will be added to
+      * {@link #mGrantableUris}. Otherwise, this will either log or throw
+      * {@link SecurityException} depending on target SDK of enqueuing app.
+      */
+-    private void visitGrantableUri(Uri uri, boolean userOverriddenUri) {
+-        if (uri == null || !ContentResolver.SCHEME_CONTENT.equals(uri.getScheme())) return;
++    private void visitGrantableUri(Uri uri, boolean userOverriddenUri, boolean isSound) {
++        if (mGrantableUris != null && mGrantableUris.contains(uri)) {
++            return; // already verified this URI
++        }
+ 
+         // We can't grant Uri permissions from system
+         final int sourceUid = getSbn().getUid();
+         if (sourceUid == android.os.Process.SYSTEM_UID) return;
+ 
+-        final long ident = Binder.clearCallingIdentity();
+         try {
+-            // This will throw SecurityException if caller can't grant
+-            mUgmInternal.checkGrantUriPermission(sourceUid, null,
+-                    ContentProvider.getUriWithoutUserId(uri),
+-                    Intent.FLAG_GRANT_READ_URI_PERMISSION,
+-                    ContentProvider.getUserIdFromUri(uri, UserHandle.getUserId(sourceUid)));
++            PermissionHelper.grantUriPermission(mUgmInternal, uri, sourceUid);
+ 
+             if (mGrantableUris == null) {
+                 mGrantableUris = new ArraySet<>();
+             }
+             mGrantableUris.add(uri);
+         } catch (SecurityException e) {
+             if (!userOverriddenUri) {
+-                if (mTargetSdkVersion >= Build.VERSION_CODES.P) {
+-                    throw e;
++                if (isSound) {
++                    mSound = Settings.System.DEFAULT_NOTIFICATION_URI;
++                    Log.w(TAG, "Replacing " + uri + " from " + sourceUid + ": " + e.getMessage());
+                 } else {
+-                    Log.w(TAG, "Ignoring " + uri + " from " + sourceUid + ": " + e.getMessage());
++                    if (mTargetSdkVersion >= Build.VERSION_CODES.P) {
++                        throw e;
++                    } else {
++                        Log.w(TAG,
++                                "Ignoring " + uri + " from " + sourceUid + ": " + e.getMessage());
++                    }
+                 }
+             }
+-        } finally {
+-            Binder.restoreCallingIdentity(ident);
+         }
+     }
+ 
+     public LogMaker getLogMaker(long now) {
+         LogMaker lm = getSbn().getLogMaker()
+                 .addTaggedData(MetricsEvent.FIELD_NOTIFICATION_CHANNEL_IMPORTANCE, mImportance)
+                 .addTaggedData(MetricsEvent.NOTIFICATION_SINCE_CREATE_MILLIS, getLifespanMs(now))
+diff --git a/services/core/java/com/android/server/notification/PermissionHelper.java b/services/core/java/com/android/server/notification/PermissionHelper.java
+new file mode 100644
+index 0000000000000..c3926852cbb48
+--- /dev/null
++++ b/services/core/java/com/android/server/notification/PermissionHelper.java
+@@ -0,0 +1,46 @@
++/*
++ * Copyright (C) 2021 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package com.android.server.notification;
++
++import android.content.ContentProvider;
++import android.content.ContentResolver;
++import android.content.Intent;
++import android.net.Uri;
++import android.os.Binder;
++import android.os.UserHandle;
++
++import com.android.server.uri.UriGrantsManagerInternal;
++
++/**
++ * NotificationManagerService helper for querying/setting the app-level notification permission
++ */
++public final class PermissionHelper {
++    private static final String TAG = "PermissionHelper";
++
++    static void grantUriPermission(final UriGrantsManagerInternal ugmInternal, Uri uri,
++            int sourceUid) {
++        if (uri == null || !ContentResolver.SCHEME_CONTENT.equals(uri.getScheme())) return;
++
++        Binder.withCleanCallingIdentity(() -> {
++            // This will throw a SecurityException if the caller can't grant.
++            ugmInternal.checkGrantUriPermission(sourceUid, null,
++                    ContentProvider.getUriWithoutUserId(uri),
++                    Intent.FLAG_GRANT_READ_URI_PERMISSION,
++                    ContentProvider.getUserIdFromUri(uri, UserHandle.getUserId(sourceUid)));
++        });
++    }
++}
+diff --git a/services/core/java/com/android/server/notification/PreferencesHelper.java b/services/core/java/com/android/server/notification/PreferencesHelper.java
+index d52689b0d60d2..686e284aa645e 100644
+--- a/services/core/java/com/android/server/notification/PreferencesHelper.java
++++ b/services/core/java/com/android/server/notification/PreferencesHelper.java
+@@ -64,14 +64,15 @@ import android.util.TypedXmlSerializer;
+ import android.util.proto.ProtoOutputStream;
+ 
+ import com.android.internal.R;
+ import com.android.internal.annotations.VisibleForTesting;
+ import com.android.internal.logging.MetricsLogger;
+ import com.android.internal.util.Preconditions;
+ import com.android.internal.util.XmlUtils;
++import com.android.server.uri.UriGrantsManagerInternal;
+ 
+ import org.json.JSONArray;
+ import org.json.JSONException;
+ import org.json.JSONObject;
+ import org.xmlpull.v1.XmlPullParser;
+ import org.xmlpull.v1.XmlPullParserException;
+ 
+@@ -172,14 +173,15 @@ public class PreferencesHelper implements RankingConfig {
+ 
+     private final Context mContext;
+     private final PackageManager mPm;
+     private final RankingHandler mRankingHandler;
+     private final ZenModeHelper mZenModeHelper;
+     private final NotificationChannelLogger mNotificationChannelLogger;
+     private final AppOpsManager mAppOps;
++    private final UriGrantsManagerInternal mUgmInternal;
+ 
+     private SparseBooleanArray mBadgingEnabled;
+     private SparseBooleanArray mBubblesEnabled;
+     private SparseBooleanArray mLockScreenShowNotifications;
+     private SparseBooleanArray mLockScreenPrivateNotifications;
+     private boolean mIsMediaNotificationFilteringEnabled = DEFAULT_MEDIA_NOTIFICATION_FILTERING;
+     private boolean mAreChannelsBypassingDnd;
+@@ -190,22 +192,24 @@ public class PreferencesHelper implements RankingConfig {
+     private Map<String, List<String>> mOemLockedApps = new HashMap();
+ 
+     private int mCurrentUserId = UserHandle.USER_NULL;
+ 
+     public PreferencesHelper(Context context, PackageManager pm, RankingHandler rankingHandler,
+             ZenModeHelper zenHelper, NotificationChannelLogger notificationChannelLogger,
+             AppOpsManager appOpsManager,
++            UriGrantsManagerInternal ugmInternal,
+             SysUiStatsEvent.BuilderFactory statsEventBuilderFactory) {
+         mContext = context;
+         mZenModeHelper = zenHelper;
+         mRankingHandler = rankingHandler;
+         mPm = pm;
+         mNotificationChannelLogger = notificationChannelLogger;
+         mAppOps = appOpsManager;
+         mStatsEventBuilderFactory = statsEventBuilderFactory;
++        mUgmInternal = ugmInternal;
+ 
+         updateBadgingEnabled();
+         updateBubblesEnabled();
+         updateMediaNotificationFilteringEnabled();
+         mCurrentUserId = ActivityManager.getCurrentUser();
+         syncChannelsBypassingDnd();
+     }
+@@ -959,14 +963,20 @@ public class PreferencesHelper implements RankingConfig {
+             if (fromTargetApp) {
+                 channel.setLockscreenVisibility(r.visibility);
+                 channel.setAllowBubbles(existing != null
+                         ? existing.getAllowBubbles()
+                         : NotificationChannel.DEFAULT_ALLOW_BUBBLE);
+             }
+             clearLockedFieldsLocked(channel);
++
++            // Verify that the app has permission to read the sound Uri
++            // Only check for new channels, as regular apps can only set sound
++            // before creating. See: {@link NotificationChannel#setSound}
++            PermissionHelper.grantUriPermission(mUgmInternal, channel.getSound(), uid);
++
+             channel.setImportanceLockedByOEM(r.oemLockedImportance);
+             if (!channel.isImportanceLockedByOEM()) {
+                 if (r.oemLockedChannels.contains(channel.getId())) {
+                     channel.setImportanceLockedByOEM(true);
+                 }
+             }
+             channel.setImportanceLockedByCriticalDeviceFunction(r.defaultAppLockedImportance);
+diff --git a/services/core/java/com/android/server/pm/PackageManagerService.java b/services/core/java/com/android/server/pm/PackageManagerService.java
+index 65dab23df55f5..c92b8369fee21 100644
+--- a/services/core/java/com/android/server/pm/PackageManagerService.java
++++ b/services/core/java/com/android/server/pm/PackageManagerService.java
+@@ -152,14 +152,15 @@ import android.app.admin.IDevicePolicyManager;
+ import android.app.admin.SecurityLog;
+ import android.app.backup.IBackupManager;
+ import android.app.role.RoleManager;
+ import android.compat.annotation.ChangeId;
+ import android.compat.annotation.EnabledAfter;
+ import android.content.BroadcastReceiver;
+ import android.content.ComponentName;
++import android.content.ContentProvider;
+ import android.content.ContentResolver;
+ import android.content.Context;
+ import android.content.IIntentReceiver;
+ import android.content.Intent;
+ import android.content.IntentFilter;
+ import android.content.IntentSender;
+ import android.content.IntentSender.SendIntentException;
+@@ -2376,19 +2377,19 @@ public class PackageManagerService extends IPackageManager.Stub
+                     userId, false /*resolveForStart*/, true /*allowDynamicSplits*/);
+         }
+ 
+         public final @NonNull List<ResolveInfo> queryIntentServicesInternal(Intent intent,
+                 String resolvedType, int flags, int userId, int callingUid,
+                 boolean includeInstantApps) {
+             if (!mUserManager.exists(userId)) return Collections.emptyList();
+-            enforceCrossUserOrProfilePermission(callingUid,
++            enforceCrossUserOrProfilePermission(Binder.getCallingUid(),
+                     userId,
+                     false /*requireFullPermission*/,
+                     false /*checkShell*/,
+-                    "query intent receivers");
++                    "query intent services");
+             final String instantAppPkgName = getInstantAppPackageName(callingUid);
+             flags = updateFlagsForResolve(flags, userId, callingUid, includeInstantApps,
+                     false /* isImplicitImageCaptureIntentAndNotSetByDpc */);
+             ComponentName comp = intent.getComponent();
+             if (comp == null) {
+                 if (intent.getSelector() != null) {
+                     intent = intent.getSelector();
+@@ -4085,18 +4086,18 @@ public class PackageManagerService extends IPackageManager.Stub
+             if (!requirePermissionWhenSameUser && userId == callingUserId) {
+                 return true;
+             }
+             if (callingUid == Process.SYSTEM_UID || callingUid == Process.ROOT_UID) {
+                 return true;
+             }
+             if (requireFullPermission) {
+-                return hasPermission(Manifest.permission.INTERACT_ACROSS_USERS_FULL);
++                return hasPermission(Manifest.permission.INTERACT_ACROSS_USERS_FULL, callingUid);
+             }
+-            return hasPermission(android.Manifest.permission.INTERACT_ACROSS_USERS_FULL)
+-                    || hasPermission(Manifest.permission.INTERACT_ACROSS_USERS);
++            return hasPermission(android.Manifest.permission.INTERACT_ACROSS_USERS_FULL, callingUid)
++                    || hasPermission(Manifest.permission.INTERACT_ACROSS_USERS, callingUid);
+         }
+ 
+         /**
+          * @param resolveInfos list of resolve infos in descending priority order
+          * @return if the list contains a resolve info with non-negative priority
+          */
+         private boolean hasNonNegativePriority(List<ResolveInfo> resolveInfos) {
+@@ -4104,14 +4105,19 @@ public class PackageManagerService extends IPackageManager.Stub
+         }
+ 
+         private boolean hasPermission(String permission) {
+             return mContext.checkCallingOrSelfPermission(permission)
+                     == PackageManager.PERMISSION_GRANTED;
+         }
+ 
++        private boolean hasPermission(String permission, int uid) {
++            return mContext.checkPermission(permission, /* pid= */ -1, uid)
++                    == PackageManager.PERMISSION_GRANTED;
++        }
++
+         public final boolean isCallerSameApp(String packageName, int uid) {
+             AndroidPackage pkg = mPackages.get(packageName);
+             return pkg != null
+                     && UserHandle.getAppId(uid) == pkg.getUid();
+         }
+ 
+         public final boolean isComponentVisibleToInstantApp(@Nullable ComponentName component) {
+@@ -11660,15 +11666,15 @@ public class PackageManagerService extends IPackageManager.Stub
+             return Collections.emptyList();
+         }
+         if (!mUserManager.exists(userId)) return Collections.emptyList();
+         flags = updateFlagsForApplication(flags, userId);
+         final boolean listUninstalled = (flags & MATCH_KNOWN_PACKAGES) != 0;
+ 
+         enforceCrossUserPermission(
+-            callingUid,
++            Binder.getCallingUid(),
+             userId,
+             false /* requireFullPermission */,
+             false /* checkShell */,
+             "get installed application info");
+ 
+         // writer
+         synchronized (mLock) {
+@@ -11871,15 +11877,21 @@ public class PackageManagerService extends IPackageManager.Stub
+         return resolveContentProviderInternal(name, flags, userId, Binder.getCallingUid());
+     }
+ 
+     private ProviderInfo resolveContentProviderInternal(String name, int flags, int userId,
+             int callingUid) {
+         if (!mUserManager.exists(userId)) return null;
+         flags = updateFlagsForComponent(flags, userId);
+-        final ProviderInfo providerInfo = mComponentResolver.queryProvider(name, flags, userId);
++
++        // Callers of this API may not always separate the userID and authority. Let's parse it
++        // before resolving
++        String authorityWithoutUserId = ContentProvider.getAuthorityWithoutUserId(name);
++        userId = ContentProvider.getUserIdFromAuthority(name, userId);
++        final ProviderInfo providerInfo = mComponentResolver.queryProvider(
++                authorityWithoutUserId, flags, userId);
+         boolean checkedGrants = false;
+         if (providerInfo != null) {
+             // Looking for cross-user grants before enforcing the typical cross-users permissions
+             if (userId != UserHandle.getUserId(callingUid)) {
+                 final UriGrantsManagerInternal ugmInternal =
+                         mInjector.getLocalService(UriGrantsManagerInternal.class);
+                 checkedGrants =
+diff --git a/services/core/java/com/android/server/pm/UserRestrictionsUtils.java b/services/core/java/com/android/server/pm/UserRestrictionsUtils.java
+index 3a1ffe16066e5..a1d3d85936411 100644
+--- a/services/core/java/com/android/server/pm/UserRestrictionsUtils.java
++++ b/services/core/java/com/android/server/pm/UserRestrictionsUtils.java
+@@ -254,15 +254,16 @@ public class UserRestrictionsUtils {
+      * User restrictions that default to {@code true} for managed profile owners.
+      *
+      * NB: {@link UserManager#DISALLOW_INSTALL_UNKNOWN_SOURCES} is also set by default but it is
+      * not set to existing profile owners unless they used to have INSTALL_NON_MARKET_APPS disabled
+      * in settings. So it is handled separately.
+      */
+     private static final Set<String> DEFAULT_ENABLED_FOR_MANAGED_PROFILES = Sets.newArraySet(
+-            UserManager.DISALLOW_BLUETOOTH_SHARING
++            UserManager.DISALLOW_BLUETOOTH_SHARING,
++            UserManager.DISALLOW_DEBUGGING_FEATURES
+     );
+ 
+     /**
+      * Special user restrictions that are always applied to all users no matter who sets them.
+      */
+     private static final Set<String> PROFILE_GLOBAL_RESTRICTIONS = Sets.newArraySet(
+             UserManager.ENSURE_VERIFY_APPS,
+diff --git a/services/core/java/com/android/server/speech/RemoteSpeechRecognitionService.java b/services/core/java/com/android/server/speech/RemoteSpeechRecognitionService.java
+index 068626588745f..0590ed18139a6 100644
+--- a/services/core/java/com/android/server/speech/RemoteSpeechRecognitionService.java
++++ b/services/core/java/com/android/server/speech/RemoteSpeechRecognitionService.java
+@@ -64,16 +64,15 @@ final class RemoteSpeechRecognitionService extends ServiceConnector.Impl<IRecogn
+ 
+     RemoteSpeechRecognitionService(
+             Context context, ComponentName serviceName, int userId, int callingUid) {
+         super(context,
+                 new Intent(RecognitionService.SERVICE_INTERFACE).setComponent(serviceName),
+                 Context.BIND_AUTO_CREATE
+                         | Context.BIND_FOREGROUND_SERVICE
+-                        | Context.BIND_INCLUDE_CAPABILITIES
+-                        | Context.BIND_ALLOW_BACKGROUND_ACTIVITY_STARTS,
++                        | Context.BIND_INCLUDE_CAPABILITIES,
+                 userId,
+                 IRecognitionService.Stub::asInterface);
+ 
+         mCallingUid = callingUid;
+         mComponentName = serviceName;
+ 
+         if (DEBUG) {
+diff --git a/services/core/java/com/android/server/wm/ActivityRecord.java b/services/core/java/com/android/server/wm/ActivityRecord.java
+index 1fe8e451ad80a..4c615c2f32339 100644
+--- a/services/core/java/com/android/server/wm/ActivityRecord.java
++++ b/services/core/java/com/android/server/wm/ActivityRecord.java
+@@ -2513,15 +2513,15 @@ final class ActivityRecord extends WindowToken implements WindowManagerService.A
+         }
+ 
+         ProtoLog.i(WM_DEBUG_ADD_REMOVE, "reparent: moving activity=%s"
+                 + " to new task fragment in task=%d at %d", this, task.mTaskId, position);
+         reparent(newTaskFrag, position);
+     }
+ 
+-    private boolean isHomeIntent(Intent intent) {
++    static boolean isHomeIntent(Intent intent) {
+         return ACTION_MAIN.equals(intent.getAction())
+                 && (intent.hasCategory(CATEGORY_HOME)
+                 || intent.hasCategory(CATEGORY_SECONDARY_HOME))
+                 && intent.getCategories().size() == 1
+                 && intent.getData() == null
+                 && intent.getType() == null;
+     }
+diff --git a/services/core/java/com/android/server/wm/ActivityStartInterceptor.java b/services/core/java/com/android/server/wm/ActivityStartInterceptor.java
+index 223f0be9bbeaf..6bb2bc74d5efd 100644
+--- a/services/core/java/com/android/server/wm/ActivityStartInterceptor.java
++++ b/services/core/java/com/android/server/wm/ActivityStartInterceptor.java
+@@ -20,59 +20,66 @@ import static android.app.ActivityManager.INTENT_SENDER_ACTIVITY;
+ import static android.app.ActivityOptions.ANIM_OPEN_CROSS_PROFILE_APPS;
+ import static android.app.PendingIntent.FLAG_CANCEL_CURRENT;
+ import static android.app.PendingIntent.FLAG_IMMUTABLE;
+ import static android.app.PendingIntent.FLAG_ONE_SHOT;
+ import static android.app.admin.DevicePolicyManager.EXTRA_RESTRICTION;
+ import static android.app.admin.DevicePolicyManager.POLICY_SUSPEND_PACKAGES;
+ import static android.content.Context.KEYGUARD_SERVICE;
++import static android.content.Intent.ACTION_MAIN;
++import static android.content.Intent.CATEGORY_HOME;
++import static android.content.Intent.CATEGORY_SECONDARY_HOME;
+ import static android.content.Intent.EXTRA_INTENT;
+ import static android.content.Intent.EXTRA_PACKAGE_NAME;
+ import static android.content.Intent.EXTRA_TASK_ID;
+ import static android.content.Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS;
+ import static android.content.Intent.FLAG_ACTIVITY_NEW_TASK;
+ import static android.content.Intent.FLAG_ACTIVITY_TASK_ON_HOME;
+ import static android.content.pm.ApplicationInfo.FLAG_SUSPENDED;
+ 
+ import static com.android.server.pm.PackageManagerService.PLATFORM_PACKAGE_NAME;
+ 
+ import android.annotation.Nullable;
+ import android.app.ActivityOptions;
+ import android.app.KeyguardManager;
+ import android.app.admin.DevicePolicyManagerInternal;
++import android.content.ComponentName;
+ import android.content.Context;
+ import android.content.IIntentSender;
+ import android.content.Intent;
+ import android.content.IntentSender;
+ import android.content.pm.ActivityInfo;
+ import android.content.pm.PackageManagerInternal;
+ import android.content.pm.ResolveInfo;
+ import android.content.pm.SuspendDialogInfo;
+ import android.content.pm.UserInfo;
+ import android.os.Bundle;
+ import android.os.RemoteException;
+ import android.os.UserHandle;
+ import android.os.UserManager;
++import android.util.Slog;
+ import android.util.SparseArray;
+ 
+ import com.android.internal.annotations.VisibleForTesting;
+ import com.android.internal.app.BlockedAppActivity;
+ import com.android.internal.app.HarmfulAppWarningActivity;
+ import com.android.internal.app.SuspendedAppActivity;
+ import com.android.internal.app.UnlaunchableAppActivity;
+ import com.android.server.LocalServices;
+ import com.android.server.am.ActivityManagerService;
+ 
++
+ /**
+  * A class that contains activity intercepting logic for {@link ActivityStarter#startActivityLocked}
+  * It's initialized via setStates and interception occurs via the intercept method.
+  *
+  * Note that this class is instantiated when {@link ActivityManagerService} gets created so there
+  * is no guarantee that other system services are already present.
+  */
+ class ActivityStartInterceptor {
++    private static final String TAG = "ActivityStartInterceptor";
+ 
+     private final ActivityTaskManagerService mService;
+     private final ActivityTaskSupervisor mSupervisor;
+     private final RootWindowContainer mRootWindowContainer;
+     private final Context mServiceContext;
+ 
+     // UserManager cannot be final as it's not ready when this class is instantiated during boot
+@@ -100,14 +107,19 @@ class ActivityStartInterceptor {
+     int mCallingUid;
+     ResolveInfo mRInfo;
+     ActivityInfo mAInfo;
+     String mResolvedType;
+     Task mInTask;
+     ActivityOptions mActivityOptions;
+ 
++    /**
++     * Whether the component is specified originally in the given Intent.
++     */
++    boolean mComponentSpecified;
++
+     ActivityStartInterceptor(
+             ActivityTaskManagerService service, ActivityTaskSupervisor supervisor) {
+         this(service, supervisor, service.mRootWindowContainer, service.mContext);
+     }
+ 
+     @VisibleForTesting
+     ActivityStartInterceptor(ActivityTaskManagerService service, ActivityTaskSupervisor supervisor,
+@@ -138,32 +150,42 @@ class ActivityStartInterceptor {
+                 INTENT_SENDER_ACTIVITY, mCallingPackage, mCallingFeatureId, callingUid, mUserId,
+                 null /*token*/, null /*resultCode*/, 0 /*requestCode*/,
+                 new Intent[] { mIntent }, new String[] { mResolvedType },
+                 flags, activityOptions);
+         return new IntentSender(target);
+     }
+ 
++    // TODO: consolidate this method with the one below since this is used for test only.
++    boolean intercept(Intent intent, ResolveInfo rInfo, ActivityInfo aInfo, String resolvedType,
++            Task inTask, int callingPid, int callingUid,
++            ActivityOptions activityOptions) {
++        return intercept(intent, rInfo, aInfo, resolvedType, inTask, callingPid,
++                callingUid, activityOptions, false);
++    }
++
+     /**
+      * Intercept the launch intent based on various signals. If an interception happened the
+      * internal variables get assigned and need to be read explicitly by the caller.
+      *
+      * @return true if an interception occurred
+      */
+     boolean intercept(Intent intent, ResolveInfo rInfo, ActivityInfo aInfo, String resolvedType,
+-            Task inTask, int callingPid, int callingUid, ActivityOptions activityOptions) {
++            Task inTask, int callingPid, int callingUid, ActivityOptions activityOptions,
++            boolean componentSpecified) {
+         mUserManager = UserManager.get(mServiceContext);
+ 
+         mIntent = intent;
+         mCallingPid = callingPid;
+         mCallingUid = callingUid;
+         mRInfo = rInfo;
+         mAInfo = aInfo;
+         mResolvedType = resolvedType;
+         mInTask = inTask;
+         mActivityOptions = activityOptions;
++        mComponentSpecified = componentSpecified;
+ 
+         if (interceptQuietProfileIfNeeded()) {
+             // If work profile is turned off, skip the work challenge since the profile can only
+             // be unlocked when profile's user is running.
+             return true;
+         }
+         if (interceptSuspendedPackageIfNeeded()) {
+@@ -178,14 +200,18 @@ class ActivityStartInterceptor {
+             // If the app has a "harmful app" warning associated with it, we should ask to uninstall
+             // before issuing the work challenge.
+             return true;
+         }
+         if (interceptLockedManagedProfileIfNeeded()) {
+             return true;
+         }
++        if (interceptHomeIfNeeded()) {
++            // Replace primary home intents if the home intent is not in the correct format.
++            return true;
++        }
+ 
+         final SparseArray<ActivityInterceptorCallback> callbacks =
+                 mService.getActivityInterceptorCallbacks();
+         final ActivityInterceptorCallback.ActivityInterceptorInfo interceptorInfo =
+                 new ActivityInterceptorCallback.ActivityInterceptorInfo(mRealCallingUid,
+                         mRealCallingPid, mUserId, mCallingPackage, mCallingFeatureId, mIntent,
+                         mRInfo, mAInfo, mResolvedType, mCallingPid, mCallingUid,
+@@ -398,8 +424,76 @@ class ActivityStartInterceptor {
+         mCallingUid = mRealCallingUid;
+         mResolvedType = null;
+ 
+         mRInfo = mSupervisor.resolveIntent(mIntent, mResolvedType, mUserId, 0, mRealCallingUid);
+         mAInfo = mSupervisor.resolveActivity(mIntent, mRInfo, mStartFlags, null /*profilerInfo*/);
+         return true;
+     }
++
++    private boolean interceptHomeIfNeeded() {
++        if (mService.mRootWindowContainer == null) {
++            return false;
++        }
++
++        boolean intercepted = false;
++        if (!ACTION_MAIN.equals(mIntent.getAction()) || (!mIntent.hasCategory(CATEGORY_HOME)
++                && !mIntent.hasCategory(CATEGORY_SECONDARY_HOME))) {
++            // not a home intent
++            return false;
++        }
++
++        if (mComponentSpecified) {
++            final ComponentName homeComponent = mIntent.getComponent();
++            final Intent homeIntent = mService.getHomeIntent();
++            final ActivityInfo aInfo = mService.mRootWindowContainer.resolveHomeActivity(
++                    mUserId, homeIntent);
++            if (!aInfo.getComponentName().equals(homeComponent)) {
++                // Do nothing if the intent is not for the default home component.
++                return false;
++            }
++        }
++
++        if (!ActivityRecord.isHomeIntent(mIntent) || mComponentSpecified) {
++            // This is not a standard home intent, make it so if possible.
++            normalizeHomeIntent();
++            intercepted = true;
++        }
++
++        if (intercepted) {
++            mCallingPid = mRealCallingPid;
++            mCallingUid = mRealCallingUid;
++            mResolvedType = null;
++
++            mRInfo = mSupervisor.resolveIntent(mIntent, mResolvedType, mUserId, /* flags= */ 0,
++                    mRealCallingUid);
++            mAInfo = mSupervisor.resolveActivity(mIntent, mRInfo, mStartFlags, /*profilerInfo=*/
++                    null);
++        }
++        return intercepted;
++    }
++
++    private void normalizeHomeIntent() {
++        Slog.w(TAG, "The home Intent is not correctly formatted");
++        if (mIntent.getCategories().size() > 1) {
++            Slog.d(TAG, "Purge home intent categories");
++            boolean isSecondaryHome = false;
++            final Object[] categories = mIntent.getCategories().toArray();
++            for (int i = categories.length - 1; i >= 0; i--) {
++                final String category = (String) categories[i];
++                if (CATEGORY_SECONDARY_HOME.equals(category)) {
++                    isSecondaryHome = true;
++                }
++                mIntent.removeCategory(category);
++            }
++            mIntent.addCategory(isSecondaryHome ? CATEGORY_SECONDARY_HOME : CATEGORY_HOME);
++        }
++        if (mIntent.getType() != null || mIntent.getData() != null) {
++            Slog.d(TAG, "Purge home intent data/type");
++            mIntent.setType(null);
++        }
++        if (mComponentSpecified) {
++            Slog.d(TAG, "Purge home intent component, " + mIntent.getComponent());
++            mIntent.setComponent(null);
++        }
++        mIntent.addFlags(FLAG_ACTIVITY_NEW_TASK);
++    }
+ }
+diff --git a/services/core/java/com/android/server/wm/ActivityStarter.java b/services/core/java/com/android/server/wm/ActivityStarter.java
+index 6ba77cd76d8be..0c4bc2d359061 100644
+--- a/services/core/java/com/android/server/wm/ActivityStarter.java
++++ b/services/core/java/com/android/server/wm/ActivityStarter.java
+@@ -1023,15 +1023,15 @@ class ActivityStarter {
+                 mService.mController = null;
+             }
+         }
+ 
+         mInterceptor.setStates(userId, realCallingPid, realCallingUid, startFlags, callingPackage,
+                 callingFeatureId);
+         if (mInterceptor.intercept(intent, rInfo, aInfo, resolvedType, inTask, callingPid,
+-                callingUid, checkedOptions)) {
++                callingUid, checkedOptions, request.componentSpecified)) {
+             // activity start was intercepted, e.g. because the target user is currently in quiet
+             // mode (turn off work) or the target application is suspended
+             intent = mInterceptor.mIntent;
+             rInfo = mInterceptor.mRInfo;
+             aInfo = mInterceptor.mAInfo;
+             resolvedType = mInterceptor.mResolvedType;
+             inTask = mInterceptor.mInTask;
+diff --git a/services/core/java/com/android/server/wm/LockTaskController.java b/services/core/java/com/android/server/wm/LockTaskController.java
+index 8a2d11636fe37..681a01a641ba1 100644
+--- a/services/core/java/com/android/server/wm/LockTaskController.java
++++ b/services/core/java/com/android/server/wm/LockTaskController.java
+@@ -617,14 +617,18 @@ public class LockTaskController {
+      *                       at the calling task's mLockTaskAuth to decide which mode to start.
+      * @param callingUid the caller that requested the launch of lock task mode.
+      */
+     void startLockTaskMode(@NonNull Task task, boolean isSystemCaller, int callingUid) {
+         if (!isSystemCaller) {
+             task.mLockTaskUid = callingUid;
+             if (task.mLockTaskAuth == LOCK_TASK_AUTH_PINNABLE) {
++                if (mLockTaskModeTasks.contains(task)) {
++                    Slog.i(TAG_LOCKTASK, "Already locked.");
++                    return;
++                }
+                 // startLockTask() called by app, but app is not part of lock task allowlist. Show
+                 // app pinning request. We will come back here with isSystemCaller true.
+                 ProtoLog.w(WM_DEBUG_LOCKTASK, "Mode default, asking user");
+                 StatusBarManagerInternal statusBarManager = LocalServices.getService(
+                         StatusBarManagerInternal.class);
+                 if (statusBarManager != null) {
+                     statusBarManager.showScreenPinningRequest(task.mTaskId);
+diff --git a/services/devicepolicy/java/com/android/server/devicepolicy/DevicePolicyManagerService.java b/services/devicepolicy/java/com/android/server/devicepolicy/DevicePolicyManagerService.java
+index b7e24889ec836..e78629dc169b7 100644
+--- a/services/devicepolicy/java/com/android/server/devicepolicy/DevicePolicyManagerService.java
++++ b/services/devicepolicy/java/com/android/server/devicepolicy/DevicePolicyManagerService.java
+@@ -8873,15 +8873,16 @@ public class DevicePolicyManagerService extends BaseIDevicePolicyManager {
+             if (parentUserId != userHandle && mUserManager.hasUserRestriction(
+                     UserManager.DISALLOW_ADD_MANAGED_PROFILE,
+                     UserHandle.of(parentUserId))) {
+                 Slogf.i(LOG_TAG, "Cannot set profile owner because of restriction.");
+                 return false;
+             }
+ 
+-            if (isAdb(caller)) {
++            boolean isAdb = isAdb(caller);
++            if (isAdb) {
+                 // Log profile owner provisioning was started using adb.
+                 MetricsLogger.action(mContext, PROVISIONING_ENTRY_POINT_ADB, LOG_TAG_PROFILE_OWNER);
+                 DevicePolicyEventLogger
+                         .createEvent(DevicePolicyEnums.PROVISIONING_ENTRY_POINT_ADB)
+                         .setAdmin(who)
+                         .setStrings(LOG_TAG_PROFILE_OWNER)
+                         .write();
+@@ -8896,14 +8897,25 @@ public class DevicePolicyManagerService extends BaseIDevicePolicyManager {
+ 
+             mInjector.binderWithCleanCallingIdentity(() -> {
+                 if (mUserManager.isManagedProfile(userHandle)) {
+                     maybeSetDefaultRestrictionsForAdminLocked(userHandle, admin,
+                             UserRestrictionsUtils.getDefaultEnabledForManagedProfiles());
+                     ensureUnknownSourcesRestrictionForProfileOwnerLocked(userHandle, admin,
+                             true /* newOwner */);
++                    if (isAdb) {
++                        // DISALLOW_DEBUGGING_FEATURES is being added to newly-created
++                        // work profile by default due to b/382064697 . This would have
++                        //  impacted certain CTS test flows when they interact with the
++                        // work profile via ADB (for example installing an app into the
++                        // work profile). Remove DISALLOW_DEBUGGING_FEATURES here to
++                        // reduce the potential impact.
++                        admin.ensureUserRestrictions().putBoolean(
++                            UserManager.DISALLOW_DEBUGGING_FEATURES, false);
++                        saveUserRestrictionsLocked(userHandle);
++                    }
+                 }
+                 sendOwnerChangedBroadcast(DevicePolicyManager.ACTION_PROFILE_OWNER_CHANGED,
+                         userHandle);
+             });
+             mDeviceAdminServiceController.startServiceForOwner(
+                     who.getPackageName(), userHandle, "set-profile-owner");
+             return true;
+diff --git a/services/tests/PackageManagerComponentOverrideTests/src/com/android/server/pm/test/override/PackageManagerComponentLabelIconOverrideTest.kt b/services/tests/PackageManagerComponentOverrideTests/src/com/android/server/pm/test/override/PackageManagerComponentLabelIconOverrideTest.kt
+index b4f8b6edd1397..0e769f0a06bc6 100644
+--- a/services/tests/PackageManagerComponentOverrideTests/src/com/android/server/pm/test/override/PackageManagerComponentLabelIconOverrideTest.kt
++++ b/services/tests/PackageManagerComponentOverrideTests/src/com/android/server/pm/test/override/PackageManagerComponentLabelIconOverrideTest.kt
+@@ -45,14 +45,15 @@ import com.android.server.wm.ActivityTaskManagerInternal
+ import com.google.common.truth.Truth.assertThat
+ import org.junit.After
+ import org.junit.Before
+ import org.junit.BeforeClass
+ import org.junit.Test
+ import org.junit.runner.RunWith
+ import org.junit.runners.Parameterized
++import org.mockito.ArgumentMatchers.eq
+ import org.mockito.Mockito.any
+ import org.mockito.Mockito.anyInt
+ import org.mockito.Mockito.clearInvocations
+ import org.mockito.Mockito.intThat
+ import org.mockito.Mockito.never
+ import org.mockito.Mockito.same
+ import org.mockito.Mockito.verify
+@@ -356,14 +357,18 @@ class PackageManagerComponentLabelIconOverrideTest {
+         val mockContext: Context = mockThrowOnUnmocked {
+             whenever(this.getString(
+                     com.android.internal.R.string.config_overrideComponentUiPackage)) { VALID_PKG }
+             whenever(this.checkCallingOrSelfPermission(
+                     android.Manifest.permission.INTERACT_ACROSS_USERS_FULL)) {
+                 PackageManager.PERMISSION_GRANTED
+             }
++            whenever(this.checkPermission(
++                eq(android.Manifest.permission.INTERACT_ACROSS_USERS_FULL), anyInt(), anyInt())) {
++                PackageManager.PERMISSION_GRANTED
++            }
+         }
+         val mockInjector: PackageManagerService.Injector = mock {
+             whenever(this.lock) { PackageManagerTracedLock() }
+             whenever(this.componentResolver) { mockComponentResolver }
+             whenever(this.userManagerService) { mockUserManagerService }
+             whenever(this.getUserManagerInternal()) { mockUserManagerInternal }
+             whenever(this.settings) { mockSettings }
+diff --git a/services/tests/mockingservicestests/src/com/android/server/am/PendingIntentControllerTest.java b/services/tests/mockingservicestests/src/com/android/server/am/PendingIntentControllerTest.java
+index b2847ce88a2ca..7b4c44d453c57 100644
+--- a/services/tests/mockingservicestests/src/com/android/server/am/PendingIntentControllerTest.java
++++ b/services/tests/mockingservicestests/src/com/android/server/am/PendingIntentControllerTest.java
+@@ -12,30 +12,37 @@
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  */
+ 
+ package com.android.server.am;
+ 
++import static android.os.PowerWhitelistManager.REASON_NOTIFICATION_SERVICE;
++import static android.os.PowerWhitelistManager.TEMPORARY_ALLOWLIST_TYPE_FOREGROUND_SERVICE_ALLOWED;
++import static android.os.PowerWhitelistManager.TEMPORARY_ALLOWLIST_TYPE_FOREGROUND_SERVICE_NOT_ALLOWED;
++
+ import static com.android.dx.mockito.inline.extended.ExtendedMockito.doReturn;
+ import static com.android.dx.mockito.inline.extended.ExtendedMockito.mockitoSession;
+ import static com.android.dx.mockito.inline.extended.ExtendedMockito.verify;
++import static com.android.server.am.PendingIntentRecord.FLAG_ACTIVITY_SENDER;
+ 
+ import static org.junit.Assert.assertEquals;
++import static org.junit.Assert.assertNotNull;
+ import static org.mockito.ArgumentMatchers.anyInt;
+ import static org.mockito.ArgumentMatchers.eq;
+ import static org.mockito.Mockito.mock;
+ import static org.mockito.Mockito.when;
+ 
+ import android.app.ActivityManager;
+ import android.app.ActivityManagerInternal;
+ import android.app.AppGlobals;
+ import android.app.PendingIntent;
+ import android.content.Intent;
+ import android.content.pm.IPackageManager;
++import android.os.Binder;
+ import android.os.Looper;
+ 
+ import androidx.test.runner.AndroidJUnit4;
+ 
+ import com.android.server.AlarmManagerInternal;
+ import com.android.server.LocalServices;
+ 
+@@ -121,14 +128,45 @@ public class PendingIntentControllerTest {
+         pir.send(0, null, null, null, null, null, null);
+         final ArgumentCaptor<PendingIntent> piCaptor = ArgumentCaptor.forClass(PendingIntent.class);
+         verify(mAlarmManagerInternal).remove(piCaptor.capture());
+         assertEquals("Wrong target for pending intent passed to alarm manager", pir,
+                 piCaptor.getValue().getTarget());
+     }
+ 
++    @Test
++    public void testClearAllowBgActivityStartsClearsToken() {
++        final PendingIntentRecord pir = createPendingIntentRecord(0);
++        Binder token = new Binder();
++        pir.setAllowBgActivityStarts(token, FLAG_ACTIVITY_SENDER);
++        assertEquals(true, pir.getBackgroundStartPrivilegesForActivitySender(token));
++        pir.clearAllowBgActivityStarts(token);
++        assertEquals(false, pir.getBackgroundStartPrivilegesForActivitySender(token));
++    }
++
++    @Test
++    public void testClearAllowBgActivityStartsClearsDuration() {
++        final PendingIntentRecord pir = createPendingIntentRecord(0);
++        Binder token = new Binder();
++        pir.setAllowlistDurationLocked(token, 1000,
++                TEMPORARY_ALLOWLIST_TYPE_FOREGROUND_SERVICE_ALLOWED, REASON_NOTIFICATION_SERVICE,
++                "NotificationManagerService");
++        PendingIntentRecord.TempAllowListDuration allowlistDurationLocked =
++                pir.getAllowlistDurationLocked(token);
++        assertEquals(1000, allowlistDurationLocked.duration);
++        assertEquals(TEMPORARY_ALLOWLIST_TYPE_FOREGROUND_SERVICE_ALLOWED,
++                allowlistDurationLocked.type);
++        pir.clearAllowBgActivityStarts(token);
++        PendingIntentRecord.TempAllowListDuration allowlistDurationLockedAfterClear =
++                pir.getAllowlistDurationLocked(token);
++        assertNotNull(allowlistDurationLockedAfterClear);
++        assertEquals(1000, allowlistDurationLockedAfterClear.duration);
++        assertEquals(TEMPORARY_ALLOWLIST_TYPE_FOREGROUND_SERVICE_NOT_ALLOWED,
++                allowlistDurationLocked.type);
++    }
++
+     @After
+     public void tearDown() {
+         if (mMockingSession != null) {
+             mMockingSession.finishMocking();
+         }
+     }
+ }
+diff --git a/services/tests/uiservicestests/src/com/android/server/notification/NotificationManagerServiceTest.java b/services/tests/uiservicestests/src/com/android/server/notification/NotificationManagerServiceTest.java
+index 08f2948825aa8..62eccc2175487 100755
+--- a/services/tests/uiservicestests/src/com/android/server/notification/NotificationManagerServiceTest.java
++++ b/services/tests/uiservicestests/src/com/android/server/notification/NotificationManagerServiceTest.java
+@@ -2688,15 +2688,50 @@ public class NotificationManagerServiceTest extends UiServiceTestCase {
+         final NotificationChannel updatedNotificationChannel = new NotificationChannel(
+                 TEST_CHANNEL_ID, TEST_CHANNEL_ID, IMPORTANCE_DEFAULT);
+         updatedNotificationChannel.setSound(soundUri,
+                 updatedNotificationChannel.getAudioAttributes());
+ 
+         doThrow(new SecurityException("no access")).when(mUgmInternal)
+                 .checkGrantUriPermission(eq(Process.myUid()), any(), eq(soundUri),
+-                    anyInt(), eq(Process.myUserHandle().getIdentifier()));
++                anyInt(), eq(Process.myUserHandle().getIdentifier()));
++
++        mBinderService.updateNotificationChannelFromPrivilegedListener(
++                null, mPkg, Process.myUserHandle(), updatedNotificationChannel);
++
++        verify(mPreferencesHelper, times(1)).updateNotificationChannel(
++                anyString(), anyInt(), any(), anyBoolean());
++
++        verify(mListeners, never()).notifyNotificationChannelChanged(eq(mPkg),
++                eq(Process.myUserHandle()), eq(mTestNotificationChannel),
++                eq(NotificationListenerService.NOTIFICATION_CHANNEL_OR_GROUP_UPDATED));
++    }
++
++    @Test
++    public void
++        testUpdateNotificationChannelFromPrivilegedListener_oldSoundNoUriPerm_newSoundHasUriPerm()
++            throws Exception {
++        mService.setPreferencesHelper(mPreferencesHelper);
++        when(mCompanionMgr.getAssociations(mPkg, mUserId))
++                .thenReturn(singletonList(mock(AssociationInfo.class)));
++        when(mPreferencesHelper.getNotificationChannel(eq(mPkg), anyInt(),
++                eq(mTestNotificationChannel.getId()), anyBoolean()))
++                .thenReturn(mTestNotificationChannel);
++
++        // Missing Uri permissions for the old channel sound
++        final Uri oldSoundUri = Settings.System.DEFAULT_NOTIFICATION_URI;
++        doThrow(new SecurityException("no access")).when(mUgmInternal)
++                .checkGrantUriPermission(eq(Process.myUid()), any(), eq(oldSoundUri),
++                anyInt(), eq(Process.myUserHandle().getIdentifier()));
++
++        // Has Uri permissions for the old channel sound
++        final Uri newSoundUri = Uri.parse("content://media/test/sound/uri");
++        final NotificationChannel updatedNotificationChannel = new NotificationChannel(
++                TEST_CHANNEL_ID, TEST_CHANNEL_ID, IMPORTANCE_DEFAULT);
++        updatedNotificationChannel.setSound(newSoundUri,
++                updatedNotificationChannel.getAudioAttributes());
+ 
+         mBinderService.updateNotificationChannelFromPrivilegedListener(
+                 null, PKG, Process.myUserHandle(), updatedNotificationChannel);
+ 
+         verify(mPreferencesHelper, times(1)).updateNotificationChannel(
+                 anyString(), anyInt(), any(), anyBoolean());
+ 
+diff --git a/services/tests/uiservicestests/src/com/android/server/notification/NotificationRecordTest.java b/services/tests/uiservicestests/src/com/android/server/notification/NotificationRecordTest.java
+index dfd8f48460c00..5108532c0562f 100644
+--- a/services/tests/uiservicestests/src/com/android/server/notification/NotificationRecordTest.java
++++ b/services/tests/uiservicestests/src/com/android/server/notification/NotificationRecordTest.java
+@@ -31,14 +31,15 @@ import static android.service.notification.NotificationListenerService.Ranking.U
+ import static junit.framework.Assert.assertEquals;
+ import static junit.framework.Assert.assertFalse;
+ import static junit.framework.Assert.assertNotNull;
+ import static junit.framework.Assert.assertNull;
+ import static junit.framework.Assert.assertTrue;
+ 
+ import static org.junit.Assert.assertNotEquals;
++import static org.junit.Assert.assertThrows;
+ import static org.junit.Assert.fail;
+ import static org.mockito.ArgumentMatchers.any;
+ import static org.mockito.ArgumentMatchers.anyInt;
+ import static org.mockito.ArgumentMatchers.eq;
+ import static org.mockito.Mockito.mock;
+ import static org.mockito.Mockito.when;
+ 
+@@ -70,14 +71,15 @@ import android.util.ArraySet;
+ import android.widget.RemoteViews;
+ 
+ import androidx.test.filters.SmallTest;
+ import androidx.test.runner.AndroidJUnit4;
+ 
+ import com.android.internal.R;
+ import com.android.internal.logging.nano.MetricsProto.MetricsEvent;
++import com.android.server.LocalServices;
+ import com.android.server.UiServiceTestCase;
+ import com.android.server.uri.UriGrantsManagerInternal;
+ 
+ import org.junit.Before;
+ import org.junit.Test;
+ import org.junit.runner.RunWith;
+ import org.mockito.Mock;
+@@ -812,28 +814,48 @@ public class NotificationRecordTest extends UiServiceTestCase {
+     @Test
+     public void testCalculateGrantableUris_PappProvided() {
+         IActivityManager am = mock(IActivityManager.class);
+         UriGrantsManagerInternal ugm = mock(UriGrantsManagerInternal.class);
+         when(ugm.checkGrantUriPermission(anyInt(), eq(null), any(Uri.class),
+                 anyInt(), anyInt())).thenThrow(new SecurityException());
+ 
++        LocalServices.removeServiceForTest(UriGrantsManagerInternal.class);
++        LocalServices.addService(UriGrantsManagerInternal.class, ugm);
++
++        channel.setSound(null, null);
++        Notification n = new Notification.Builder(mContext, channel.getId())
++                .setSmallIcon(Icon.createWithContentUri(Uri.parse("content://something")))
++                .build();
++        StatusBarNotification sbn =
++                new StatusBarNotification(PKG_P, PKG_P, id1, tag1, uid, uid, n, mUser, null, uid);
++
++        assertThrows("App provided uri for p targeting app should throw exception",
++                SecurityException.class,
++                () -> new NotificationRecord(mMockContext, sbn, channel));
++    }
++
++    @Test
++    public void testCalculateGrantableUris_PappProvided_invalidSound() {
++        IActivityManager am = mock(IActivityManager.class);
++        UriGrantsManagerInternal ugm = mock(UriGrantsManagerInternal.class);
++        when(ugm.checkGrantUriPermission(anyInt(), eq(null), any(Uri.class),
++                anyInt(), anyInt())).thenThrow(new SecurityException());
++
++        LocalServices.removeServiceForTest(UriGrantsManagerInternal.class);
++        LocalServices.addService(UriGrantsManagerInternal.class, ugm);
++
++        channel.setSound(Uri.parse("content://something"), mock(AudioAttributes.class));
++
+         Notification n = mock(Notification.class);
+         when(n.getChannelId()).thenReturn(channel.getId());
+         StatusBarNotification sbn =
+                 new StatusBarNotification(PKG_P, PKG_P, id1, tag1, uid, uid, n, mUser, null, uid);
+         NotificationRecord record = new NotificationRecord(mMockContext, sbn, channel);
+-        record.mAm = am;
+-        record.mUgmInternal = ugm;
+ 
+-        try {
+-            record.calculateGrantableUris();
+-            fail("App provided uri for p targeting app should throw exception");
+-        } catch (SecurityException e) {
+-            // expected
+-        }
++        assertEquals(Settings.System.DEFAULT_NOTIFICATION_URI, record.getSound());
+     }
+ 
+     @Test
+     public void testCalculateGrantableUris_PuserOverridden() {
+         IActivityManager am = mock(IActivityManager.class);
+         UriGrantsManagerInternal ugm = mock(UriGrantsManagerInternal.class);
+         when(ugm.checkGrantUriPermission(anyInt(), eq(null), any(Uri.class),
+diff --git a/services/tests/uiservicestests/src/com/android/server/notification/PreferencesHelperTest.java b/services/tests/uiservicestests/src/com/android/server/notification/PreferencesHelperTest.java
+index ceacdb37d9467..011dcf67358cb 100644
+--- a/services/tests/uiservicestests/src/com/android/server/notification/PreferencesHelperTest.java
++++ b/services/tests/uiservicestests/src/com/android/server/notification/PreferencesHelperTest.java
+@@ -25,14 +25,18 @@ import static android.app.NotificationManager.BUBBLE_PREFERENCE_NONE;
+ import static android.app.NotificationManager.BUBBLE_PREFERENCE_SELECTED;
+ import static android.app.NotificationManager.IMPORTANCE_DEFAULT;
+ import static android.app.NotificationManager.IMPORTANCE_HIGH;
+ import static android.app.NotificationManager.IMPORTANCE_LOW;
+ import static android.app.NotificationManager.IMPORTANCE_MAX;
+ import static android.app.NotificationManager.IMPORTANCE_NONE;
+ import static android.app.NotificationManager.IMPORTANCE_UNSPECIFIED;
++import static android.app.NotificationManager.VISIBILITY_NO_OVERRIDE;
++import static android.content.ContentResolver.SCHEME_ANDROID_RESOURCE;
++import static android.content.ContentResolver.SCHEME_CONTENT;
++import static android.content.ContentResolver.SCHEME_FILE;
+ import static android.util.StatsLog.ANNOTATION_ID_IS_UID;
+ 
+ import static com.android.internal.util.FrameworkStatsLog.PACKAGE_NOTIFICATION_CHANNEL_PREFERENCES;
+ import static com.android.os.AtomsProto.PackageNotificationChannelPreferences.CHANNEL_ID_FIELD_NUMBER;
+ import static com.android.os.AtomsProto.PackageNotificationChannelPreferences.CHANNEL_NAME_FIELD_NUMBER;
+ import static com.android.os.AtomsProto.PackageNotificationChannelPreferences.IMPORTANCE_FIELD_NUMBER;
+ import static com.android.os.AtomsProto.PackageNotificationChannelPreferences.IS_CONVERSATION_FIELD_NUMBER;
+@@ -49,21 +53,23 @@ import static com.google.common.truth.Truth.assertThat;
+ 
+ import static junit.framework.Assert.assertNull;
+ import static junit.framework.Assert.fail;
+ 
+ import static org.junit.Assert.assertEquals;
+ import static org.junit.Assert.assertFalse;
+ import static org.junit.Assert.assertNotNull;
++import static org.junit.Assert.assertThrows;
+ import static org.junit.Assert.assertTrue;
+ import static org.mockito.ArgumentMatchers.any;
+ import static org.mockito.ArgumentMatchers.anyInt;
+ import static org.mockito.ArgumentMatchers.anyString;
+ import static org.mockito.ArgumentMatchers.eq;
+ import static org.mockito.Mockito.doAnswer;
+ import static org.mockito.Mockito.doReturn;
++import static org.mockito.Mockito.doThrow;
+ import static org.mockito.Mockito.mock;
+ import static org.mockito.Mockito.never;
+ import static org.mockito.Mockito.reset;
+ import static org.mockito.Mockito.times;
+ import static org.mockito.Mockito.verify;
+ import static org.mockito.Mockito.when;
+ 
+@@ -84,14 +90,15 @@ import android.content.pm.Signature;
+ import android.content.res.Resources;
+ import android.graphics.Color;
+ import android.media.AudioAttributes;
+ import android.net.Uri;
+ import android.os.AsyncTask;
+ import android.os.Build;
+ import android.os.Bundle;
++import android.os.Process;
+ import android.os.RemoteCallback;
+ import android.os.RemoteException;
+ import android.os.UserHandle;
+ import android.os.UserManager;
+ import android.provider.Settings;
+ import android.provider.Settings.Global;
+ import android.provider.Settings.Secure;
+@@ -267,15 +274,15 @@ public class PreferencesHelperTest extends UiServiceTestCase {
+         when(mMockZenModeHelper.getNotificationPolicy()).thenReturn(mTestNotificationPolicy);
+         when(mAppOpsManager.noteOpNoThrow(anyInt(), anyInt(),
+                 anyString(), eq(null), anyString())).thenReturn(MODE_DEFAULT);
+ 
+         mStatsEventBuilderFactory = new WrappedSysUiStatsEvent.WrappedBuilderFactory();
+ 
+         mHelper = new PreferencesHelper(getContext(), mPm, mHandler, mMockZenModeHelper, mLogger,
+-                mAppOpsManager, mStatsEventBuilderFactory);
++                mAppOpsManager, mUgmInternal, mStatsEventBuilderFactory);
+         resetZenModeHelper();
+ 
+         mAudioAttributes = new AudioAttributes.Builder()
+                 .setContentType(AudioAttributes.CONTENT_TYPE_UNKNOWN)
+                 .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
+                 .setFlags(AudioAttributes.FLAG_AUDIBILITY_ENFORCED)
+                 .build();
+@@ -643,15 +650,14 @@ public class PreferencesHelperTest extends UiServiceTestCase {
+         loadStreamXml(baos, true, UserHandle.USER_SYSTEM);
+ 
+         NotificationChannel actualChannel = mHelper.getNotificationChannel(
+                 PKG_N_MR1, UID_N_MR1, channel.getId(), false);
+         assertEquals(Settings.System.DEFAULT_NOTIFICATION_URI, actualChannel.getSound());
+     }
+ 
+-
+     /**
+      * Although we don't make backups with uncanonicalized uris anymore, we used to, so we have to
+      * handle its restore properly.
+      */
+     @Test
+     public void testRestoreXml_withUncanonicalizedNonLocalSoundUri() throws Exception {
+         // Not a local uncanonicalized uri, simulating that it fails to exist locally
+@@ -1555,27 +1561,27 @@ public class PreferencesHelperTest extends UiServiceTestCase {
+     public void testSetupNewZenModeHelper_canBypass() {
+         // start notification policy off with mAreChannelsBypassingDnd = true, but
+         // RankingHelper should change to false
+         mTestNotificationPolicy = new NotificationManager.Policy(0, 0, 0, 0,
+                 NotificationManager.Policy.STATE_CHANNELS_BYPASSING_DND, 0);
+         when(mMockZenModeHelper.getNotificationPolicy()).thenReturn(mTestNotificationPolicy);
+         mHelper = new PreferencesHelper(getContext(), mPm, mHandler, mMockZenModeHelper, mLogger,
+-                mAppOpsManager, mStatsEventBuilderFactory);
++                mAppOpsManager, mUgmInternal, mStatsEventBuilderFactory);
+         assertFalse(mHelper.areChannelsBypassingDnd());
+         verify(mMockZenModeHelper, times(1)).setNotificationPolicy(any());
+         resetZenModeHelper();
+     }
+ 
+     @Test
+     public void testSetupNewZenModeHelper_cannotBypass() {
+         // start notification policy off with mAreChannelsBypassingDnd = false
+         mTestNotificationPolicy = new NotificationManager.Policy(0, 0, 0, 0, 0, 0);
+         when(mMockZenModeHelper.getNotificationPolicy()).thenReturn(mTestNotificationPolicy);
+         mHelper = new PreferencesHelper(getContext(), mPm, mHandler, mMockZenModeHelper, mLogger,
+-                mAppOpsManager, mStatsEventBuilderFactory);
++                mAppOpsManager, mUgmInternal, mStatsEventBuilderFactory);
+         assertFalse(mHelper.areChannelsBypassingDnd());
+         verify(mMockZenModeHelper, never()).setNotificationPolicy(any());
+         resetZenModeHelper();
+     }
+ 
+     @Test
+     public void testCreateDeletedChannel() throws Exception {
+@@ -1655,14 +1661,67 @@ public class PreferencesHelperTest extends UiServiceTestCase {
+                  NotificationManager.IMPORTANCE_DEFAULT);
+         channel.setSound(sound, mAudioAttributes);
+         mHelper.createNotificationChannel(PKG_N_MR1, UID_N_MR1, channel, true, false);
+         assertEquals(sound, mHelper.getNotificationChannel(
+                 PKG_N_MR1, UID_N_MR1, channel.getId(), false).getSound());
+     }
+ 
++    @Test
++    public void testCreateChannel_noSoundUriPermission_contentSchemeVerified() {
++        final Uri sound = Uri.parse(SCHEME_CONTENT + "://media/test/sound/uri");
++
++        doThrow(new SecurityException("no access")).when(mUgmInternal)
++                .checkGrantUriPermission(eq(UID_N_MR1), any(), eq(sound),
++                    anyInt(), eq(Process.myUserHandle().getIdentifier()));
++
++        final NotificationChannel channel = new NotificationChannel("id2", "name2",
++                NotificationManager.IMPORTANCE_DEFAULT);
++        channel.setSound(sound, mAudioAttributes);
++
++        assertThrows(SecurityException.class,
++                () -> mHelper.createNotificationChannel(PKG_N_MR1, UID_N_MR1, channel,
++                    true, false));
++        assertThat(mHelper.getNotificationChannel(PKG_N_MR1, UID_N_MR1, channel.getId(), true))
++                .isNull();
++    }
++
++    @Test
++    public void testCreateChannel_noSoundUriPermission_fileSchemaIgnored() {
++        final Uri sound = Uri.parse(SCHEME_FILE + "://path/sound");
++
++        doThrow(new SecurityException("no access")).when(mUgmInternal)
++                .checkGrantUriPermission(eq(UID_N_MR1), any(), any(),
++                    anyInt(), eq(Process.myUserHandle().getIdentifier()));
++
++        final NotificationChannel channel = new NotificationChannel("id2", "name2",
++                NotificationManager.IMPORTANCE_DEFAULT);
++        channel.setSound(sound, mAudioAttributes);
++
++        mHelper.createNotificationChannel(PKG_N_MR1, UID_N_MR1, channel, true, false);
++        assertThat(mHelper.getNotificationChannel(PKG_N_MR1, UID_N_MR1, channel.getId(), true)
++                .getSound()).isEqualTo(sound);
++    }
++
++    @Test
++    public void testCreateChannel_noSoundUriPermission_resourceSchemaIgnored() {
++        final Uri sound = Uri.parse(SCHEME_ANDROID_RESOURCE + "://resId/sound");
++
++        doThrow(new SecurityException("no access")).when(mUgmInternal)
++                .checkGrantUriPermission(eq(UID_N_MR1), any(), any(),
++                    anyInt(), eq(Process.myUserHandle().getIdentifier()));
++
++        final NotificationChannel channel = new NotificationChannel("id2", "name2",
++                NotificationManager.IMPORTANCE_DEFAULT);
++        channel.setSound(sound, mAudioAttributes);
++
++        mHelper.createNotificationChannel(PKG_N_MR1, UID_N_MR1, channel, true, false);
++        assertThat(mHelper.getNotificationChannel(PKG_N_MR1, UID_N_MR1, channel.getId(), true)
++                .getSound()).isEqualTo(sound);
++    }
++
+     @Test
+     public void testPermanentlyDeleteChannels() throws Exception {
+         NotificationChannel channel1 =
+                 new NotificationChannel("id1", "name1", NotificationManager.IMPORTANCE_HIGH);
+         NotificationChannel channel2 =
+                 new NotificationChannel("id2", "name2", IMPORTANCE_LOW);
+ 
+@@ -2386,28 +2445,28 @@ public class PreferencesHelperTest extends UiServiceTestCase {
+                 + "<channel id=\"something\" name=\"name\" importance=\"2\" "
+                 + "show_badge=\"true\" />\n"
+                 + "<channel id=\"miscellaneous\" name=\"Uncategorized\" usage=\"5\" "
+                 + "content_type=\"4\" flags=\"0\" show_badge=\"true\" />\n"
+                 + "</package>\n"
+                 + "</ranking>\n";
+         mHelper = new PreferencesHelper(getContext(), mPm, mHandler, mMockZenModeHelper, mLogger,
+-                mAppOpsManager, mStatsEventBuilderFactory);
++                mAppOpsManager, mUgmInternal, mStatsEventBuilderFactory);
+         loadByteArrayXml(preQXml.getBytes(), true, UserHandle.USER_SYSTEM);
+ 
+         assertEquals(PreferencesHelper.DEFAULT_HIDE_SILENT_STATUS_BAR_ICONS,
+                 mHelper.shouldHideSilentStatusIcons());
+     }
+ 
+     @Test
+     public void testXml_statusBarIcons() throws Exception {
+         mHelper.setHideSilentStatusIcons(!PreferencesHelper.DEFAULT_HIDE_SILENT_STATUS_BAR_ICONS);
+ 
+         ByteArrayOutputStream baos = writeXmlAndPurge(PKG_O, UID_O, false, UserHandle.USER_ALL);
+         mHelper = new PreferencesHelper(getContext(), mPm, mHandler, mMockZenModeHelper, mLogger,
+-                mAppOpsManager, mStatsEventBuilderFactory);
++                mAppOpsManager, mUgmInternal, mStatsEventBuilderFactory);
+         loadStreamXml(baos, false, UserHandle.USER_ALL);
+ 
+         assertEquals(!PreferencesHelper.DEFAULT_HIDE_SILENT_STATUS_BAR_ICONS,
+                 mHelper.shouldHideSilentStatusIcons());
+     }
+ 
+     @Test
+@@ -2496,53 +2555,53 @@ public class PreferencesHelperTest extends UiServiceTestCase {
+ 
+     @Test
+     public void testDelegateXml_noDelegate() throws Exception {
+         mHelper.setImportance(PKG_O, UID_O, IMPORTANCE_UNSPECIFIED);
+ 
+         ByteArrayOutputStream baos = writeXmlAndPurge(PKG_O, UID_O, false, UserHandle.USER_ALL);
+         mHelper = new PreferencesHelper(getContext(), mPm, mHandler, mMockZenModeHelper, mLogger,
+-                mAppOpsManager, mStatsEventBuilderFactory);
++                mAppOpsManager, mUgmInternal, mStatsEventBuilderFactory);
+         loadStreamXml(baos, false, UserHandle.USER_ALL);
+ 
+         assertNull(mHelper.getNotificationDelegate(PKG_O, UID_O));
+     }
+ 
+     @Test
+     public void testDelegateXml_delegate() throws Exception {
+         mHelper.setNotificationDelegate(PKG_O, UID_O, "other", 53);
+ 
+         ByteArrayOutputStream baos = writeXmlAndPurge(PKG_O, UID_O, false, UserHandle.USER_ALL);
+         mHelper = new PreferencesHelper(getContext(), mPm, mHandler, mMockZenModeHelper, mLogger,
+-                mAppOpsManager, mStatsEventBuilderFactory);
++                mAppOpsManager, mUgmInternal, mStatsEventBuilderFactory);
+         loadStreamXml(baos, false, UserHandle.USER_ALL);
+ 
+         assertEquals("other", mHelper.getNotificationDelegate(PKG_O, UID_O));
+     }
+ 
+     @Test
+     public void testDelegateXml_disabledDelegate() throws Exception {
+         mHelper.setNotificationDelegate(PKG_O, UID_O, "other", 53);
+         mHelper.revokeNotificationDelegate(PKG_O, UID_O);
+ 
+         ByteArrayOutputStream baos = writeXmlAndPurge(PKG_O, UID_O, false, UserHandle.USER_ALL);
+         mHelper = new PreferencesHelper(getContext(), mPm, mHandler, mMockZenModeHelper, mLogger,
+-                mAppOpsManager, mStatsEventBuilderFactory);
++                mAppOpsManager, mUgmInternal, mStatsEventBuilderFactory);
+         loadStreamXml(baos, false, UserHandle.USER_ALL);
+ 
+         assertNull(mHelper.getNotificationDelegate(PKG_O, UID_O));
+     }
+ 
+     @Test
+     public void testDelegateXml_userDisabledDelegate() throws Exception {
+         mHelper.setNotificationDelegate(PKG_O, UID_O, "other", 53);
+         mHelper.toggleNotificationDelegate(PKG_O, UID_O, false);
+ 
+         ByteArrayOutputStream baos = writeXmlAndPurge(PKG_O, UID_O, false, UserHandle.USER_ALL);
+         mHelper = new PreferencesHelper(getContext(), mPm, mHandler, mMockZenModeHelper, mLogger,
+-                mAppOpsManager, mStatsEventBuilderFactory);
++                mAppOpsManager, mUgmInternal, mStatsEventBuilderFactory);
+         loadStreamXml(baos, false, UserHandle.USER_ALL);
+ 
+         // appears disabled
+         assertNull(mHelper.getNotificationDelegate(PKG_O, UID_O));
+ 
+         // but was loaded and can be toggled back on
+         mHelper.toggleNotificationDelegate(PKG_O, UID_O, true);
+@@ -2553,15 +2612,15 @@ public class PreferencesHelperTest extends UiServiceTestCase {
+     public void testDelegateXml_entirelyDisabledDelegate() throws Exception {
+         mHelper.setNotificationDelegate(PKG_O, UID_O, "other", 53);
+         mHelper.toggleNotificationDelegate(PKG_O, UID_O, false);
+         mHelper.revokeNotificationDelegate(PKG_O, UID_O);
+ 
+         ByteArrayOutputStream baos = writeXmlAndPurge(PKG_O, UID_O, false, UserHandle.USER_ALL);
+         mHelper = new PreferencesHelper(getContext(), mPm, mHandler, mMockZenModeHelper, mLogger,
+-                mAppOpsManager, mStatsEventBuilderFactory);
++                mAppOpsManager, mUgmInternal, mStatsEventBuilderFactory);
+         loadStreamXml(baos, false, UserHandle.USER_ALL);
+ 
+         // appears disabled
+         assertNull(mHelper.getNotificationDelegate(PKG_O, UID_O));
+ 
+         mHelper.setNotificationDelegate(PKG_O, UID_O, "other", 53);
+         assertNull(mHelper.getNotificationDelegate(PKG_O, UID_O));
+@@ -2572,15 +2631,15 @@ public class PreferencesHelperTest extends UiServiceTestCase {
+ 
+     @Test
+     public void testBubblePreference_defaults() throws Exception {
+         assertEquals(BUBBLE_PREFERENCE_NONE, mHelper.getBubblePreference(PKG_O, UID_O));
+ 
+         ByteArrayOutputStream baos = writeXmlAndPurge(PKG_O, UID_O, false, UserHandle.USER_ALL);
+         mHelper = new PreferencesHelper(getContext(), mPm, mHandler, mMockZenModeHelper, mLogger,
+-                mAppOpsManager, mStatsEventBuilderFactory);
++                mAppOpsManager, mUgmInternal, mStatsEventBuilderFactory);
+         loadStreamXml(baos, false, UserHandle.USER_ALL);
+ 
+         assertEquals(BUBBLE_PREFERENCE_NONE, mHelper.getBubblePreference(PKG_O, UID_O));
+         assertEquals(0, mHelper.getAppLockedFields(PKG_O, UID_O));
+     }
+ 
+     @Test
+@@ -2627,15 +2686,15 @@ public class PreferencesHelperTest extends UiServiceTestCase {
+         mHelper.setBubblesAllowed(PKG_O, UID_O, BUBBLE_PREFERENCE_SELECTED);
+         assertEquals(BUBBLE_PREFERENCE_SELECTED, mHelper.getBubblePreference(PKG_O, UID_O));
+         assertEquals(PreferencesHelper.LockableAppFields.USER_LOCKED_BUBBLE,
+                 mHelper.getAppLockedFields(PKG_O, UID_O));
+ 
+         ByteArrayOutputStream baos = writeXmlAndPurge(PKG_O, UID_O, false, UserHandle.USER_ALL);
+         mHelper = new PreferencesHelper(getContext(), mPm, mHandler, mMockZenModeHelper, mLogger,
+-                mAppOpsManager, mStatsEventBuilderFactory);
++                mAppOpsManager, mUgmInternal, mStatsEventBuilderFactory);
+         loadStreamXml(baos, false, UserHandle.USER_ALL);
+ 
+         assertEquals(BUBBLE_PREFERENCE_SELECTED, mHelper.getBubblePreference(PKG_O, UID_O));
+         assertEquals(PreferencesHelper.LockableAppFields.USER_LOCKED_BUBBLE,
+                 mHelper.getAppLockedFields(PKG_O, UID_O));
+     }
+ 
+@@ -2664,15 +2723,15 @@ public class PreferencesHelperTest extends UiServiceTestCase {
+         mHelper.setBubblesAllowed(PKG_O, UID_O, BUBBLE_PREFERENCE_NONE);
+         assertEquals(mHelper.getBubblePreference(PKG_O, UID_O), BUBBLE_PREFERENCE_NONE);
+         assertEquals(PreferencesHelper.LockableAppFields.USER_LOCKED_BUBBLE,
+                 mHelper.getAppLockedFields(PKG_O, UID_O));
+ 
+         ByteArrayOutputStream baos = writeXmlAndPurge(PKG_O, UID_O, false, UserHandle.USER_ALL);
+         mHelper = new PreferencesHelper(getContext(), mPm, mHandler, mMockZenModeHelper, mLogger,
+-                mAppOpsManager, mStatsEventBuilderFactory);
++                mAppOpsManager, mUgmInternal, mStatsEventBuilderFactory);
+         loadStreamXml(baos, false, UserHandle.USER_ALL);
+ 
+         assertEquals(mHelper.getBubblePreference(PKG_O, UID_O), BUBBLE_PREFERENCE_NONE);
+         assertEquals(PreferencesHelper.LockableAppFields.USER_LOCKED_BUBBLE,
+                 mHelper.getAppLockedFields(PKG_O, UID_O));
+     }
+ 
+@@ -3312,15 +3371,15 @@ public class PreferencesHelperTest extends UiServiceTestCase {
+             // good
+         }
+     }
+ 
+     @Test
+     public void testPlaceholderConversationId_shortcutRequired() throws Exception {
+         mHelper = new PreferencesHelper(getContext(), mPm, mHandler, mMockZenModeHelper, mLogger,
+-                mAppOpsManager, mStatsEventBuilderFactory);
++                mAppOpsManager, mUgmInternal, mStatsEventBuilderFactory);
+ 
+         final String xml = "<ranking version=\"1\">\n"
+                 + "<package name=\"" + PKG_O + "\" uid=\"" + UID_O + "\" >\n"
+                 + "<channel id=\"id\" name=\"hi\" importance=\"3\" conv_id=\"foo:placeholder_id\"/>"
+                 + "</package>"
+                 + "</ranking>";
+         TypedXmlPullParser parser = Xml.newFastPullParser();
+@@ -3331,15 +3390,15 @@ public class PreferencesHelperTest extends UiServiceTestCase {
+ 
+         assertNull(mHelper.getNotificationChannel(PKG_O, UID_O, "id", true));
+     }
+ 
+     @Test
+     public void testNormalConversationId_shortcutRequired() throws Exception {
+         mHelper = new PreferencesHelper(getContext(), mPm, mHandler, mMockZenModeHelper, mLogger,
+-                mAppOpsManager, mStatsEventBuilderFactory);
++                mAppOpsManager, mUgmInternal, mStatsEventBuilderFactory);
+ 
+         final String xml = "<ranking version=\"1\">\n"
+                 + "<package name=\"" + PKG_O + "\" uid=\"" + UID_O + "\" >\n"
+                 + "<channel id=\"id\" name=\"hi\" importance=\"3\" conv_id=\"other\"/>"
+                 + "</package>"
+                 + "</ranking>";
+         TypedXmlPullParser parser = Xml.newFastPullParser();
+@@ -3350,15 +3409,15 @@ public class PreferencesHelperTest extends UiServiceTestCase {
+ 
+         assertNotNull(mHelper.getNotificationChannel(PKG_O, UID_O, "id", true));
+     }
+ 
+     @Test
+     public void testNoConversationId_shortcutRequired() throws Exception {
+         mHelper = new PreferencesHelper(getContext(), mPm, mHandler, mMockZenModeHelper, mLogger,
+-                mAppOpsManager, mStatsEventBuilderFactory);
++                mAppOpsManager, mUgmInternal, mStatsEventBuilderFactory);
+ 
+         final String xml = "<ranking version=\"1\">\n"
+                 + "<package name=\"" + PKG_O + "\" uid=\"" + UID_O + "\" >\n"
+                 + "<channel id=\"id\" name=\"hi\" importance=\"3\"/>"
+                 + "</package>"
+                 + "</ranking>";
+         TypedXmlPullParser parser = Xml.newFastPullParser();
+@@ -3369,15 +3428,15 @@ public class PreferencesHelperTest extends UiServiceTestCase {
+ 
+         assertNotNull(mHelper.getNotificationChannel(PKG_O, UID_O, "id", true));
+     }
+ 
+     @Test
+     public void testDeleted_noTime() throws Exception {
+         mHelper = new PreferencesHelper(getContext(), mPm, mHandler, mMockZenModeHelper, mLogger,
+-                mAppOpsManager, mStatsEventBuilderFactory);
++                mAppOpsManager, mUgmInternal, mStatsEventBuilderFactory);
+ 
+         final String xml = "<ranking version=\"1\">\n"
+                 + "<package name=\"" + PKG_O + "\" uid=\"" + UID_O + "\" >\n"
+                 + "<channel id=\"id\" name=\"hi\" importance=\"3\" deleted=\"true\"/>"
+                 + "</package>"
+                 + "</ranking>";
+         TypedXmlPullParser parser = Xml.newFastPullParser();
+@@ -3388,26 +3447,26 @@ public class PreferencesHelperTest extends UiServiceTestCase {
+ 
+         assertNull(mHelper.getNotificationChannel(PKG_O, UID_O, "id", true));
+     }
+ 
+     @Test
+     public void testDeleted_twice() throws Exception {
+         mHelper = new PreferencesHelper(getContext(), mPm, mHandler, mMockZenModeHelper, mLogger,
+-                mAppOpsManager, mStatsEventBuilderFactory);
++                mAppOpsManager, mUgmInternal, mStatsEventBuilderFactory);
+ 
+         mHelper.createNotificationChannel(
+                 PKG_P, UID_P, new NotificationChannel("id", "id", 2), true, false);
+         assertTrue(mHelper.deleteNotificationChannel(PKG_P, UID_P, "id"));
+         assertFalse(mHelper.deleteNotificationChannel(PKG_P, UID_P, "id"));
+     }
+ 
+     @Test
+     public void testDeleted_recentTime() throws Exception {
+         mHelper = new PreferencesHelper(getContext(), mPm, mHandler, mMockZenModeHelper, mLogger,
+-                mAppOpsManager, mStatsEventBuilderFactory);
++                mAppOpsManager, mUgmInternal, mStatsEventBuilderFactory);
+ 
+         mHelper.createNotificationChannel(
+                 PKG_P, UID_P, new NotificationChannel("id", "id", 2), true, false);
+         mHelper.deleteNotificationChannel(PKG_P, UID_P, "id");
+         NotificationChannel nc1 = mHelper.getNotificationChannel(PKG_P, UID_P, "id", true);
+         assertTrue(DateUtils.isToday(nc1.getDeletedTimeMs()));
+         assertTrue(nc1.isDeleted());
+@@ -3416,26 +3475,26 @@ public class PreferencesHelperTest extends UiServiceTestCase {
+                 UserHandle.USER_SYSTEM, "id", NotificationChannel.DEFAULT_CHANNEL_ID);
+ 
+         TypedXmlPullParser parser = Xml.newFastPullParser();
+         parser.setInput(new BufferedInputStream(new ByteArrayInputStream(baos.toByteArray())),
+                 null);
+         parser.nextTag();
+         mHelper = new PreferencesHelper(getContext(), mPm, mHandler, mMockZenModeHelper, mLogger,
+-                mAppOpsManager, mStatsEventBuilderFactory);
++                mAppOpsManager, mUgmInternal, mStatsEventBuilderFactory);
+         mHelper.readXml(parser, true, UserHandle.USER_SYSTEM);
+ 
+         NotificationChannel nc = mHelper.getNotificationChannel(PKG_P, UID_P, "id", true);
+         assertTrue(DateUtils.isToday(nc.getDeletedTimeMs()));
+         assertTrue(nc.isDeleted());
+     }
+ 
+     @Test
+     public void testUnDelete_time() throws Exception {
+         mHelper = new PreferencesHelper(getContext(), mPm, mHandler, mMockZenModeHelper, mLogger,
+-                mAppOpsManager, mStatsEventBuilderFactory);
++                mAppOpsManager, mUgmInternal, mStatsEventBuilderFactory);
+ 
+         mHelper.createNotificationChannel(
+                 PKG_P, UID_P, new NotificationChannel("id", "id", 2), true, false);
+         mHelper.deleteNotificationChannel(PKG_P, UID_P, "id");
+         NotificationChannel nc1 = mHelper.getNotificationChannel(PKG_P, UID_P, "id", true);
+         assertTrue(DateUtils.isToday(nc1.getDeletedTimeMs()));
+         assertTrue(nc1.isDeleted());
+@@ -3446,15 +3505,15 @@ public class PreferencesHelperTest extends UiServiceTestCase {
+         assertEquals(-1, nc1.getDeletedTimeMs());
+         assertFalse(nc1.isDeleted());
+     }
+ 
+     @Test
+     public void testDeleted_longTime() throws Exception {
+         mHelper = new PreferencesHelper(getContext(), mPm, mHandler, mMockZenModeHelper, mLogger,
+-                mAppOpsManager, mStatsEventBuilderFactory);
++                mAppOpsManager, mUgmInternal, mStatsEventBuilderFactory);
+ 
+         long time = System.currentTimeMillis() - (DateUtils.DAY_IN_MILLIS * 30);
+ 
+         final String xml = "<ranking version=\"1\">\n"
+                 + "<package name=\"" + PKG_O + "\" uid=\"" + UID_O + "\" >\n"
+                 + "<channel id=\"id\" name=\"hi\" importance=\"3\" deleted=\"true\" del_time=\""
+                 + time + "\"/>"
+diff --git a/services/tests/wmtests/src/com/android/server/wm/ActivityStartInterceptorTest.java b/services/tests/wmtests/src/com/android/server/wm/ActivityStartInterceptorTest.java
+index c103bc6fb9a13..ca1eca7ce4c0b 100644
+--- a/services/tests/wmtests/src/com/android/server/wm/ActivityStartInterceptorTest.java
++++ b/services/tests/wmtests/src/com/android/server/wm/ActivityStartInterceptorTest.java
+@@ -217,14 +217,27 @@ public class ActivityStartInterceptorTest {
+         when(mPackageManagerInternal.getSuspendingPackage(TEST_PACKAGE_NAME, TEST_USER_ID))
+                 .thenReturn(suspendingPackage);
+         when(mPackageManagerInternal.getSuspendedDialogInfo(TEST_PACKAGE_NAME, suspendingPackage,
+                 TEST_USER_ID)).thenReturn(dialogInfo);
+         return dialogInfo;
+     }
+ 
++    @Test
++    public void testInterceptIncorrectHomeIntent() {
++        // Create a non-standard home intent
++        final Intent homeIntent = new Intent(Intent.ACTION_MAIN);
++        homeIntent.addCategory(Intent.CATEGORY_HOME);
++        homeIntent.addCategory(Intent.CATEGORY_LAUNCHER);
++
++        // Ensure the intent is intercepted and normalized to standard home intent.
++        assertTrue(mInterceptor.intercept(homeIntent, null, mAInfo, null, null, null, 0, 0, null,
++                false));
++        assertTrue(ActivityRecord.isHomeIntent(homeIntent));
++    }
++
+     @Test
+     public void testInterceptLockTaskModeViolationPackage() {
+         when(mLockTaskController.isActivityAllowed(
+                 TEST_USER_ID, TEST_PACKAGE_NAME, LOCK_TASK_LAUNCH_MODE_DEFAULT))
+                 .thenReturn(false);
+ 
+         assertTrue(mInterceptor.intercept(null, null, mAInfo, null, null, 0, 0, null));
+diff --git a/services/tests/wmtests/src/com/android/server/wm/LockTaskControllerTest.java b/services/tests/wmtests/src/com/android/server/wm/LockTaskControllerTest.java
+index cc1869e72b341..5260a7d8caf29 100644
+--- a/services/tests/wmtests/src/com/android/server/wm/LockTaskControllerTest.java
++++ b/services/tests/wmtests/src/com/android/server/wm/LockTaskControllerTest.java
+@@ -234,14 +234,19 @@ public class LockTaskControllerTest {
+         // THEN the task should be locked
+         assertTrue(mLockTaskController.isTaskLocked(tr));
+ 
+         // THEN lock task mode should be started
+         verifyLockTaskStarted(STATUS_BAR_MASK_PINNED, DISABLE2_NONE);
+         // THEN screen pinning toast should be shown
+         verify(mStatusBarService).showPinningEnterExitToast(eq(true /* entering */));
++
++        // WHEN the app calls startLockTaskMode while the Task is already locked
++        mLockTaskController.startLockTaskMode(tr, false, TEST_UID);
++        // THEN a pinning request should NOT be shown
++        verify(mStatusBarManagerInternal, never()).showScreenPinningRequest(anyInt());
+     }
+ 
+     @Test
+     public void testLockTaskViolation() {
+         // GIVEN one task record with allowlisted auth that is in lock task mode
+         Task tr = getTask(LOCK_TASK_AUTH_ALLOWLISTED);
+         mLockTaskController.startLockTaskMode(tr, false, TEST_UID);
+diff --git a/services/voiceinteraction/java/com/android/server/voiceinteraction/VoiceInteractionManagerService.java b/services/voiceinteraction/java/com/android/server/voiceinteraction/VoiceInteractionManagerService.java
+index 1285a84ea752c..fc4f8f36a2b00 100644
+--- a/services/voiceinteraction/java/com/android/server/voiceinteraction/VoiceInteractionManagerService.java
++++ b/services/voiceinteraction/java/com/android/server/voiceinteraction/VoiceInteractionManagerService.java
+@@ -2042,40 +2042,24 @@ public class VoiceInteractionManagerService extends SystemService {
+                     } else if (curRecognizer != null
+                             && pkg.equals(curRecognizer.getPackageName())) {
+                         hitRec = true;
+                         break;
+                     }
+                 }
+                 if (hitInt && doit) {
+-                    // The user is force stopping our current interactor.
+-                    // Clear the current settings and restore default state.
++                    // The user is force stopping our current interactor, restart the service.
+                     synchronized (VoiceInteractionManagerServiceStub.this) {
+                         Slog.i(TAG, "Force stopping current voice interactor: "
+                                 + getCurInteractor(userHandle));
+                         unloadAllKeyphraseModels();
+                         if (mImpl != null) {
+                             mImpl.shutdownLocked();
+                             setImplLocked(null);
+                         }
+-
+-                        setCurInteractor(null, userHandle);
+-                        setCurRecognizer(null, userHandle);
+-                        resetCurAssistant(userHandle);
+-                        initForUser(userHandle);
+                         switchImplementationIfNeededLocked(true);
+-
+-                        Context context = getContext();
+-                        context.getSystemService(RoleManager.class).clearRoleHoldersAsUser(
+-                                RoleManager.ROLE_ASSISTANT, 0, UserHandle.of(userHandle),
+-                                context.getMainExecutor(), successful -> {
+-                                    if (!successful) {
+-                                        Slog.e(TAG,
+-                                                "Failed to clear default assistant for force stop");
+-                                    }
+-                                });
+                     }
+                 } else if (hitRec && doit) {
+                     // We are just force-stopping the current recognizer, which is not
+                     // also the current interactor.
+                     synchronized (VoiceInteractionManagerServiceStub.this) {
+                         Slog.i(TAG, "Force stopping current voice recognizer: "
+                                 + getCurRecognizer(userHandle));

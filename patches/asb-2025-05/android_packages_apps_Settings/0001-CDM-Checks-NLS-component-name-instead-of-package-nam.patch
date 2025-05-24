@@ -1,0 +1,41 @@
+From 49cd771c9ffe23b2d9175a976cdd800bc6edb4d5 Mon Sep 17 00:00:00 2001
+From: Guojing Yuan <guojing@google.com>
+Date: Tue, 28 Jan 2025 11:57:16 -0800
+Subject: [PATCH 1/2] [CDM] Checks NLS component name instead of package name
+
+Bug: 386216637
+Flag: EXEMPT bugfix
+Test: CTS
+(cherry picked from commit f5ed187ffb6f5a25ac1c06a1e8b023b0c7d8d4b8)
+(cherry picked from https://googleplex-android-review.googlesource.com/q/commit:e01c7bc45cba39f232525c0f403ecbed4652a249)
+Merged-In: I1be52fcb3d52b8b84353ea00fd57d8360ddd966c
+Change-Id: I1be52fcb3d52b8b84353ea00fd57d8360ddd966c
+---
+ .../notification/NotificationAccessConfirmationActivity.java  | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/com/android/settings/notification/NotificationAccessConfirmationActivity.java b/src/com/android/settings/notification/NotificationAccessConfirmationActivity.java
+index 235ea00f70b..46673523ce1 100644
+--- a/src/com/android/settings/notification/NotificationAccessConfirmationActivity.java
++++ b/src/com/android/settings/notification/NotificationAccessConfirmationActivity.java
+@@ -102,7 +102,7 @@ public class NotificationAccessConfirmationActivity extends Activity
+                 NLSIntent, /* flags */ 0, mUserId);
+         boolean hasNLSIntentFilter = false;
+         for (ResolveInfo service : matchedServiceList) {
+-            if (service.serviceInfo.packageName.equals(mComponentName.getPackageName())) {
++            if (service.serviceInfo.getComponentName().equals(mComponentName)) {
+                 if (!requiredPermission.equals(service.serviceInfo.permission)) {
+                     Slog.e(LOG_TAG, "Service " + mComponentName + " lacks permission "
+                             + requiredPermission);
+@@ -136,7 +136,7 @@ public class NotificationAccessConfirmationActivity extends Activity
+                 .installContent(p);
+         // Consistent with the permission dialog
+         // Used instead of p.mCancelable as that is only honored for AlertDialog
+-        getWindow().setCloseOnTouchOutside(false); 
++        getWindow().setCloseOnTouchOutside(false);
+     }
+ 
+     private void onAllow() {
+-- 
+2.40.1
+

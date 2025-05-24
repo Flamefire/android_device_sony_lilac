@@ -1,0 +1,25 @@
+# PWD: external/freetype
+diff --git a/src/truetype/ttgload.c b/src/truetype/ttgload.c
+index 1dd319dcb..e1b873aaf 100644
+--- a/src/truetype/ttgload.c
++++ b/src/truetype/ttgload.c
+@@ -1951,14 +1951,19 @@
+         FT_Vector*  unrounded = NULL;
+ 
+ 
+         limit = (short)gloader->current.num_subglyphs;
+ 
+         /* construct an outline structure for              */
+         /* communication with `TT_Vary_Apply_Glyph_Deltas' */
++        if ( gloader->current.num_subglyphs > (SHRT_MAX - 4) ) {
++            error = FT_Err_Invalid_Argument;
++            goto Exit;
++        }
++
+         outline.n_points   = (short)( gloader->current.num_subglyphs + 4 );
+         outline.n_contours = outline.n_points;
+ 
+         outline.points   = NULL;
+         outline.tags     = NULL;
+         outline.contours = NULL;
+ 
