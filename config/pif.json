@@ -1,10 +1,11 @@
 {
-    "MANUFACTURER": "motorola",
-    "BRAND": "motorola",
-    "DEVICE": "griffin",
-    "PRODUCT": "griffin_retcn",
-    "MODEL": "XT1650-05",
-    "FINGERPRINT": "motorola/griffin_retcn/griffin:6.0.1/MCC24.246-37/42:user/release-keys",
-    "SECURITY_PATCH": "2016-07-01",
-    "FIRST_API_LEVEL": "25"
+  "FIRST_API_LEVEL": "25",
+  "RELEASE": "",
+  "MANUFACTURER": "Google",
+  "BRAND": "google",
+  "DEVICE": "akita",
+  "PRODUCT": "akita_beta",
+  "MODEL": "Pixel 8a",
+  "FINGERPRINT": "google/akita_beta/akita:16/BP22.250325.012/13467521:user/release-keys",
+  "SECURITY_PATCH": "2025-04-05"
 }
