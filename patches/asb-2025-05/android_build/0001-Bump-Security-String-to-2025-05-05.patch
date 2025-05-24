@@ -1,0 +1,66 @@
+From e1b005776c3960c774a4d52a04c2d08c8f79ec0f Mon Sep 17 00:00:00 2001
+From: Alexander Grund <flamefire89@gmail.com>
+Date: Sat, 24 May 2025 13:04:24 +0200
+Subject: [PATCH] Bump Security String to 2025-05-05
+
+Implemented:
+============
+CVE:            References:    Type:  Severity:  Updated AOSP versions:
+CVE-2023-35657  A-260230151    ID     High       13, 14, 15
+CVE-2025-22425  A-364604008    EoP    High       13, 14
+CVE-2025-26420  A-313909156    EoP    High       13, 14
+CVE-2025-26421  A-344865740    EoP    High       13, 14, 15
+CVE-2025-26423  A-349550024    EoP    High       13, 14, 15
+CVE-2025-26426  A-310632322    EoP    High       13, 14, 15
+CVE-2025-26428  A-378514614    EoP    High       13, 14, 15
+CVE-2025-26438  A-251514171    EoP    High       13, 14, 15
+CVE-2025-26442  A-386216637    ID     High       13, 14, 15
+CVE-2025-26444  A-191743558    EoP    High       13, 14
+CVE-2025-27363  A-399065987    RCE    High       13, 14
+
+Previously Implemented:
+=======================
+CVE:            References:    Type:  Severity:  Updated AOSP versions:  Prior Change:
+CVE-2024-34739  A-294105066    EoP    High       13, 14	                 277d3d387c62
+CVE-2025-0087   A-333681693    EoP    High       13, 14, 15              268920aae092
+
+Not Implemented:
+================
+None
+
+Not Applicable (platform source):
+=================================
+CVE:            References:    Type:  Severity:  Updated AOSP versions:
+CVE-2023-21342  A-232799171    EoP    High       13
+CVE-2025-0077   A-360838273    EoP    High       15
+CVE-2025-26422  A-383328827    EoP    High       15
+CVE-2025-26424  A-341253275    ID     High       15
+CVE-2025-26425  A-379362792    EoP    High       14, 15
+CVE-2025-26427  A-200034476    EoP    High       13, 14
+CVE-2025-26429  A-372678095    DoS    High       13, 14, 15
+CVE-2025-26430  A-372895305    EoP    High       15
+CVE-2025-26435  A-337774836    EoP    High       15
+CVE-2025-26436  A-322159724    EoP    High       13, 14, 15
+CVE-2025-26440  A-290086710    EoP    High       14
+
+Change-Id: I4c63ca42bdc6bc131b63ce2b2dbb3d599da1bcb5
+---
+ core/version_defaults.mk | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/core/version_defaults.mk b/core/version_defaults.mk
+index cb3e94fba3..3cd7ee51c6 100644
+--- a/core/version_defaults.mk
++++ b/core/version_defaults.mk
+@@ -250,7 +250,7 @@ ifndef PLATFORM_SECURITY_PATCH
+     #  It must be of the form "YYYY-MM-DD" on production devices.
+     #  It must match one of the Android Security Patch Level strings of the Public Security Bulletins.
+     #  If there is no $PLATFORM_SECURITY_PATCH set, keep it empty.
+-    PLATFORM_SECURITY_PATCH := 2025-04-05
++    PLATFORM_SECURITY_PATCH := 2025-05-05
+ endif
+ .KATI_READONLY := PLATFORM_SECURITY_PATCH
+ 
+-- 
+2.40.1
+

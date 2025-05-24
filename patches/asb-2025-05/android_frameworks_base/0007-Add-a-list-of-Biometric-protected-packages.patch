@@ -1,0 +1,51 @@
+From 01a43e0968f5e0741b3828fa18d3a29bea77d593 Mon Sep 17 00:00:00 2001
+From: Shraddha Basantwani <basantwani@google.com>
+Date: Sun, 11 May 2025 09:46:24 -0600
+Subject: [PATCH 7/7] Add a list of Biometric protected packages
+
+Protected packages require biometric authentication for modification
+(Disable, force-stop or uninstalling updates).
+
+Bug: 352504490, 344865740
+Test: atest AppButtonsPreferenceControllerTest PackageInfoPresenterTest
+Flag: EXEMPT High Security Bug
+DISABLE_TOPIC_PROTECTOR
+
+(cherry picked from https://googleplex-android-review.googlesource.com/q/commit:10e65babc1ca2101508c251e3e39de4cda62f011)
+(cherry picked from https://googleplex-android-review.googlesource.com/q/commit:01e65bb74d13dded8cf5d4acfe2e162b15cb4119)
+Merged-In: I0c494e307b02229d751de118abcc89e4e61a6861
+Change-Id: I0c494e307b02229d751de118abcc89e4e61a6861
+---
+ core/res/res/values/config.xml  | 4 ++++
+ core/res/res/values/symbols.xml | 4 ++++
+ 2 files changed, 8 insertions(+)
+
+diff --git a/core/res/res/values/config.xml b/core/res/res/values/config.xml
+index a84d23b624bf..39ab5ff58ab8 100644
+--- a/core/res/res/values/config.xml
++++ b/core/res/res/values/config.xml
+@@ -4290,4 +4290,8 @@
+ 
+     <!-- pdp data retry for cause 29, 33 and 55-->
+     <bool name="config_pdp_retry_for_29_33_55_enabled">false</bool>
++
++    <!-- List of protected packages that require biometric authentication for modification
++         (Disable, force-stop or uninstalling updates). -->
++    <string-array name="config_biometric_protected_package_names" translatable="false" />
+ </resources>
+diff --git a/core/res/res/values/symbols.xml b/core/res/res/values/symbols.xml
+index 5481457d0958..5225ac363efb 100644
+--- a/core/res/res/values/symbols.xml
++++ b/core/res/res/values/symbols.xml
+@@ -3868,4 +3868,8 @@
+ 
+   <!-- For Pdn throttle feature -->
+   <java-symbol type="bool" name="config_pdp_retry_for_29_33_55_enabled" />
++
++  <!-- List of protected packages that require biometric authentication for modification -->
++  <java-symbol type="array" name="config_biometric_protected_package_names" />
++
+ </resources>
+-- 
+2.40.1
+

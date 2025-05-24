@@ -1,0 +1,42 @@
+From 77d0916d9f435f3da4cd82e58aa6a1cf94e98aa0 Mon Sep 17 00:00:00 2001
+From: Brian Delwiche <delwiche@google.com>
+Date: Fri, 5 Apr 2024 00:41:49 +0000
+Subject: [PATCH 2/3] Fix OOB read in bta_av_setconfig_rej
+
+The bta_av_config_ind function in bta_av_aact.cc makes a call in some
+user journeys to bta_av_setconfig_rej, constructing its p_data argument
+(a union datatype) as a tBTA_AV_CI_SETCONFIG.  This is a valid member of
+the union, but bta_av_setconfig_rej makes the assumption that the
+variable being passed has been set up as a tBTA_AV_STR_MSG, which is not
+true in this case.  This causes OOB access.
+
+Draw the required data instead from the stream control block, which
+should not be subject to this confusion.
+
+Bug: 260230151
+Test: m libbluetooth
+Test: manual
+Ignore-AOSP-First: security
+Tag: #security
+(cherry picked from https://googleplex-android-review.googlesource.com/q/commit:1816d40959e366f5feaa50a8db673141022634e9)
+Merged-In: If7fee75ff454ab925b9661c78980b7c093c29f0b
+Change-Id: If7fee75ff454ab925b9661c78980b7c093c29f0b
+---
+ bta/av/bta_av_aact.cc | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/bta/av/bta_av_aact.cc b/bta/av/bta_av_aact.cc
+index c83701b3d..58ce1e408 100644
+--- a/bta/av/bta_av_aact.cc
++++ b/bta/av/bta_av_aact.cc
+@@ -2475,7 +2475,6 @@ void bta_av_setconfig_rej(tBTA_AV_SCB* p_scb, tBTA_AV_DATA* p_data) {
+   AVDT_ConfigRsp(p_scb->avdt_handle, p_scb->avdt_label, AVDT_ERR_UNSUP_CFG, 0);
+ 
+   APPL_TRACE_DEBUG("%s peer_address: %s, handle: %d", __func__, p_scb->peer_addr.ToString().c_str(), p_scb->hndl);
+-  //reject.bd_addr = p_data->str_msg.bd_addr;
+   reject.bd_addr = p_scb->peer_addr;
+   reject.hndl = p_scb->hndl;
+ 
+-- 
+2.40.1
+
