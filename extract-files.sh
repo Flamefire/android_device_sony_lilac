@@ -69,9 +69,6 @@ DEVICE_ROOT="${ANDROID_ROOT}"/vendor/"${VENDOR}"/"${DEVICE}"/proprietary
 # Fix referenced set_sched_policy for stock audio hal
 "${PATCHELF}" --replace-needed "libcutils.so" "libprocessgroup.so" "${DEVICE_ROOT}"/vendor/lib/hw/audio.primary.msm8998.so
 
-# Let ffu load ufs firmare files from /etc
-sed -i 's/\/lib\/firmware\/ufs/\/etc\/firmware\/ufs/g' "${DEVICE_ROOT}"/vendor/bin/ffu
-
 # Add a restorecon for /persist/wlan to taimport_vendor.rc
 sed -i '4 a\    restorecon /persist/wlan' "${DEVICE_ROOT}"/vendor/etc/init/taimport_vendor.rc
 

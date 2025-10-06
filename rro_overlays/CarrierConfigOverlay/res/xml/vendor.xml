@@ -82,7 +82,7 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.-->
 
         <!-- Require provisioning, so unavailable features are not used. -->
         <!-- Simulated provisioning where carrier does not provide any. -->
-        <boolean name="carrier_volte_provisioning_required_bool" value="true" />
+        <boolean name="carrier_volte_provisioning_required_bool" value="false" />
 
         <!-- Downgrade when Video Telephony is unavailable. -->
         <boolean name="support_downgrade_vt_to_audio_bool" value="true" />
