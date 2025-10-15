@@ -1,13 +1,14 @@
-From eacc5864afad53b53f47e1a9085f53746431008f Mon Sep 17 00:00:00 2001
+From a372e5ed94eebc5f0fd959e70f3f6af5fbe54797 Mon Sep 17 00:00:00 2001
 From: antoniu200 <33966771+antoniu200@users.noreply.github.com>
 Date: Wed, 15 Oct 2025 20:50:35 +0300
 Subject: [PATCH] Add SomcMediaProvider
 
 ---
  AndroidManifest.xml                           |    9 +-
- .../sonymobile/media/SomcMediaProvider.java   | 1132 +++++++++++++++++
+ .../providers/media/DatabaseHelper.java       |    4 +-
+ .../sonymobile/media/SomcMediaProvider.java   | 1136 +++++++++++++++++
  src/com/sonymobile/media/SomcMediaStore.java  |   29 +
- 3 files changed, 1169 insertions(+), 1 deletion(-)
+ 4 files changed, 1175 insertions(+), 3 deletions(-)
  create mode 100644 src/com/sonymobile/media/SomcMediaProvider.java
  create mode 100644 src/com/sonymobile/media/SomcMediaStore.java
 
@@ -31,12 +32,34 @@ index edc10b809c..5cfb3e680b 100644
          <provider
                  android:name="com.android.providers.media.MediaDocumentsProvider"
                  android:label="@string/storage_description"
+diff --git a/src/com/android/providers/media/DatabaseHelper.java b/src/com/android/providers/media/DatabaseHelper.java
+index 7f863bd5fa..4a2e58c9be 100644
+--- a/src/com/android/providers/media/DatabaseHelper.java
++++ b/src/com/android/providers/media/DatabaseHelper.java
+@@ -237,7 +237,7 @@ public void setFilterVolumeNames(@NonNull Set<String> filterVolumeNames) {
+         }
+     }
+ 
+-    @Override
++/*    @Override
+     public SQLiteDatabase getReadableDatabase() {
+         throw new UnsupportedOperationException("All database operations must be routed through"
+                 + " runWithTransaction() or runWithoutTransaction() to avoid deadlocks");
+@@ -247,7 +247,7 @@ public SQLiteDatabase getReadableDatabase() {
+     public SQLiteDatabase getWritableDatabase() {
+         throw new UnsupportedOperationException("All database operations must be routed through"
+                 + " runWithTransaction() or runWithoutTransaction() to avoid deadlocks");
+-    }
++    }*/
+ 
+     @VisibleForTesting
+     SQLiteDatabase getWritableDatabaseForTest() {
 diff --git a/src/com/sonymobile/media/SomcMediaProvider.java b/src/com/sonymobile/media/SomcMediaProvider.java
 new file mode 100644
-index 0000000000..dbd590cf57
+index 0000000000..e051b8ae52
 --- /dev/null
 +++ b/src/com/sonymobile/media/SomcMediaProvider.java
-@@ -0,0 +1,1132 @@
+@@ -0,0 +1,1136 @@
 +package com.sonymobile.media;
 +
 +import android.content.ContentProvider;
@@ -68,6 +91,7 @@ index 0000000000..dbd590cf57
 +import java.io.IOException;
 +import java.io.RandomAccessFile;
 +import java.lang.reflect.Method;
++import java.lang.reflect.InvocationTargetException;
 +import java.util.ArrayList;
 +import java.util.Arrays;
 +import java.util.Iterator;
@@ -695,7 +719,8 @@ index 0000000000..dbd590cf57
 +    public Cursor query(Uri uri, String[] proj, String select, String[] selectArgs, String sort) {
 +        String str;
 +        String select2;
-+        String nonotify;
++        String nonotify = "";
++        Cursor mCursor = null;
 +        if (DEBUG) {
 +            StringBuilder sb = new StringBuilder();
 +            sb.append("query: uri=");
@@ -741,11 +766,13 @@ index 0000000000..dbd590cf57
 +        }
 +        SQLiteDatabase db = this.mDBHelper.getReadableDB();
 +        if (db != null) {
-+            c = qb.query(db, proj, select2, selectArgs, null, null, str, limit);            
++            mCursor = qb.query(db, proj, select2, selectArgs, null, null, str, limit);            
 +        }
-+        if (c != null && ((nonotify = uri.getQueryParameter("nonotify")) == null || !nonotify.equals("1")))
-+            c.setNotificationUri(getContext().getContentResolver(), uri);
-+        return c;
++        if (mCursor != null)
++            nonotify = uri.getQueryParameter("nonotify") ;
++            if (nonotify == null || !nonotify.equals("1"))
++            	mCursor.setNotificationUri(getContext().getContentResolver(), uri);
++        return mCursor;
 +    }
 +
 +    @Override // android.content.ContentProvider
@@ -1169,7 +1196,6 @@ index 0000000000..dbd590cf57
 +        }
 +    }
 +}
-\ No newline at end of file
 diff --git a/src/com/sonymobile/media/SomcMediaStore.java b/src/com/sonymobile/media/SomcMediaStore.java
 new file mode 100644
 index 0000000000..24faaa18d5
