@@ -18,8 +18,6 @@ lib64/libaptX_encoder.so|df1c89d7af1bb35808d5fe3496b04ba066c10cbc
 -app/CameraExtensionPermission-release/CameraExtensionPermission-release.apk
 -app/ImageProcessorPermission-release/ImageProcessorPermission-release.apk
 etc/default-permissions/com.sonyericsson.android.camera.xml|705f1fb1ab3734b84f8df0a8d7b37ef71f0c0e43
-etc/permissions/com.sonymobile.album.internal.xml
-etc/permissions/com.sonymobile.album.xml
 etc/permissions/com.sonymobile.camera.addon.api.xml|fa61a0d5420bfd009a6583f59f7ebc89f5612c78
 etc/permissions/com.sonymobile.imageprocessor.bypasscamera.api.xml|9e4fa7a11d5b9ce708194e6deeee5efac24cbe6b
 etc/permissions/privapp-permissions-com.sonyericsson.android.addoncamera.artfilter.xml|7c2870e7221688e6ad36c702517ce6f6ae3fba1c
@@ -129,9 +127,9 @@ system_ext/lib64/vendor.qti.latency@2.0.so|52058b376a37c99bfe67da8e83ab36a1e7297
 system_ext/lib64/vendor.qti.latency@2.1.so|18bffeadefcbbb5f3e1b512b0cee4cb39af27b72
 
 # CustomizationSelector
-etc/permissions/com.sonymobile.miscta.api.xml|76d5193656d3011a43c95d461c061b1e1e61174b # Patched to align with Android 12's naming requirements
+etc/permissions/com.sonymobile.miscta.api.xml|76d5193656d3011a43c95d461c061b1e1e61174b
 etc/public.libraries-sony.txt
-framework/com.sonymobile.miscta_impl.jar:framework/com.sonymobile.miscta.api.jar # Align with Android 12's naming requirements
+framework/com.sonymobile.miscta_impl.jar:framework/com.sonymobile.miscta.api.jar
 lib/libMiscTAApi.sony.so
 lib/libMiscTaWrapper.so
 lib64/libMiscTAApi.sony.so
