@@ -1,0 +1,106 @@
+From 21ae510a8d2d8240d729f66f82e467f45a792659 Mon Sep 17 00:00:00 2001
+From: antoniu200 <33966771+antoniu200@users.noreply.github.com>
+Date: Sat, 27 Sep 2025 01:39:22 +0300
+Subject: [PATCH] SemcCameraUI test
+
+---
+ libs/binder/Parcel.cpp              | 10 ++++++++++
+ libs/binder/include/binder/Parcel.h |  2 ++
+ libs/binder/libbinder.arm32.map     |  2 ++
+ libs/binder/libbinder.arm64.map     |  2 ++
+ libs/gui/Surface.cpp                |  3 +++
+ libs/gui/include/gui/Surface.h      |  7 +++++--
+ 6 files changed, 24 insertions(+), 2 deletions(-)
+
+diff --git a/libs/binder/Parcel.cpp b/libs/binder/Parcel.cpp
+index 9c5466635ec..00159a6eb57 100644
+--- a/libs/binder/Parcel.cpp
++++ b/libs/binder/Parcel.cpp
+@@ -1633,6 +1633,16 @@ double Parcel::readDouble() const
+ 
+ #endif
+ 
++status_t Parcel::readIntPtr(intptr_t *pArg) const
++{
++    return readAligned(pArg);
++}
++
++intptr_t Parcel::readIntPtr() const
++{
++    return readAligned<intptr_t>();
++}
++
+ status_t Parcel::readBool(bool *pArg) const
+ {
+     int32_t tmp = 0;
+diff --git a/libs/binder/include/binder/Parcel.h b/libs/binder/include/binder/Parcel.h
+index ef8014367e9..08e2746ded6 100644
+--- a/libs/binder/include/binder/Parcel.h
++++ b/libs/binder/include/binder/Parcel.h
+@@ -337,6 +337,8 @@ class Parcel {
+     status_t            readFloat(float *pArg) const;
+     double              readDouble() const;
+     status_t            readDouble(double *pArg) const;
++    intptr_t            readIntPtr() const;
++    status_t            readIntPtr(intptr_t *pArg) const;
+     bool                readBool() const;
+     status_t            readBool(bool *pArg) const;
+     char16_t            readChar() const;
+diff --git a/libs/binder/libbinder.arm32.map b/libs/binder/libbinder.arm32.map
+index 9f10b677bdc..2bc9526cc20 100644
+--- a/libs/binder/libbinder.arm32.map
++++ b/libs/binder/libbinder.arm32.map
+@@ -867,6 +867,8 @@ LIBBINDER {
+     _ZNK7android6Parcel10ipcObjectsEv;
+     _ZNK7android6Parcel10readDoubleEPd;
+     _ZNK7android6Parcel10readDoubleEv;
++    _ZNK7android6Parcel10readIntPtrEPi;
++    _ZNK7android6Parcel10readIntPtrEv;
+     _ZNK7android6Parcel10readObjectEb;
+     _ZNK7android6Parcel10readUint32EPj;
+     _ZNK7android6Parcel10readUint32Ev;
+diff --git a/libs/binder/libbinder.arm64.map b/libs/binder/libbinder.arm64.map
+index 1d3da4c81aa..ebbdcba7609 100644
+--- a/libs/binder/libbinder.arm64.map
++++ b/libs/binder/libbinder.arm64.map
+@@ -869,6 +869,8 @@ LIBBINDER {
+     _ZNK7android6Parcel10ipcObjectsEv;
+     _ZNK7android6Parcel10readDoubleEPd;
+     _ZNK7android6Parcel10readDoubleEv;
++    _ZNK7android6Parcel10readIntPtrEPi;
++    _ZNK7android6Parcel10readIntPtrEv;
+     _ZNK7android6Parcel10readObjectEb;
+     _ZNK7android6Parcel10readUint32EPj;
+     _ZNK7android6Parcel10readUint32Ev;
+diff --git a/libs/gui/Surface.cpp b/libs/gui/Surface.cpp
+index 353a91d062f..e3f0ac13e7f 100644
+--- a/libs/gui/Surface.cpp
++++ b/libs/gui/Surface.cpp
+@@ -62,6 +62,9 @@ bool isInterceptorRegistrationOp(int op) {
+ 
+ } // namespace
+ 
++Surface::Surface(const sp<IGraphicBufferProducer>& bufferProducer, bool controlledByApp)
++      : Surface(bufferProducer, controlledByApp, /*surfaceControlHandle*/ nullptr) {}
++
+ Surface::Surface(const sp<IGraphicBufferProducer>& bufferProducer, bool controlledByApp,
+                  const sp<IBinder>& surfaceControlHandle)
+       : mGraphicBufferProducer(bufferProducer),
+diff --git a/libs/gui/include/gui/Surface.h b/libs/gui/include/gui/Surface.h
+index e5403512a9d..cd92a4f392e 100644
+--- a/libs/gui/include/gui/Surface.h
++++ b/libs/gui/include/gui/Surface.h
+@@ -83,8 +83,11 @@ class Surface
+      *
+      * the controlledByApp flag indicates that this Surface (producer) is
+      * controlled by the application. This flag is used at connect time.
+-     *
+-     * Pass in the SurfaceControlHandle to store a weak reference to the layer
++     */
++    explicit Surface(const sp<IGraphicBufferProducer>& bufferProducer,
++            bool controlledByApp);
++     /*
++     * Optionally pass in the SurfaceControlHandle to store a weak reference to the layer
+      * that the Surface was created from. This handle can be used to create a
+      * child surface without using the IGBP to identify the layer. This is used
+      * for surfaces created by the BlastBufferQueue whose IGBP is created on the

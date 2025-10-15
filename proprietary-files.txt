@@ -17,34 +17,44 @@ lib64/libaptX_encoder.so|df1c89d7af1bb35808d5fe3496b04ba066c10cbc
 -app/CameraCommonPermission-release/CameraCommonPermission-release.apk
 -app/CameraExtensionPermission-release/CameraExtensionPermission-release.apk
 -app/ImageProcessorPermission-release/ImageProcessorPermission-release.apk
--etc/permissions/com.sonymobile.camera.addon.api.xml # Patched to align with Android 12's naming requirements
--etc/permissions/com.sonymobile.imageprocessor.bypasscamera.api.xml # Patched to align with Android 12's naming requirements
--framework/com.sonymobile.camera.addon.api.jar # Patched to align with Android 12's naming requirements
--framework/com.sonymobile.imageprocessor.bypasscamera.api.jar # Patched to align with Android 12's naming requirements
+etc/default-permissions/com.sonyericsson.android.camera.xml|705f1fb1ab3734b84f8df0a8d7b37ef71f0c0e43
+etc/permissions/com.sonymobile.album.internal.xml
+etc/permissions/com.sonymobile.album.xml
+etc/permissions/com.sonymobile.camera.addon.api.xml|fa61a0d5420bfd009a6583f59f7ebc89f5612c78
+etc/permissions/com.sonymobile.imageprocessor.bypasscamera.api.xml|9e4fa7a11d5b9ce708194e6deeee5efac24cbe6b
+etc/permissions/privapp-permissions-com.sonyericsson.android.addoncamera.artfilter.xml|7c2870e7221688e6ad36c702517ce6f6ae3fba1c
+etc/permissions/privapp-permissions-com.sonyericsson.android.camera.xml|dc6504a821c4008a5c8f3978b1e7eb910fc8997f
+etc/permissions/privapp-permissions-com.sonyericsson.android.camera3d.xml|73b428374841bf76b609af2fca238da70b7281c8
+etc/permissions/privapp-permissions-com.sonymobile.android.addoncamera.soundphoto.xml|b3f66d2bf6a76986588597e25430fdc45624a11c
+etc/permissions/privapp-permissions-com.sonymobile.moviecreator.xml|c81ec4f7e80c1780aa11ff12777350719a03d7c0
 -priv-app/ArtFilterCamera-xhdpi-release/ArtFilterCamera-xhdpi-release.apk
 -priv-app/CameraCommon/CameraCommon.apk
 -priv-app/CameraPanorama-release/CameraPanorama-release.apk|211b4cf5222f52dc5fe70ec8ddce1a4d0ff5258b
 -priv-app/SemcCameraUI-xxhdpi-release/SemcCameraUI-xxhdpi-release.apk|863b862703e208c8d39c5c84bc40f075577b3430
 -priv-app/SomcMovieCreator-release/SomcMovieCreator-release.apk
 -priv-app/SoundPhotoCamera-xhdpi-release/SoundPhotoCamera-xhdpi-release.apk
+framework/com.sonymobile.album.internal.jar
+framework/com.sonymobile.album.jar
+framework/com.sonymobile.camera.addon_impl.jar:framework/com.sonymobile.camera.addon.api.jar
+framework/com.sonymobile.imageprocessor.bypasscamera_impl.jar:framework/com.sonymobile.imageprocessor.bypasscamera.api.jar
 
 # CAMERA
 bin/cacaoserver
 etc/init/cacaoserver.rc
--lib/libcacao_client.so # Parcel size patch
+lib/libcacao_client.so|d6a9c75eab481bdb4cd6fefe399766d84cbbf0d4
 lib/libcacao_pal.so
--lib/libcacao_process_ctrl_gateway.so # Surface size patch
+lib/libcacao_process_ctrl_gateway.so|952abcfe7ef88f482268f3ddea4b03d6b8000e23
 lib/libcacao_service.so
--lib/libimageprocessorjni.so # Surface size patch
+lib/libimageprocessorjni.so|5c904eba44dc5090afee7892e444e75d5890d50e
 lib/vendor.somc.hardware.camera.cacao@1.0.so
 lib/vendor.somc.hardware.camera.cacao@2.0.so
 lib/vendor.somc.hardware.camera.cacao@3.0.so
 lib/vendor.somc.hardware.camera.cacao@3.1.so
 lib/vendor.somc.hardware.camera.device@1.0.so
 lib/vendor.somc.hardware.camera.provider@1.0.so
--lib64/libcacao_client.so # Parcel size patch
+lib64/libcacao_client.so|a848aefd648d9cad89136f29fb4ec5a88363cda9
 lib64/libcacao_pal.so
--lib64/libimageprocessorjni.so # Surface size patch
+lib64/libimageprocessorjni.so|e989c44f0cc42c923cbf3fd9213063930e04b779
 
 # CAMERA_POSTPROCESSING
 lib/libjni_imageutil.so
@@ -119,9 +129,9 @@ system_ext/lib64/vendor.qti.latency@2.0.so|52058b376a37c99bfe67da8e83ab36a1e7297
 system_ext/lib64/vendor.qti.latency@2.1.so|18bffeadefcbbb5f3e1b512b0cee4cb39af27b72
 
 # CustomizationSelector
-etc/permissions/com.sonymobile.miscta.xml
+etc/permissions/com.sonymobile.miscta.api.xml|76d5193656d3011a43c95d461c061b1e1e61174b # Patched to align with Android 12's naming requirements
 etc/public.libraries-sony.txt
-framework/com.sonymobile.miscta_impl.jar
+framework/com.sonymobile.miscta_impl.jar:framework/com.sonymobile.miscta.api.jar # Align with Android 12's naming requirements
 lib/libMiscTAApi.sony.so
 lib/libMiscTaWrapper.so
 lib64/libMiscTAApi.sony.so
@@ -238,9 +248,9 @@ etc/firmware/tztpm.b07
 etc/firmware/tztpm.mdt
 
 # FRAMEWORK_DEPENDENCIES
-etc/permissions/com.sonyericsson.idd.xml
-etc/permissions/com.sonymobile.getmore.api.xml
-framework/com.sonyericsson.idd_impl.jar
+etc/permissions/com.sonyericsson.idd.xml|916903b132b0d2b53b58b588fd2562008200abc3
+etc/permissions/com.sonymobile.getmore.api.xml|16068ca1b346f7213af725617f89bc59abd88c85
+framework/com.sonyericsson.idd_impl.jar:framework/com.sonyericsson.idd.jar
 framework/com.sonymobile.getmore.api.jar
 
 # GRAPHICS

@@ -81,3 +81,50 @@ sed -i 's/version\=\"2\.0\"/version\=\"1\.0\"/g' "${DEVICE_ROOT}"/product/etc/pe
 #
 
 "${MY_DIR}"/setup-makefiles.sh
+
+# --- Post-process Android.bp ---
+ANDROIDBP="${ANDROIDBP:-${MY_DIR:-$PWD}/Android.bp}"
+[ -f "$ANDROIDBP" ] || { echo "Android.bp not found at $ANDROIDBP" >&2; exit 1; }
+
+awk '
+  BEGIN { inblk=0; depth=0; name=""; buf="" }
+  /^[ \t]*(android_app_import|dex_import|java_import)[ \t]*\{[ \t]*$/ && !inblk {
+    inblk=1; depth=1; name=""; buf=$0 ORS; next
+  }
+  inblk {
+    buf = buf $0 ORS
+    if (name=="" && $0 ~ /name:[ \t]*"[^"]+"/) { match($0,/name:[ \t]*"([^"]+)"/,m); name=m[1] }
+    o=gsub(/\{/, "", $0); c=gsub(/\}/, "", $0); depth += o - c
+    if (depth==0) {
+      if (!(name=="SemcCameraUI-xxhdpi-release" || name=="com.sonymobile.camera.addon.api")) {
+        printf "%s", buf
+      }
+      inblk=0; name=""; buf=""
+    }
+    next
+  }
+  { print }
+' "$ANDROIDBP" > "$ANDROIDBP.tmp" && mv "$ANDROIDBP.tmp" "$ANDROIDBP"
+
+cat >>"$ANDROIDBP" <<'EOF'
+
+android_app_import {
+	name: "SemcCameraUI-xxhdpi-release",
+	owner: "sony",
+	apk: "proprietary/priv-app/SemcCameraUI-xxhdpi-release/SemcCameraUI-xxhdpi-release.apk",
+	certificate: "platform",
+	dex_preopt: {
+		enabled: false,
+	},
+	privileged: true,
+	uses_libs: ["com.sonymobile.camera.addon.api"],
+}
+
+java_import {
+	name: "com.sonymobile.camera.addon.api",
+	owner: "sony",
+	jars: ["proprietary/framework/com.sonymobile.camera.addon.api.jar"],
+	installable: true,
+}
+EOF
+# --- End rewrite ---
